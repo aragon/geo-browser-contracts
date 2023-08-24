@@ -1,7 +1,7 @@
 import {
-  MyPluginSetup,
-  MyPluginSetup__factory,
   PluginRepo,
+  SpacePluginSetup,
+  SpacePluginSetup__factory,
 } from "../../typechain";
 import { getPluginInfo, osxContracts } from "../../utils/helpers";
 import { toHex } from "../../utils/ipfs";
@@ -82,12 +82,12 @@ describe("PluginRepo Deployment", function () {
     ).to.be.true;
   });
 
-  context("PluginSetup Publication", async () => {
-    let setup: MyPluginSetup;
+  context("SpacePluginSetup Publication", () => {
+    let setup: SpacePluginSetup;
 
     before(async () => {
-      setup = MyPluginSetup__factory.connect(
-        (await deployments.get("MyPluginSetup")).address,
+      setup = SpacePluginSetup__factory.connect(
+        (await deployments.get("SpacePluginSetup")).address,
         alice,
       );
     });

@@ -19,12 +19,8 @@ contract MemberAccessPlugin is PluginUUPSUpgradeable {
     }
 
     /// @notice Initializes the plugin when build 1 is installed.
-    /// @param _number The number to be stored.
-    function initialize(IDAO _dao, uint256 _number) external initializer {
+    function initialize(IDAO _dao) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
-        number = _number;
-
-        emit NumberStored({number: _number});
     }
 
     /// @notice Stores a new number to storage. Caller needs STORE_PERMISSION.

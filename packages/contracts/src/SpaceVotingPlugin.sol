@@ -12,8 +12,7 @@ contract SpaceVotingPlugin is PluginUUPSUpgradeable {
 
     /// @notice Initializes the plugin when build 1 is installed.
     /// @param _dao The address of the DAO to read the permissions from.
-    /// @param _firstBlockContentUri A IPFS URI pointing to the contents of the very first block.
-    function initialize(IDAO _dao, string memory _firstBlockContentUri) external initializer {
+    function initialize(IDAO _dao) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
     }
 

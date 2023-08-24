@@ -10,12 +10,11 @@ import { deployTestDao } from "../helpers/test-dao";
 import { EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID } from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 
-export type InitData = { number: BigNumber };
+export type InitData = { contentUri: string };
 export const defaultInitData: InitData = {
-  number: BigNumber.from(123),
+  contentUri: "ipfs://",
 };
 
 describe("Default Geo Browser Space", function () {
@@ -31,7 +30,7 @@ describe("Default Geo Browser Space", function () {
     [alice, bob, charlie] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
-    defaultInput = { number: BigNumber.from(123) };
+    defaultInput = { contentUri: "ipfs://" };
   });
 
   beforeEach(async () => {
@@ -46,9 +45,8 @@ describe("Default Geo Browser Space", function () {
 
     await personalSpaceVotingPlugin.initialize(
       dao.address,
-      defaultInput.number,
     );
-    await spacePlugin.initialize(dao.address, defaultInput.number);
+    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
 
     await dao.grant(
       personalSpaceVotingPlugin.address,
@@ -65,10 +63,10 @@ describe("Default Geo Browser Space", function () {
   describe("initialize", async () => {
     it("reverts if trying to re-initialize", async () => {
       await expect(
-        personalSpaceVotingPlugin.initialize(dao.address, defaultInput.number),
+        personalSpaceVotingPlugin.initialize(dao.address),
       ).to.be.revertedWith("Initializable: contract is already initialized");
       await expect(
-        spacePlugin.initialize(dao.address, defaultInput.number),
+        spacePlugin.initialize(dao.address, "0x"),
       ).to.be.revertedWith("Initializable: contract is already initialized");
     });
   });

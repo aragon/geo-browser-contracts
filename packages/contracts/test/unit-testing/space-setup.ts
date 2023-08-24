@@ -1,5 +1,4 @@
-import { PLUGIN_SETUP_CONTRACT_NAME } from "../../plugin-settings";
-import buildMetadata from "../../src/build-metadata.json";
+import buildMetadata from "../../src/space-build-metadata.json";
 import {
   DAO,
   SpacePlugin__factory,
@@ -12,17 +11,19 @@ import { defaultInitData } from "./default-space";
 import {
   abiCoder,
   ADDRESS_ZERO,
+  CONTENT_PERMISSION_ID,
   DEPLOYER_PERMISSION_ID,
   EDITOR_PERMISSION_ID,
   EMPTY_DATA,
   MEMBER_PERMISSION_ID,
   NO_CONDITION,
+  SUBSPACE_PERMISSION_ID,
 } from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
+describe("SpacePlugin Setup", function () {
   let alice: SignerWithAddress;
   let spacePluginSetup: SpacePluginSetup;
   let SpacePluginSetup: SpacePluginSetup__factory;
@@ -44,7 +45,7 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
         getNamedTypesFromMetadata(
           buildMetadata.pluginSetup.prepareInstallation.inputs,
         ),
-        [defaultInitData.number],
+        [defaultInitData.contentUri],
       );
     });
 
@@ -67,14 +68,21 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
       expect(helpers.length).to.be.equal(0);
-      expect(permissions.length).to.be.equal(1);
+      expect(permissions.length).to.be.equal(2);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
           plugin,
           dao.address,
           NO_CONDITION,
-          MEMBER_PERMISSION_ID,
+          CONTENT_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          plugin,
+          dao.address,
+          NO_CONDITION,
+          SUBSPACE_PERMISSION_ID,
         ],
       ]);
 
@@ -83,7 +91,7 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
 
       // initialization is correct
       expect(await myPlugin.dao()).to.eq(dao.address);
-      expect(await myPlugin.number()).to.be.eq(defaultInitData.number);
+      // expect(await myPlugin.number()).to.be.eq(defaultInitData.number);
     });
   });
 
@@ -101,14 +109,21 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
           },
         );
 
-      expect(permissions.length).to.be.equal(1);
+      expect(permissions.length).to.be.equal(2);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
           dummyAddr,
           dao.address,
           NO_CONDITION,
-          MEMBER_PERMISSION_ID,
+          CONTENT_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          dummyAddr,
+          dao.address,
+          NO_CONDITION,
+          SUBSPACE_PERMISSION_ID,
         ],
       ]);
     });
