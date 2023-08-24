@@ -6,33 +6,35 @@ import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpg
 /// @title SpaceVotingPlugin
 /// @dev Release 1, Build 1
 contract SpaceVotingPlugin is PluginUUPSUpgradeable {
-    bytes32 public constant STORE_PERMISSION_ID = keccak256("STORE_PERMISSION");
+    bytes32 public constant CONTENT_PERMISSION_ID = keccak256("CONTENT_PERMISSION");
+    bytes32 public constant SUBSPACE_PERMISSION_ID = keccak256("SUBSPACE_PERMISSION");
 
-    uint256 public number; // added in build 1
-
-    /// @notice Emitted when a number is stored.
-    /// @param number The number.
-    event NumberStored(uint256 number);
+    /// @notice Emitted when the contents of a space change.
+    /// @param blockIndex The index of the block that has new contents.
+    /// @param contentUri The IPFS URI pointing to the new contents.
+    event ContentChanged(uint32 blockIndex, string contentUri);
 
     constructor() {
         _disableInitializers();
     }
 
     /// @notice Initializes the plugin when build 1 is installed.
-    /// @param _number The number to be stored.
-    function initialize(IDAO _dao, uint256 _number) external initializer {
+    /// @param _dao The address of the DAO to read the permissions from.
+    /// @param _firstBlockContentUri A IPFS URI pointing to the contents of the very first block.
+    function initialize(IDAO _dao, string memory _firstBlockContentUri) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
-        number = _number;
 
-        emit NumberStored({number: _number});
+        emit ContentChanged({blockIndex: 0, contentUri: _firstBlockContentUri});
     }
 
-    /// @notice Stores a new number to storage. Caller needs STORE_PERMISSION.
-    /// @param _number The number to be stored.
-    function storeNumber(uint256 _number) external auth(STORE_PERMISSION_ID) {
-        number = _number;
-
-        emit NumberStored({number: _number});
+    /// @notice Emits an event with new contents for the given block index. Caller needs CONTENT_PERMISSION.
+    /// @param _blockIndex The index of the block whose contents are being changed.
+    /// @param _contentUri An IPFS URI pointing to the new contents behind the block.
+    function setContent(
+        uint32 _blockIndex,
+        string memory _contentUri
+    ) external auth(CONTENT_PERMISSION_ID) {
+        emit ContentChanged({blockIndex: _blockIndex, contentUri: _contentUri});
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables without shifting down storage in the inheritance chain (see [OpenZeppelin's guide about storage gaps](https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps)).

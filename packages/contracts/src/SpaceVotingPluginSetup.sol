@@ -9,8 +9,9 @@ import {SpaceVotingPlugin} from "./SpaceVotingPlugin.sol";
 /// @title SpaceVotingPluginSetup
 /// @dev Release 1, Build 1
 contract SpaceVotingPluginSetup is PluginSetup {
+    bytes32 public constant CONTENT_PERMISSION_ID = keccak256("CONTENT_PERMISSION");
+    bytes32 public constant SUBSPACE_PERMISSION_ID = keccak256("SUBSPACE_PERMISSION");
     address private immutable pluginImplementation;
-    bytes32 public constant STORE_PERMISSION_ID = keccak256("STORE_PERMISSION");
 
     constructor() {
         pluginImplementation = address(new SpaceVotingPlugin());
@@ -21,23 +22,46 @@ contract SpaceVotingPluginSetup is PluginSetup {
         address _dao,
         bytes memory _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
-        uint256 number = abi.decode(_data, (uint256));
+        // Decode incoming params
+        string memory firstBlockContentUri = abi.decode(_data, (string));
 
+        // Deploy new plugin instance
         plugin = createERC1967Proxy(
             pluginImplementation,
-            abi.encodeWithSelector(SpaceVotingPlugin.initialize.selector, _dao, number)
+            abi.encodeWithSelector(
+                SpaceVotingPlugin.initialize.selector,
+                _dao,
+                firstBlockContentUri
+            )
         );
 
         PermissionLib.MultiTargetPermission[]
-            memory permissions = new PermissionLib.MultiTargetPermission[](1);
+            memory permissions = new PermissionLib.MultiTargetPermission[](2);
 
+        // The DAO can emit content
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: STORE_PERMISSION_ID
+            permissionId: CONTENT_PERMISSION_ID
         });
+        // The DAO can accept a subspace
+        permissions[1] = PermissionLib.MultiTargetPermission({
+            operation: PermissionLib.Operation.Grant,
+            where: plugin,
+            who: _dao,
+            condition: PermissionLib.NO_CONDITION,
+            permissionId: SUBSPACE_PERMISSION_ID
+        });
+        // The deployer can upgrade the space
+        // permissions[2] = PermissionLib.MultiTargetPermission({
+        //     operation: PermissionLib.Operation.Grant,
+        //     where: plugin,
+        //     who: msg.sender,
+        //     condition: PermissionLib.NO_CONDITION,
+        //     permissionId: UPGRADE_PLUGIN_PERMISSION_ID
+        // });
 
         preparedSetupData.permissions = permissions;
     }
@@ -46,16 +70,33 @@ contract SpaceVotingPluginSetup is PluginSetup {
     function prepareUninstallation(
         address _dao,
         SetupPayload calldata _payload
-    ) external pure returns (PermissionLib.MultiTargetPermission[] memory permissions) {
-        permissions = new PermissionLib.MultiTargetPermission[](1);
+    ) external pure returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
+        permissionChanges = new PermissionLib.MultiTargetPermission[](2);
 
-        permissions[0] = PermissionLib.MultiTargetPermission({
+        // The DAO can emit content
+        permissionChanges[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: STORE_PERMISSION_ID
+            permissionId: CONTENT_PERMISSION_ID
         });
+        // The DAO can accept a subspace
+        permissionChanges[1] = PermissionLib.MultiTargetPermission({
+            operation: PermissionLib.Operation.Revoke,
+            where: _payload.plugin,
+            who: _dao,
+            condition: PermissionLib.NO_CONDITION,
+            permissionId: SUBSPACE_PERMISSION_ID
+        });
+        // The deployer can upgrade the space
+        // permissionChanges[2] = PermissionLib.MultiTargetPermission({
+        //     operation: PermissionLib.Operation.Revoke,
+        //     where: _payload.plugin,
+        //     who: msg.sender,
+        //     condition: PermissionLib.NO_CONDITION,
+        //     permissionId: UPGRADE_PLUGIN_PERMISSION_ID
+        // });
     }
 
     /// @inheritdoc IPluginSetup
