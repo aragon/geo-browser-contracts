@@ -2,19 +2,21 @@ import { PLUGIN_SETUP_CONTRACT_NAME } from "../../plugin-settings";
 import buildMetadata from "../../src/build-metadata.json";
 import {
   DAO,
-  MyPlugin__factory,
-  MyPluginSetup,
-  MyPluginSetup__factory,
+  SpacePlugin__factory,
+  SpacePluginSetup,
+  SpacePluginSetup__factory,
 } from "../../typechain";
 import { deployTestDao } from "../helpers/test-dao";
 import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
-import { defaultInitData } from "./simple-storage";
+import { defaultInitData } from "./default-space";
 import {
   abiCoder,
   ADDRESS_ZERO,
+  DEPLOYER_PERMISSION_ID,
+  EDITOR_PERMISSION_ID,
   EMPTY_DATA,
+  MEMBER_PERMISSION_ID,
   NO_CONDITION,
-  STORE_PERMISSION_ID,
 } from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
@@ -22,16 +24,16 @@ import { ethers } from "hardhat";
 
 describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
   let alice: SignerWithAddress;
-  let myPluginSetup: MyPluginSetup;
-  let MyPluginSetup: MyPluginSetup__factory;
+  let spacePluginSetup: SpacePluginSetup;
+  let SpacePluginSetup: SpacePluginSetup__factory;
   let dao: DAO;
 
   before(async () => {
     [alice] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
-    MyPluginSetup = new MyPluginSetup__factory(alice);
-    myPluginSetup = await MyPluginSetup.deploy();
+    SpacePluginSetup = new SpacePluginSetup__factory(alice);
+    spacePluginSetup = await SpacePluginSetup.deploy();
   });
 
   describe("prepareInstallation", async () => {
@@ -48,17 +50,17 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
 
     it("returns the plugin, helpers, and permissions", async () => {
       const nonce = await ethers.provider.getTransactionCount(
-        myPluginSetup.address,
+        spacePluginSetup.address,
       );
       const anticipatedPluginAddress = ethers.utils.getContractAddress({
-        from: myPluginSetup.address,
+        from: spacePluginSetup.address,
         nonce,
       });
 
       const {
         plugin,
         preparedSetupData: { helpers, permissions },
-      } = await myPluginSetup.callStatic.prepareInstallation(
+      } = await spacePluginSetup.callStatic.prepareInstallation(
         dao.address,
         initData,
       );
@@ -72,12 +74,12 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
           plugin,
           dao.address,
           NO_CONDITION,
-          STORE_PERMISSION_ID,
+          MEMBER_PERMISSION_ID,
         ],
       ]);
 
-      await myPluginSetup.prepareInstallation(dao.address, initData);
-      const myPlugin = new MyPlugin__factory(alice).attach(plugin);
+      await spacePluginSetup.prepareInstallation(dao.address, initData);
+      const myPlugin = new SpacePlugin__factory(alice).attach(plugin);
 
       // initialization is correct
       expect(await myPlugin.dao()).to.eq(dao.address);
@@ -89,14 +91,15 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
     it("returns the permissions", async () => {
       const dummyAddr = ADDRESS_ZERO;
 
-      const permissions = await myPluginSetup.callStatic.prepareUninstallation(
-        dao.address,
-        {
-          plugin: dummyAddr,
-          currentHelpers: [],
-          data: EMPTY_DATA,
-        },
-      );
+      const permissions = await spacePluginSetup.callStatic
+        .prepareUninstallation(
+          dao.address,
+          {
+            plugin: dummyAddr,
+            currentHelpers: [],
+            data: EMPTY_DATA,
+          },
+        );
 
       expect(permissions.length).to.be.equal(1);
       expect(permissions).to.deep.equal([
@@ -105,7 +108,7 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
           dummyAddr,
           dao.address,
           NO_CONDITION,
-          STORE_PERMISSION_ID,
+          MEMBER_PERMISSION_ID,
         ],
       ]);
     });
