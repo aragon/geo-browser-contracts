@@ -4,15 +4,16 @@ pragma solidity ^0.8.8;
 
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
-import {MyPlugin} from "./MyPlugin.sol";
+import {PersonalSpaceVotingPlugin} from "./PersonalSpaceVotingPlugin.sol";
 
-/// @title MyPluginSetup
+/// @title PersonalSpaceVotingPluginSetup
 /// @dev Release 1, Build 1
-contract MyPluginSetup is PluginSetup {
-    address private immutable myPluginImplementation;
+contract PersonalSpaceVotingPluginSetup is PluginSetup {
+    address private immutable pluginImplementation;
+    bytes32 public constant STORE_PERMISSION_ID = keccak256("STORE_PERMISSION");
 
     constructor() {
-        myPluginImplementation = address(new MyPlugin());
+        pluginImplementation = address(new PersonalSpaceVotingPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -23,8 +24,8 @@ contract MyPluginSetup is PluginSetup {
         uint256 number = abi.decode(_data, (uint256));
 
         plugin = createERC1967Proxy(
-            myPluginImplementation,
-            abi.encodeWithSelector(MyPlugin.initialize.selector, _dao, number)
+            pluginImplementation,
+            abi.encodeWithSelector(PersonalSpaceVotingPlugin.initialize.selector, _dao, number)
         );
 
         PermissionLib.MultiTargetPermission[]
@@ -35,7 +36,7 @@ contract MyPluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: keccak256("STORE_PERMISSION")
+            permissionId: STORE_PERMISSION_ID
         });
 
         preparedSetupData.permissions = permissions;
@@ -53,12 +54,12 @@ contract MyPluginSetup is PluginSetup {
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: keccak256("STORE_PERMISSION")
+            permissionId: STORE_PERMISSION_ID
         });
     }
 
     /// @inheritdoc IPluginSetup
     function implementation() external view returns (address) {
-        return myPluginImplementation;
+        return pluginImplementation;
     }
 }

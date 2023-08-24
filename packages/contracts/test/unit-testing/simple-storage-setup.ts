@@ -1,24 +1,24 @@
-import {PLUGIN_SETUP_CONTRACT_NAME} from '../../plugin-settings';
-import buildMetadata from '../../src/build-metadata.json';
+import { PLUGIN_SETUP_CONTRACT_NAME } from "../../plugin-settings";
+import buildMetadata from "../../src/build-metadata.json";
 import {
   DAO,
+  MyPlugin__factory,
   MyPluginSetup,
   MyPluginSetup__factory,
-  MyPlugin__factory,
-} from '../../typechain';
-import {deployTestDao} from '../helpers/test-dao';
-import {Operation, getNamedTypesFromMetadata} from '../helpers/types';
-import {defaultInitData} from './simple-storage';
+} from "../../typechain";
+import { deployTestDao } from "../helpers/test-dao";
+import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
+import { defaultInitData } from "./simple-storage";
 import {
+  abiCoder,
   ADDRESS_ZERO,
   EMPTY_DATA,
   NO_CONDITION,
   STORE_PERMISSION_ID,
-  abiCoder,
-} from './simple-storage-common';
-import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
-import {expect} from 'chai';
-import {ethers} from 'hardhat';
+} from "./common";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { ethers } from "hardhat";
 
 describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
   let alice: SignerWithAddress;
@@ -34,21 +34,21 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
     myPluginSetup = await MyPluginSetup.deploy();
   });
 
-  describe('prepareInstallation', async () => {
+  describe("prepareInstallation", async () => {
     let initData: string;
 
     before(async () => {
       initData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs
+          buildMetadata.pluginSetup.prepareInstallation.inputs,
         ),
-        [defaultInitData.number]
+        [defaultInitData.number],
       );
     });
 
-    it('returns the plugin, helpers, and permissions', async () => {
+    it("returns the plugin, helpers, and permissions", async () => {
       const nonce = await ethers.provider.getTransactionCount(
-        myPluginSetup.address
+        myPluginSetup.address,
       );
       const anticipatedPluginAddress = ethers.utils.getContractAddress({
         from: myPluginSetup.address,
@@ -57,10 +57,10 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
 
       const {
         plugin,
-        preparedSetupData: {helpers, permissions},
+        preparedSetupData: { helpers, permissions },
       } = await myPluginSetup.callStatic.prepareInstallation(
         dao.address,
-        initData
+        initData,
       );
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
@@ -85,8 +85,8 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
     });
   });
 
-  describe('prepareUninstallation', async () => {
-    it('returns the permissions', async () => {
+  describe("prepareUninstallation", async () => {
+    it("returns the permissions", async () => {
       const dummyAddr = ADDRESS_ZERO;
 
       const permissions = await myPluginSetup.callStatic.prepareUninstallation(
@@ -95,7 +95,7 @@ describe(PLUGIN_SETUP_CONTRACT_NAME, function () {
           plugin: dummyAddr,
           currentHelpers: [],
           data: EMPTY_DATA,
-        }
+        },
       );
 
       expect(permissions.length).to.be.equal(1);

@@ -3,9 +3,9 @@ pragma solidity ^0.8.8;
 
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 
-/// @title MyPlugin
+/// @title MemberAccessPlugin
 /// @dev Release 1, Build 1
-contract MyPlugin is PluginUUPSUpgradeable {
+contract MemberAccessPlugin is PluginUUPSUpgradeable {
     bytes32 public constant STORE_PERMISSION_ID = keccak256("STORE_PERMISSION");
 
     uint256 public number; // added in build 1
