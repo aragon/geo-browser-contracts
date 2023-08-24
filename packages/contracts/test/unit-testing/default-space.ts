@@ -9,7 +9,13 @@ import {
 } from "../../typechain";
 import { deployWithProxy } from "../../utils/helpers";
 import { deployTestDao } from "../helpers/test-dao";
-import { EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID } from "./common";
+import {
+  ADDRESS_TWO,
+  CONTENT_PERMISSION_ID,
+  EDITOR_PERMISSION_ID,
+  MEMBER_PERMISSION_ID,
+  SUBSPACE_PERMISSION_ID,
+} from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
@@ -51,6 +57,7 @@ describe("Default Geo Browser Space", function () {
     await spaceVotingPlugin.initialize(dao.address);
     await spacePlugin.initialize(dao.address, defaultInput.contentUri);
 
+    // Alice is an editor
     await dao.grant(
       memberAccessPlugin.address,
       alice.address,
@@ -61,6 +68,7 @@ describe("Default Geo Browser Space", function () {
       alice.address,
       EDITOR_PERMISSION_ID,
     );
+    // Bob is a member
     await dao.grant(
       memberAccessPlugin.address,
       bob.address,
@@ -86,8 +94,6 @@ describe("Default Geo Browser Space", function () {
       ).to.be.revertedWith("Initializable: contract is already initialized");
     });
   });
-
-  // const newNumber = BigNumber.from(456);
 
   // beforeEach(async () => {
   //   await dao.grant(memberAccessPlugin.address, alice.address, MEMBER_PERMISSION_ID);
@@ -149,7 +155,78 @@ describe("Default Geo Browser Space", function () {
   it("Rejected proposals cannot be executed");
   it("Membership proposals can only grant/revoke membership permissions");
   it("Only the DAO can call functions on the space plugin");
-  it("Approved content proposals emit an event");
-  it("Approved subspaces emit an event");
+
+  it("The Space plugin emits an event when new content is published", async () => {
+    // Fails by default
+    await expect(spacePlugin.connect(alice).setContent(1, 2, "hello"))
+      .to.be.revertedWithCustomError(spacePlugin, "DaoUnauthorized")
+      .withArgs(
+        dao.address,
+        spacePlugin.address,
+        alice.address,
+        CONTENT_PERMISSION_ID,
+      );
+
+    // Grant
+    await dao.grant(
+      spacePlugin.address,
+      alice.address,
+      CONTENT_PERMISSION_ID,
+    );
+
+    // Set content
+    await expect(spacePlugin.connect(alice).setContent(1, 2, "hello"))
+      .to.emit(spacePlugin, "ContentChanged")
+      .withArgs(1, 2, "hello");
+  });
+
+  it("The Space plugin emits an event when a subspace is accepted", async () => {
+    // Fails by default
+    await expect(spacePlugin.connect(alice).acceptSubspace(ADDRESS_TWO))
+      .to.be.revertedWithCustomError(spacePlugin, "DaoUnauthorized")
+      .withArgs(
+        dao.address,
+        spacePlugin.address,
+        alice.address,
+        SUBSPACE_PERMISSION_ID,
+      );
+
+    // Grant
+    await dao.grant(
+      spacePlugin.address,
+      alice.address,
+      SUBSPACE_PERMISSION_ID,
+    );
+
+    // Set content
+    await expect(spacePlugin.connect(alice).acceptSubspace(ADDRESS_TWO))
+      .to.emit(spacePlugin, "SubspaceAccepted")
+      .withArgs(ADDRESS_TWO);
+  });
+
+  it("The Space plugin emits an event when a subspace is removed", async () => {
+    // Fails by default
+    await expect(spacePlugin.connect(alice).removeSubspace(ADDRESS_TWO))
+      .to.be.revertedWithCustomError(spacePlugin, "DaoUnauthorized")
+      .withArgs(
+        dao.address,
+        spacePlugin.address,
+        alice.address,
+        SUBSPACE_PERMISSION_ID,
+      );
+
+    // Grant
+    await dao.grant(
+      spacePlugin.address,
+      alice.address,
+      SUBSPACE_PERMISSION_ID,
+    );
+
+    // Set content
+    await expect(spacePlugin.connect(alice).removeSubspace(ADDRESS_TWO))
+      .to.emit(spacePlugin, "SubspaceRemoved")
+      .withArgs(ADDRESS_TWO);
+  });
+
   it("The DAO and deployers can upgrade the plugins");
 });

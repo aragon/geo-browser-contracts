@@ -1,7 +1,7 @@
 import buildMetadata from "./src/space-build-metadata.json";
 import releaseMetadata from "./src/space-release-metadata.json";
 
-export const PLUGIN_REPO_ENS_NAME = "test-2";
+export const PLUGIN_REPO_ENS_NAME = "geo-browser-space";
 
 export const VERSION = {
   release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
