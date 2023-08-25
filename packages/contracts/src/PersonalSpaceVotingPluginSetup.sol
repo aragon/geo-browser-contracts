@@ -19,9 +19,9 @@ contract PersonalSpaceVotingPluginSetup is PluginSetup {
     /// @notice The address of the `PersonalSpaceVotingPlugin` plugin logic contract to be cloned.
     address private immutable implementation_;
 
-    /// @notice Thrown if the admin address is zero.
-    /// @param admin The admin address.
-    error EditorAddressInvalid(address admin);
+    /// @notice Thrown if the editor address is zero.
+    /// @param editor The initial editor address.
+    error EditorAddressInvalid(address editor);
 
     /// @notice The constructor setting the `PersonalSpaceVotingPlugin` implementation contract to clone from.
     constructor() {
@@ -34,10 +34,10 @@ contract PersonalSpaceVotingPluginSetup is PluginSetup {
         bytes calldata _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
         // Decode `_data` to extract the params needed for cloning and initializing the `PersonalSpaceVotingPlugin` plugin.
-        address admin = abi.decode(_data, (address));
+        address editor = abi.decode(_data, (address));
 
-        if (admin == address(0)) {
-            revert EditorAddressInvalid({admin: admin});
+        if (editor == address(0)) {
+            revert EditorAddressInvalid({editor: editor});
         }
 
         // Clone plugin contract.
@@ -50,11 +50,11 @@ contract PersonalSpaceVotingPluginSetup is PluginSetup {
         PermissionLib.MultiTargetPermission[]
             memory permissions = new PermissionLib.MultiTargetPermission[](2);
 
-        // Grant `ADMIN_EXECUTE_PERMISSION` of the plugin to the admin.
+        // Grant `ADMIN_EXECUTE_PERMISSION` of the plugin to the editor.
         permissions[0] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Grant,
             plugin,
-            admin,
+            editor,
             PermissionLib.NO_CONDITION,
             PersonalSpaceVotingPlugin(plugin).EDITOR_PERMISSION_ID()
         );
@@ -80,6 +80,7 @@ contract PersonalSpaceVotingPluginSetup is PluginSetup {
         // Prepare permissions
         permissions = new PermissionLib.MultiTargetPermission[](1);
 
+        // Revoke EXECUTE on the DAO
         permissions[0] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Revoke,
             _dao,

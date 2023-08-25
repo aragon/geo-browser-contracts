@@ -40,7 +40,7 @@ export type InitData = { contentUri: string };
 export const defaultInitData: InitData = {
   contentUri: "ipfs://",
 };
-export const adminInterface = new ethers.utils.Interface([
+export const psvpInterface = new ethers.utils.Interface([
   "function initialize(address)",
   "function executeProposal(bytes,tuple(address,uint256,bytes)[],uint256)",
 ]);
@@ -245,7 +245,7 @@ describe("Personal Geo Browser Space", function () {
     it("supports the `Admin` interface", async () => {
       expect(
         await personalSpaceVotingPlugin.supportsInterface(
-          getInterfaceID(adminInterface),
+          getInterfaceID(psvpInterface),
         ),
       ).to
         .be.true;
