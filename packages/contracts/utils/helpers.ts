@@ -1,60 +1,64 @@
-import {activeContractsList} from '@aragon/osx-ethers';
-import {ContractFactory, ContractTransaction} from 'ethers';
+import { activeContractsList } from "@aragon/osx-ethers";
+import { ContractFactory, ContractTransaction } from "ethers";
 import {
-  Interface,
-  LogDescription,
   defaultAbiCoder,
+  Interface,
   keccak256,
-} from 'ethers/lib/utils';
-import {existsSync, statSync, readFileSync, writeFileSync} from 'fs';
-import {ethers} from 'hardhat';
-import {upgrades} from 'hardhat';
+  LogDescription,
+} from "ethers/lib/utils";
+import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import { ethers } from "hardhat";
+import { upgrades } from "hardhat";
 
-export type NetworkNameMapping = {[index: string]: string};
+export type NetworkNameMapping = { [index: string]: string };
 
-export type ContractList = {[index: string]: {[index: string]: string}};
+export type ContractList = { [index: string]: { [index: string]: string } };
 
 export type ContractBlockNumberList = {
   // network
-  [index: string]: {[index: string]: {address: string; blockNumber: number}};
+  [index: string]: {
+    [index: string]: { address: string; blockNumber: number };
+  };
 };
 
 export const osxContracts: ContractList = activeContractsList;
 
 export const networkNameMapping: NetworkNameMapping = {
-  mainnet: 'mainnet',
-  goerli: 'goerli',
-  polygon: 'polygon',
-  polygonMumbai: 'mumbai',
-  baseGoerli: 'baseGoerli',
+  mainnet: "mainnet",
+  goerli: "goerli",
+  polygon: "polygon",
+  polygonMumbai: "mumbai",
+  baseGoerli: "baseGoerli",
 };
 
 export const ERRORS = {
-  ALREADY_INITIALIZED: 'Initializable: contract is already initialized',
+  ALREADY_INITIALIZED: "Initializable: contract is already initialized",
 };
 
 export function getPluginRepoFactoryAddress(networkName: string) {
   let pluginRepoFactoryAddr: string;
 
   if (
-    networkName === 'localhost' ||
-    networkName === 'hardhat' ||
-    networkName === 'coverage'
+    networkName === "localhost" ||
+    networkName === "hardhat" ||
+    networkName === "coverage"
   ) {
     const hardhatForkNetwork = process.env.NETWORK_NAME
       ? process.env.NETWORK_NAME
-      : 'mainnet';
+      : "mainnet";
 
     pluginRepoFactoryAddr = osxContracts[hardhatForkNetwork].PluginRepoFactory;
     console.log(
-      `Using the "${hardhatForkNetwork}" PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment testing on network "${networkName}"`
+      `Using the "${hardhatForkNetwork}" PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment testing on network "${networkName}"`,
     );
   } else {
     pluginRepoFactoryAddr =
       osxContracts[networkNameMapping[networkName]].PluginRepoFactory;
 
     console.log(
-      `Using the ${networkNameMapping[networkName]} PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment...`
+      `Using the ${
+        networkNameMapping[networkName]
+      } PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment...`,
     );
   }
   return pluginRepoFactoryAddr;
@@ -64,17 +68,17 @@ export function getPluginInfo(networkName: string): any {
   let pluginInfoFilePath: string;
   let pluginInfo: any = {};
 
-  if (['localhost', 'hardhat', 'coverage'].includes(networkName)) {
-    pluginInfoFilePath = 'plugin-info-testing.json';
+  if (["localhost", "hardhat", "coverage"].includes(networkName)) {
+    pluginInfoFilePath = "plugin-info-testing.json";
   } else {
-    pluginInfoFilePath = 'plugin-info.json';
+    pluginInfoFilePath = "plugin-info.json";
   }
 
   if (
     existsSync(pluginInfoFilePath) &&
     statSync(pluginInfoFilePath).size !== 0
   ) {
-    pluginInfo = JSON.parse(readFileSync(pluginInfoFilePath, 'utf-8'));
+    pluginInfo = JSON.parse(readFileSync(pluginInfoFilePath, "utf-8"));
 
     if (!pluginInfo[networkName]) {
       pluginInfo[networkName] = {};
@@ -86,15 +90,15 @@ export function getPluginInfo(networkName: string): any {
 }
 
 function storePluginInfo(networkName: string, pluginInfo: any) {
-  if (['localhost', 'hardhat', 'coverage'].includes(networkName)) {
+  if (["localhost", "hardhat", "coverage"].includes(networkName)) {
     writeFileSync(
-      'plugin-info-testing.json',
-      JSON.stringify(pluginInfo, null, 2) + '\n'
+      "plugin-info-testing.json",
+      JSON.stringify(pluginInfo, null, 2) + "\n",
     );
   } else {
     writeFileSync(
-      'plugin-info.json',
-      JSON.stringify(pluginInfo, null, 2) + '\n'
+      "plugin-info.json",
+      JSON.stringify(pluginInfo, null, 2) + "\n",
     );
   }
 }
@@ -104,22 +108,22 @@ export function addDeployedRepo(
   repoName: string,
   contractAddr: string,
   args: [],
-  blockNumber: number
+  blockNumber: number,
 ) {
   const pluginInfo = getPluginInfo(networkName);
 
-  pluginInfo[networkName]['repo'] = repoName;
-  pluginInfo[networkName]['address'] = contractAddr;
-  pluginInfo[networkName]['args'] = args;
-  pluginInfo[networkName]['blockNumberOfDeployment'] = blockNumber;
+  pluginInfo[networkName]["repo"] = repoName;
+  pluginInfo[networkName]["address"] = contractAddr;
+  pluginInfo[networkName]["args"] = args;
+  pluginInfo[networkName]["blockNumberOfDeployment"] = blockNumber;
 
   storePluginInfo(networkName, pluginInfo);
 }
 
 export function addCreatedVersion(
   networkName: string,
-  version: {release: number; build: number},
-  metadataURIs: {release: string; build: string},
+  version: { release: number; build: number },
+  metadataURIs: { release: string; build: string },
   blockNumberOfPublication: number,
   setup: {
     name: string;
@@ -135,35 +139,35 @@ export function addCreatedVersion(
   },
   helpers:
     | [
-        {
-          name: string;
-          address: string;
-          args: [];
-          blockNumberOfDeployment: number;
-        }
-      ]
-    | []
+      {
+        name: string;
+        address: string;
+        args: [];
+        blockNumberOfDeployment: number;
+      },
+    ]
+    | [],
 ) {
   const pluginInfo = getPluginInfo(networkName);
 
   // Releases can already exist
-  if (!pluginInfo[networkName]['releases']) {
-    pluginInfo[networkName]['releases'] = {};
+  if (!pluginInfo[networkName]["releases"]) {
+    pluginInfo[networkName]["releases"] = {};
   }
-  if (!pluginInfo[networkName]['releases'][version.release]) {
-    pluginInfo[networkName]['releases'][version.release] = {};
-    pluginInfo[networkName]['releases'][version.release]['builds'] = {};
+  if (!pluginInfo[networkName]["releases"][version.release]) {
+    pluginInfo[networkName]["releases"][version.release] = {};
+    pluginInfo[networkName]["releases"][version.release]["builds"] = {};
   }
 
   // Update the releaseMetadataURI
-  pluginInfo[networkName]['releases'][version.release]['releaseMetadataURI'] =
+  pluginInfo[networkName]["releases"][version.release]["releaseMetadataURI"] =
     metadataURIs.release;
 
-  pluginInfo[networkName]['releases'][`${version.release}`]['builds'][
+  pluginInfo[networkName]["releases"][`${version.release}`]["builds"][
     `${version.build}`
   ] = {};
 
-  pluginInfo[networkName]['releases'][`${version.release}`]['builds'][
+  pluginInfo[networkName]["releases"][`${version.release}`]["builds"][
     `${version.build}`
   ] = {
     setup: setup,
@@ -181,13 +185,15 @@ export function toBytes(string: string) {
 }
 
 export function hashHelpers(helpers: string[]) {
-  return keccak256(defaultAbiCoder.encode(['address[]'], [helpers]));
+  return keccak256(defaultAbiCoder.encode(["address[]"], [helpers]));
 }
 
 export async function findEvent<T>(tx: ContractTransaction, eventName: string) {
   const receipt = await tx.wait();
 
-  const event = (receipt.events || []).find(event => event.event === eventName);
+  const event = (receipt.events || []).find((event) =>
+    event.event === eventName
+  );
 
   return event as T | undefined;
 }
@@ -195,11 +201,11 @@ export async function findEvent<T>(tx: ContractTransaction, eventName: string) {
 export async function findEventTopicLog<T>(
   tx: ContractTransaction,
   iface: Interface,
-  eventName: string
+  eventName: string,
 ): Promise<LogDescription & (T | LogDescription)> {
   const receipt = await tx.wait();
   const topic = iface.getEventTopic(eventName);
-  const log = receipt.logs.find(x => x.topics[0] === topic);
+  const log = receipt.logs.find((x) => x.topics[0] === topic);
   if (!log) {
     throw new Error(`No logs found for the topic of event "${eventName}".`);
   }
@@ -208,19 +214,24 @@ export async function findEventTopicLog<T>(
 
 type DeployOptions = {
   constructurArgs?: unknown[];
-  proxyType?: 'uups';
+  proxyType?: "uups";
 };
 
 export async function deployWithProxy<T>(
   contractFactory: ContractFactory,
-  options: DeployOptions = {}
+  options: DeployOptions = {},
 ): Promise<T> {
   upgrades.silenceWarnings(); // Needed because we pass the `unsafeAllow: ["constructor"]` option.
 
   return upgrades.deployProxy(contractFactory, [], {
-    kind: options.proxyType || 'uups',
+    kind: options.proxyType || "uups",
     initializer: false,
-    unsafeAllow: ['constructor'],
+    unsafeAllow: ["constructor"],
     constructorArgs: options.constructurArgs || [],
   }) as unknown as Promise<T>;
+}
+
+export function toBytes32(num: number): string {
+  const hex = num.toString(16);
+  return `0x${"0".repeat(64 - hex.length)}${hex}`;
 }

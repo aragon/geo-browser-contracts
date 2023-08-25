@@ -7,7 +7,7 @@ import {
 } from "../../typechain";
 import { deployTestDao } from "../helpers/test-dao";
 import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
-import { defaultInitData } from "./default-space";
+import { defaultInitData } from "./default-space-governance";
 import {
   abiCoder,
   ADDRESS_ZERO,

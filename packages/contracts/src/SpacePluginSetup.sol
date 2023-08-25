@@ -9,8 +9,6 @@ import {SpacePlugin} from "./SpacePlugin.sol";
 /// @title SpacePluginSetup
 /// @dev Release 1, Build 1
 contract SpacePluginSetup is PluginSetup {
-    bytes32 public constant CONTENT_PERMISSION_ID = keccak256("CONTENT_PERMISSION");
-    bytes32 public constant SUBSPACE_PERMISSION_ID = keccak256("SUBSPACE_PERMISSION");
     address private immutable pluginImplementation;
 
     constructor() {
@@ -40,7 +38,7 @@ contract SpacePluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: CONTENT_PERMISSION_ID
+            permissionId: SpacePlugin(pluginImplementation).CONTENT_PERMISSION_ID()
         });
         // The DAO can accept a subspace
         permissions[1] = PermissionLib.MultiTargetPermission({
@@ -48,16 +46,8 @@ contract SpacePluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: SUBSPACE_PERMISSION_ID
+            permissionId: SpacePlugin(pluginImplementation).SUBSPACE_PERMISSION_ID()
         });
-        // The deployer can upgrade the space
-        // permissions[2] = PermissionLib.MultiTargetPermission({
-        //     operation: PermissionLib.Operation.Grant,
-        //     where: plugin,
-        //     who: msg.sender,
-        //     condition: PermissionLib.NO_CONDITION,
-        //     permissionId: UPGRADE_PLUGIN_PERMISSION_ID
-        // });
 
         preparedSetupData.permissions = permissions;
     }
@@ -66,33 +56,25 @@ contract SpacePluginSetup is PluginSetup {
     function prepareUninstallation(
         address _dao,
         SetupPayload calldata _payload
-    ) external pure returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
+    ) external view returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
         permissionChanges = new PermissionLib.MultiTargetPermission[](2);
 
-        // The DAO can emit content
+        // The DAO can make it emit content
         permissionChanges[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: CONTENT_PERMISSION_ID
+            permissionId: SpacePlugin(pluginImplementation).CONTENT_PERMISSION_ID()
         });
-        // The DAO can accept a subspace
+        // The DAO can make it accept/reject a subspace
         permissionChanges[1] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: SUBSPACE_PERMISSION_ID
+            permissionId: SpacePlugin(pluginImplementation).SUBSPACE_PERMISSION_ID()
         });
-        // The deployer can upgrade the space
-        // permissionChanges[2] = PermissionLib.MultiTargetPermission({
-        //     operation: PermissionLib.Operation.Revoke,
-        //     where: _payload.plugin,
-        //     who: msg.sender,
-        //     condition: PermissionLib.NO_CONDITION,
-        //     permissionId: UPGRADE_PLUGIN_PERMISSION_ID
-        // });
     }
 
     /// @inheritdoc IPluginSetup

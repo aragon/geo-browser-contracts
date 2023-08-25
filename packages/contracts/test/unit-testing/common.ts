@@ -10,6 +10,8 @@ export const MEMBER_PERMISSION_ID = ethers.utils.id("MEMBER_PERMISSION");
 export const CONTENT_PERMISSION_ID = ethers.utils.id("CONTENT_PERMISSION");
 export const SUBSPACE_PERMISSION_ID = ethers.utils.id("SUBSPACE_PERMISSION");
 
+export const EXECUTE_PERMISSION_ID = ethers.utils.id("EXECUTE_PERMISSION");
+
 export const ADDRESS_ZERO = ethers.constants.AddressZero;
 export const ADDRESS_ONE = `0x${"0".repeat(39)}1`;
 export const ADDRESS_TWO = `0x${"0".repeat(39)}2`;
