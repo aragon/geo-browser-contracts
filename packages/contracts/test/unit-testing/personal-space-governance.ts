@@ -22,6 +22,7 @@ import {
 } from "../../utils/helpers";
 import { deployTestDao } from "../helpers/test-dao";
 import {
+  ADDRESS_TWO,
   CONTENT_PERMISSION_ID,
   EDITOR_PERMISSION_ID,
   EXECUTE_PERMISSION_ID,
@@ -420,55 +421,144 @@ describe("Personal Geo Browser Space", function () {
     });
   });
 
-  it("Members cannot create proposals", async () => {
-    await expect(
-      personalSpaceVotingPlugin.connect(bob).executeProposal(
-        "0x",
-        dummyActions,
-        0,
-      ),
-    )
-      .to.be.revertedWithCustomError(
-        personalSpaceVotingPlugin,
-        "DaoUnauthorized",
+  describe("Geo Browser customizations", () => {
+    it("Only editors can create and execute proposals", async () => {
+      await expect(
+        personalSpaceVotingPlugin.connect(bob).executeProposal(
+          "0x",
+          dummyActions,
+          0,
+        ),
       )
-      .withArgs(
-        dao.address,
-        personalSpaceVotingPlugin.address,
-        bob.address,
-        EDITOR_PERMISSION_ID,
-      );
-    await expect(
-      personalSpaceVotingPlugin.connect(charlie).executeProposal(
-        "0x",
-        dummyActions,
-        0,
-      ),
-    )
-      .to.be.revertedWithCustomError(
-        personalSpaceVotingPlugin,
-        "DaoUnauthorized",
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          "DaoUnauthorized",
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          bob.address,
+          EDITOR_PERMISSION_ID,
+        );
+      await expect(
+        personalSpaceVotingPlugin.connect(charlie).executeProposal(
+          "0x",
+          dummyActions,
+          0,
+        ),
       )
-      .withArgs(
-        dao.address,
-        personalSpaceVotingPlugin.address,
-        charlie.address,
-        EDITOR_PERMISSION_ID,
-      );
-  });
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          "DaoUnauthorized",
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          charlie.address,
+          EDITOR_PERMISSION_ID,
+        );
 
-  it("Only editors can create and execute proposals", async () => {
-    expect(
-      await personalSpaceVotingPlugin.connect(alice).executeProposal(
-        "0x",
-        dummyActions,
-        0,
-      ),
-    ).to.emit(personalSpaceVotingPlugin, "Executed")
-      .withArgs(0);
+      // Alice is an editor
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          dummyActions,
+          0,
+        ),
+      ).to.emit(personalSpaceVotingPlugin, "ProposalCreated");
+    });
+
+    it("Proposal execution is immediate", async () => {
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          dummyActions,
+          0,
+        ),
+      ).to.emit(personalSpaceVotingPlugin, "Executed")
+        .withArgs(0);
+    });
+
+    it("Executed content proposals emit an event", async () => {
+      // Encode an action to change some content
+      const data = SpacePlugin__factory.createInterface().encodeFunctionData(
+        "setContent",
+        [1, 2, "0x"],
+      );
+      const actions = [
+        {
+          to: spacePlugin.address,
+          value: 0,
+          data,
+        },
+      ];
+
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          actions,
+          0,
+        ),
+      ).to.emit(personalSpaceVotingPlugin, "ProposalCreated");
+
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          actions,
+          0,
+        ),
+      ).to.emit(personalSpaceVotingPlugin, "Executed")
+        .withArgs(1);
+
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          actions,
+          0,
+        ),
+      ).to.emit(spacePlugin, "ContentChanged")
+        .withArgs(1, 2, "0x");
+    });
+
+    it("Approved subspaces emit an event", async () => {
+      // Encode an action to accept a subspace
+      const data = SpacePlugin__factory.createInterface().encodeFunctionData(
+        "acceptSubspace",
+        [ADDRESS_TWO],
+      );
+      const actions = [
+        {
+          to: spacePlugin.address,
+          value: 0,
+          data,
+        },
+      ];
+
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          actions,
+          0,
+        ),
+      ).to.emit(personalSpaceVotingPlugin, "ProposalCreated");
+
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          actions,
+          0,
+        ),
+      ).to.emit(personalSpaceVotingPlugin, "Executed")
+        .withArgs(1);
+
+      expect(
+        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+          "0x",
+          actions,
+          0,
+        ),
+      ).to.emit(spacePlugin, "SubspaceAccepted")
+        .withArgs(ADDRESS_TWO);
+    });
   });
-  it("Proposal execution is immediate");
-  it("Only the DAO can call functions on the space plugin");
-  it("Approved content proposals emit an event");
-  it("Approved subspaces emit an event");
 });
