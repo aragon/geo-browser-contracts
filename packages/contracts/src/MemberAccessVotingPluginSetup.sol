@@ -4,7 +4,7 @@ pragma solidity ^0.8.8;
 
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
-import {MemberAccessPlugin} from "./MemberAccessPlugin.sol";
+import {MemberAccessVotingPlugin} from "./MemberAccessVotingPlugin.sol";
 
 /// @title MemberAccessPluginSetup
 /// @dev Release 1, Build 1
@@ -13,7 +13,7 @@ contract MemberAccessPluginSetup is PluginSetup {
     bytes32 public constant STORE_PERMISSION_ID = keccak256("STORE_PERMISSION");
 
     constructor() {
-        pluginImplementation = address(new MemberAccessPlugin());
+        pluginImplementation = address(new MemberAccessVotingPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -25,7 +25,7 @@ contract MemberAccessPluginSetup is PluginSetup {
 
         plugin = createERC1967Proxy(
             pluginImplementation,
-            abi.encodeWithSelector(MemberAccessPlugin.initialize.selector, _dao, number)
+            abi.encodeWithSelector(MemberAccessVotingPlugin.initialize.selector, _dao, number)
         );
 
         PermissionLib.MultiTargetPermission[]

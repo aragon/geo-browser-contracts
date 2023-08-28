@@ -23,10 +23,6 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     /// @param dao The address of the DAO to be removed as a subspace.
     event SubspaceRemoved(address dao);
 
-    constructor() {
-        _disableInitializers();
-    }
-
     /// @notice Initializes the plugin when build 1 is installed.
     /// @param _dao The address of the DAO to read the permissions from.
     /// @param _firstBlockContentUri A IPFS URI pointing to the contents of the first block's item (title).
