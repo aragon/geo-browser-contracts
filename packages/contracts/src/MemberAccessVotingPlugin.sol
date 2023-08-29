@@ -143,15 +143,15 @@ contract MemberAccessVotingPlugin is
 
     /// @notice This function is kept for compatibility with the multisig base class, but will not produce any effect.
     function addAddresses(
-        address[] calldata _members
-    ) external auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
+        address[] calldata
+    ) external view auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
         revert AddresslistDisabled();
     }
 
     /// @notice This function is kept for compatibility with the multisig base class, but will not produce any effect.
     function removeAddresses(
-        address[] calldata _members
-    ) external auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
+        address[] calldata
+    ) external view auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
         revert AddresslistDisabled();
     }
 
@@ -170,7 +170,7 @@ contract MemberAccessVotingPlugin is
     /// @return proposalId The ID of the proposal.
     function createProposal(
         bytes calldata _metadata,
-        IDAO.Action[] calldata _actions,
+        IDAO.Action[] memory _actions,
         bool _isEditor
     ) internal returns (uint256 proposalId) {
         uint64 snapshotBlock;
@@ -187,13 +187,16 @@ contract MemberAccessVotingPlugin is
         uint64 _startDate = block.timestamp.toUint64();
         uint64 _endDate = _startDate + multisigSettings.proposalDuration;
 
-        proposalId = _createProposal({
-            _creator: _msgSender(),
-            _metadata: _metadata,
-            _startDate: _startDate,
-            _endDate: _endDate,
-            _actions: _actions,
-            _allowFailureMap: uint8(0)
+        proposalId = _createProposalId();
+
+        emit ProposalCreated({
+            proposalId: proposalId,
+            creator: _msgSender(),
+            metadata: _metadata,
+            startDate: _startDate,
+            endDate: _endDate,
+            actions: _actions,
+            allowFailureMap: uint8(0)
         });
 
         // Create the proposal

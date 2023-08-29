@@ -1,7 +1,7 @@
 import {
   DAO,
-  MemberAccessPlugin,
-  MemberAccessPlugin__factory,
+  MemberAccessVotingPlugin,
+  MemberAccessVotingPlugin__factory,
   SpacePlugin,
   SpacePlugin__factory,
   SpaceVotingPlugin,
@@ -30,7 +30,7 @@ describe("Default Geo Browser Space", function () {
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
   let dao: DAO;
-  let memberAccessPlugin: MemberAccessPlugin;
+  let memberAccessPlugin: MemberAccessVotingPlugin;
   let spaceVotingPlugin: SpaceVotingPlugin;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -43,8 +43,8 @@ describe("Default Geo Browser Space", function () {
   });
 
   beforeEach(async () => {
-    memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-      new MemberAccessPlugin__factory(alice),
+    memberAccessPlugin = await deployWithProxy<MemberAccessVotingPlugin>(
+      new MemberAccessVotingPlugin__factory(alice),
     );
     spaceVotingPlugin = await deployWithProxy<SpaceVotingPlugin>(
       new SpaceVotingPlugin__factory(alice),
@@ -53,7 +53,10 @@ describe("Default Geo Browser Space", function () {
       new SpacePlugin__factory(alice),
     );
 
-    await memberAccessPlugin.initialize(dao.address);
+    await memberAccessPlugin.initialize(dao.address, {
+      proposalDuration: 60 * 60 * 24 * 5,
+      mainVotingPlugin: spaceVotingPlugin.address,
+    });
     await spaceVotingPlugin.initialize(dao.address);
     await spacePlugin.initialize(dao.address, defaultInput.contentUri);
 
@@ -84,7 +87,10 @@ describe("Default Geo Browser Space", function () {
   describe("initialize", async () => {
     it("reverts if trying to re-initialize", async () => {
       await expect(
-        memberAccessPlugin.initialize(dao.address),
+        memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: spaceVotingPlugin.address,
+        }),
       ).to.be.revertedWith("Initializable: contract is already initialized");
       await expect(
         spaceVotingPlugin.initialize(dao.address),
