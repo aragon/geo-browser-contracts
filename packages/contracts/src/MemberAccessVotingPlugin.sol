@@ -5,22 +5,23 @@ pragma solidity ^0.8.8;
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
-
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
-import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
 
-/// @title Multisig - Release 1, Build 2
+// import {DAO} from "@aragon/osx/core/dao/DAO.sol";
+// import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
+
+/// @title Multisig - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
 contract MemberAccessVotingPlugin is
     IMultisig,
     IMembership,
     PluginUUPSUpgradeable,
-    ProposalUpgradeable,
-    Addresslist
+    ProposalUpgradeable
 {
     using SafeCastUpgradeable for uint256;
 
@@ -28,8 +29,14 @@ contract MemberAccessVotingPlugin is
     bytes32 public constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID =
         keccak256("UPDATE_MULTISIG_SETTINGS_PERMISSION");
 
-    /// @notice The ID of the permission required to call the `executeProposal` function.
+    /// @notice The ID of the permission required to create proposals on the main voting plugin.
+    bytes32 public constant MEMBER_PERMISSION_ID = keccak256("MEMBER_PERMISSION");
+
+    /// @notice The ID of the permission required to approve proposals.
     bytes32 public constant EDITOR_PERMISSION_ID = keccak256("EDITOR_PERMISSION");
+
+    /// @notice The base amount of minimum approvals to create proposals with. May be overridden when the creator is an editor.
+    uint16 internal constant MIN_APPROVALS = 1;
 
     /// @notice A container for proposal-related information.
     /// @param executed Whether the proposal is executed or not.
@@ -37,14 +44,14 @@ contract MemberAccessVotingPlugin is
     /// @param parameters The proposal-specific approve settings at the time of the proposal creation.
     /// @param approvers The approves casted by the approvers.
     /// @param actions The actions to be executed when the proposal passes.
-    /// @param _allowFailureMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
+    /// @param _failsafeActionMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
     struct Proposal {
         bool executed;
         uint16 approvals;
         ProposalParameters parameters;
         mapping(address => bool) approvers;
         IDAO.Action[] actions;
-        uint256 allowFailureMap;
+        uint256 failsafeActionMap;
     }
 
     /// @notice A container for the proposal parameters.
@@ -60,19 +67,15 @@ contract MemberAccessVotingPlugin is
     }
 
     /// @notice A container for the plugin settings.
-    /// @param onlyListed Whether only listed addresses can create a proposal or not.
-    /// @param minApprovals The minimal number of approvals required for a proposal to pass.
+    /// @param proposalDuration The amount of time before a non-approved proposal expires.
     struct MultisigSettings {
-        bool onlyListed;
-        uint16 minApprovals;
+        uint64 proposalDuration;
+        address mainVotingPlugin;
     }
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 internal constant MULTISIG_INTERFACE_ID =
-        this.initialize.selector ^
-            this.updateMultisigSettings.selector ^
-            this.createProposal.selector ^
-            this.getProposal.selector;
+        this.initialize.selector ^ this.updateMultisigSettings.selector ^ this.getProposal.selector;
 
     /// @notice A mapping between proposal IDs and proposal information.
     mapping(uint256 => Proposal) internal proposals;
@@ -100,20 +103,8 @@ contract MemberAccessVotingPlugin is
     /// @param proposalId The ID of the proposal.
     error ProposalExecutionForbidden(uint256 proposalId);
 
-    /// @notice Thrown if the minimal approvals value is out of bounds (less than 1 or greater than the number of members in the address list).
-    /// @param limit The maximal value.
-    /// @param actual The actual value.
-    error MinApprovalsOutOfBounds(uint16 limit, uint16 actual);
-
-    /// @notice Thrown if the address list length is out of bounds.
-    /// @param limit The limit value.
-    /// @param actual The actual value.
-    error AddresslistLengthOutOfBounds(uint16 limit, uint256 actual);
-
-    /// @notice Thrown if a date is out of bounds.
-    /// @param limit The limit value.
-    /// @param actual The actual value.
-    error DateOutOfBounds(uint64 limit, uint64 actual);
+    /// @notice Thrown when attempting to use addAddresses and removeAddresses.
+    error AddresslistDisabled();
 
     /// @notice Emitted when a proposal is approve by an approver.
     /// @param proposalId The ID of the proposal.
@@ -121,28 +112,18 @@ contract MemberAccessVotingPlugin is
     event Approved(uint256 indexed proposalId, address indexed approver);
 
     /// @notice Emitted when the plugin settings are set.
-    /// @param onlyListed Whether only listed addresses can create a proposal.
-    /// @param minApprovals The minimum amount of approvals needed to pass a proposal.
-    event MultisigSettingsUpdated(bool onlyListed, uint16 indexed minApprovals);
+    /// @param proposalDuration The amount of time before a non-approved proposal expires.
+    event MultisigSettingsUpdated(uint64 proposalDuration);
 
-    /// @notice Initializes Release 1, Build 2.
+    /// @notice Initializes Release 1, Build 1.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     /// @param _dao The IDAO interface of the associated DAO.
-    /// @param _members The addresses of the initial members to be added.
     /// @param _multisigSettings The multisig settings.
     function initialize(
         IDAO _dao,
-        address[] calldata _members,
         MultisigSettings calldata _multisigSettings
     ) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
-
-        if (_members.length > type(uint16).max) {
-            revert AddresslistLengthOutOfBounds({limit: type(uint16).max, actual: _members.length});
-        }
-
-        _addAddresses(_members);
-        emit MembersAdded({members: _members});
 
         _updateMultisigSettings(_multisigSettings);
     }
@@ -156,47 +137,22 @@ contract MemberAccessVotingPlugin is
         return
             _interfaceId == MULTISIG_INTERFACE_ID ||
             _interfaceId == type(IMultisig).interfaceId ||
-            _interfaceId == type(Addresslist).interfaceId ||
             _interfaceId == type(IMembership).interfaceId ||
             super.supportsInterface(_interfaceId);
     }
 
-    /// @inheritdoc IMultisig
+    /// @notice This function is kept for compatibility with the multisig base class, but will not produce any effect.
     function addAddresses(
         address[] calldata _members
     ) external auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
-        uint256 newAddresslistLength = addresslistLength() + _members.length;
-
-        // Check if the new address list length would be greater than `type(uint16).max`, the maximal number of approvals.
-        if (newAddresslistLength > type(uint16).max) {
-            revert AddresslistLengthOutOfBounds({
-                limit: type(uint16).max,
-                actual: newAddresslistLength
-            });
-        }
-
-        _addAddresses(_members);
-
-        emit MembersAdded({members: _members});
+        revert AddresslistDisabled();
     }
 
-    /// @inheritdoc IMultisig
+    /// @notice This function is kept for compatibility with the multisig base class, but will not produce any effect.
     function removeAddresses(
         address[] calldata _members
     ) external auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
-        uint16 newAddresslistLength = uint16(addresslistLength() - _members.length);
-
-        // Check if the new address list length would become less than the current minimum number of approvals required.
-        if (newAddresslistLength < multisigSettings.minApprovals) {
-            revert MinApprovalsOutOfBounds({
-                limit: newAddresslistLength,
-                actual: multisigSettings.minApprovals
-            });
-        }
-
-        _removeAddresses(_members);
-
-        emit MembersRemoved({members: _members});
+        revert AddresslistDisabled();
     }
 
     /// @notice Updates the plugin settings.
@@ -207,28 +163,16 @@ contract MemberAccessVotingPlugin is
         _updateMultisigSettings(_multisigSettings);
     }
 
-    /// @notice Creates a new multisig proposal.
+    /// @notice Creates a new multisig proposal wrapped by proposeNewMember and proposeRemoveMember.
     /// @param _metadata The metadata of the proposal.
-    /// @param _actions The actions that will be executed after the proposal passes.
-    /// @param _allowFailureMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
-    /// @param _approveProposal If `true`, the sender will approve the proposal.
-    /// @param _tryExecution If `true`, execution is tried after the vote cast. The call does not revert if early execution is not possible.
-    /// @param _startDate The start date of the proposal.
-    /// @param _endDate The end date of the proposal.
+    /// @param _actions A list of actions wrapped by proposeNewMember and proposeRemoveMember.
+    /// @param _isEditor Whether the proposal creator is an editor or not.
     /// @return proposalId The ID of the proposal.
     function createProposal(
         bytes calldata _metadata,
         IDAO.Action[] calldata _actions,
-        uint256 _allowFailureMap,
-        bool _approveProposal,
-        bool _tryExecution,
-        uint64 _startDate,
-        uint64 _endDate
-    ) external returns (uint256 proposalId) {
-        if (multisigSettings.onlyListed && !isListed(_msgSender())) {
-            revert ProposalCreationForbidden(_msgSender());
-        }
-
+        bool _isEditor
+    ) internal returns (uint256 proposalId) {
         uint64 snapshotBlock;
         unchecked {
             snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
@@ -240,15 +184,8 @@ contract MemberAccessVotingPlugin is
             revert ProposalCreationForbidden(_msgSender());
         }
 
-        if (_startDate == 0) {
-            _startDate = block.timestamp.toUint64();
-        } else if (_startDate < block.timestamp.toUint64()) {
-            revert DateOutOfBounds({limit: block.timestamp.toUint64(), actual: _startDate});
-        }
-
-        if (_endDate < _startDate) {
-            revert DateOutOfBounds({limit: _startDate, actual: _endDate});
-        }
+        uint64 _startDate = block.timestamp.toUint64();
+        uint64 _endDate = _startDate + multisigSettings.proposalDuration;
 
         proposalId = _createProposal({
             _creator: _msgSender(),
@@ -256,7 +193,7 @@ contract MemberAccessVotingPlugin is
             _startDate: _startDate,
             _endDate: _endDate,
             _actions: _actions,
-            _allowFailureMap: _allowFailureMap
+            _allowFailureMap: uint8(0)
         });
 
         // Create the proposal
@@ -265,12 +202,9 @@ contract MemberAccessVotingPlugin is
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
-        proposal_.parameters.minApprovals = multisigSettings.minApprovals;
 
-        // Reduce costs
-        if (_allowFailureMap != 0) {
-            proposal_.allowFailureMap = _allowFailureMap;
-        }
+        // May be overridden below
+        proposal_.parameters.minApprovals = MIN_APPROVALS;
 
         for (uint256 i; i < _actions.length; ) {
             proposal_.actions.push(_actions[i]);
@@ -279,9 +213,77 @@ contract MemberAccessVotingPlugin is
             }
         }
 
-        if (_approveProposal) {
-            approve(proposalId, _tryExecution);
+        if (_isEditor) {
+            // If the creator is an editor, we assume that the editor approves
+            // and we require one more approval
+            proposal_.parameters.minApprovals = MIN_APPROVALS + 1;
+
+            approve(proposalId, false);
         }
+    }
+
+    /// @notice Creates a proposal to add a new member.
+    /// @param _metadata The metadata of the proposal.
+    /// @param _proposedMember The address of the member who may eveutnally be added.
+    /// @return proposalId The ID of the proposal.
+    function proposeNewMember(
+        bytes calldata _metadata,
+        address _proposedMember
+    ) external returns (uint256 proposalId) {
+        // Build the list of actions
+        IDAO.Action[] memory _actions = new IDAO.Action[](1);
+
+        _actions[0] = IDAO.Action({
+            to: address(dao()),
+            value: 0,
+            data: abi.encodeWithSelector(
+                PermissionManager.grant.selector, // grant()
+                multisigSettings.mainVotingPlugin, // where
+                _proposedMember, // who
+                MEMBER_PERMISSION_ID // permission ID
+            )
+        });
+
+        bool isEditor = dao().hasPermission(
+            _msgSender(),
+            address(this),
+            EDITOR_PERMISSION_ID,
+            bytes("")
+        );
+
+        return createProposal(_metadata, _actions, isEditor);
+    }
+
+    /// @notice Creates a proposal to remove an existing member.
+    /// @param _metadata The metadata of the proposal.
+    /// @param _proposedMember The address of the member who may eveutnally be removed.
+    /// @return proposalId The ID of the proposal.
+    function proposeRemoveMember(
+        bytes calldata _metadata,
+        address _proposedMember
+    ) external returns (uint256 proposalId) {
+        // Build the list of actions
+        IDAO.Action[] memory _actions = new IDAO.Action[](1);
+
+        _actions[0] = IDAO.Action({
+            to: address(dao()),
+            value: 0,
+            data: abi.encodeWithSelector(
+                PermissionManager.revoke.selector, // revoke()
+                multisigSettings.mainVotingPlugin, // where
+                _proposedMember, // who
+                MEMBER_PERMISSION_ID // permission ID
+            )
+        });
+
+        bool isEditor = dao().hasPermission(
+            _msgSender(),
+            address(this),
+            EDITOR_PERMISSION_ID,
+            bytes("")
+        );
+
+        return createProposal(_metadata, _actions, isEditor);
     }
 
     /// @inheritdoc IMultisig
@@ -324,7 +326,7 @@ contract MemberAccessVotingPlugin is
     /// @return approvals The number of approvals casted.
     /// @return parameters The parameters of the proposal vote.
     /// @return actions The actions to be executed in the associated DAO after the proposal has passed.
-    /// @param allowFailureMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
+    /// @param failsafeActionMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
     function getProposal(
         uint256 _proposalId
     )
@@ -335,7 +337,7 @@ contract MemberAccessVotingPlugin is
             uint16 approvals,
             ProposalParameters memory parameters,
             IDAO.Action[] memory actions,
-            uint256 allowFailureMap
+            uint256 failsafeActionMap
         )
     {
         Proposal storage proposal_ = proposals[_proposalId];
@@ -344,7 +346,7 @@ contract MemberAccessVotingPlugin is
         approvals = proposal_.approvals;
         parameters = proposal_.parameters;
         actions = proposal_.actions;
-        allowFailureMap = proposal_.allowFailureMap;
+        failsafeActionMap = proposal_.failsafeActionMap;
     }
 
     /// @inheritdoc IMultisig
@@ -363,7 +365,7 @@ contract MemberAccessVotingPlugin is
 
     /// @inheritdoc IMembership
     function isMember(address _account) external view returns (bool) {
-        return isListed(_account);
+        return dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""));
     }
 
     /// @notice Internal function to execute a vote. It assumes the queried proposal exists.
@@ -377,7 +379,7 @@ contract MemberAccessVotingPlugin is
             dao(),
             _proposalId,
             proposals[_proposalId].actions,
-            proposals[_proposalId].allowFailureMap
+            proposals[_proposalId].failsafeActionMap
         );
     }
 
@@ -393,7 +395,7 @@ contract MemberAccessVotingPlugin is
             return false;
         }
 
-        if (!isListedAtBlock(_account, proposal_.parameters.snapshotBlock)) {
+        if (!dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""))) {
             // The approver has no voting power.
             return false;
         }
@@ -434,26 +436,10 @@ contract MemberAccessVotingPlugin is
     /// @notice Internal function to update the plugin settings.
     /// @param _multisigSettings The new settings.
     function _updateMultisigSettings(MultisigSettings calldata _multisigSettings) internal {
-        uint16 addresslistLength_ = uint16(addresslistLength());
-
-        if (_multisigSettings.minApprovals > addresslistLength_) {
-            revert MinApprovalsOutOfBounds({
-                limit: addresslistLength_,
-                actual: _multisigSettings.minApprovals
-            });
-        }
-
-        if (_multisigSettings.minApprovals < 1) {
-            revert MinApprovalsOutOfBounds({limit: 1, actual: _multisigSettings.minApprovals});
-        }
-
         multisigSettings = _multisigSettings;
         lastMultisigSettingsChange = block.number.toUint64();
 
-        emit MultisigSettingsUpdated({
-            onlyListed: _multisigSettings.onlyListed,
-            minApprovals: _multisigSettings.minApprovals
-        });
+        emit MultisigSettingsUpdated({proposalDuration: _multisigSettings.proposalDuration});
     }
 
     /// @dev This empty reserved space is put in place to allow future versions to add new
