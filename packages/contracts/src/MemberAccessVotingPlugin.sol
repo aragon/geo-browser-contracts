@@ -11,9 +11,6 @@ import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeab
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
 
-// import {DAO} from "@aragon/osx/core/dao/DAO.sol";
-// import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
-
 /// @title Multisig - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
@@ -106,14 +103,20 @@ contract MemberAccessVotingPlugin is
     /// @notice Thrown when attempting to use addAddresses and removeAddresses.
     error AddresslistDisabled();
 
-    /// @notice Emitted when a proposal is approve by an approver.
+    /// @notice Emitted when a proposal is approved by an editor.
     /// @param proposalId The ID of the proposal.
-    /// @param approver The approver casting the approve.
-    event Approved(uint256 indexed proposalId, address indexed approver);
+    /// @param editor The editor casting the approve.
+    event Approved(uint256 indexed proposalId, address indexed editor);
+
+    /// @notice Emitted when a proposal is rejected by an editor.
+    /// @param proposalId The ID of the proposal.
+    /// @param editor The editor casting the rejection.
+    event Rejected(uint256 indexed proposalId, address indexed editor);
 
     /// @notice Emitted when the plugin settings are set.
     /// @param proposalDuration The amount of time before a non-approved proposal expires.
-    event MultisigSettingsUpdated(uint64 proposalDuration);
+    /// @param mainVotingPlugin The address of the main voting plugin for the space.
+    event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
 
     /// @notice Initializes Release 1, Build 1.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
@@ -290,10 +293,11 @@ contract MemberAccessVotingPlugin is
     }
 
     /// @inheritdoc IMultisig
-    function approve(uint256 _proposalId, bool _tryExecution) public {
-        address approver = _msgSender();
-        if (!_canApprove(_proposalId, approver)) {
-            revert ApprovalCastForbidden(_proposalId, approver);
+    /// @dev The second parameter is left empty for compatibility with the existing multisig interface
+    function approve(uint256 _proposalId, bool) public {
+        address sender = _msgSender();
+        if (!_canApprove(_proposalId, sender)) {
+            revert ApprovalCastForbidden(_proposalId, sender);
         }
 
         Proposal storage proposal_ = proposals[_proposalId];
@@ -304,13 +308,31 @@ contract MemberAccessVotingPlugin is
             proposal_.approvals += 1;
         }
 
-        proposal_.approvers[approver] = true;
+        proposal_.approvers[sender] = true;
 
-        emit Approved({proposalId: _proposalId, approver: approver});
+        emit Approved({proposalId: _proposalId, editor: sender});
 
-        if (_tryExecution && _canExecute(_proposalId)) {
+        if (_canExecute(_proposalId)) {
             _execute(_proposalId);
         }
+    }
+
+    /// @notice Rejects the given proposal immediately.
+    function reject(uint256 _proposalId) public {
+        address sender = _msgSender();
+        if (!_canApprove(_proposalId, sender)) {
+            revert ApprovalCastForbidden(_proposalId, sender);
+        }
+
+        Proposal storage proposal_ = proposals[_proposalId];
+
+        // Disregard any potential creator-submitted approval
+        proposal_.approvals = 0;
+
+        // Prevent any further approvals
+        proposal_.parameters.endDate = block.timestamp.toUint64();
+
+        emit Rejected({proposalId: _proposalId, editor: sender});
     }
 
     /// @inheritdoc IMultisig
@@ -442,7 +464,10 @@ contract MemberAccessVotingPlugin is
         multisigSettings = _multisigSettings;
         lastMultisigSettingsChange = block.number.toUint64();
 
-        emit MultisigSettingsUpdated({proposalDuration: _multisigSettings.proposalDuration});
+        emit MultisigSettingsUpdated({
+            proposalDuration: _multisigSettings.proposalDuration,
+            mainVotingPlugin: _multisigSettings.mainVotingPlugin
+        });
     }
 
     /// @dev This empty reserved space is put in place to allow future versions to add new
