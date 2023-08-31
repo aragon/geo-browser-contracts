@@ -3,9 +3,9 @@ pragma solidity ^0.8.8;
 
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 
-/// @title SpaceVotingPlugin
+/// @title MainVotingPlugin
 /// @dev Release 1, Build 1
-contract SpaceVotingPlugin is PluginUUPSUpgradeable {
+contract MainVotingPlugin is PluginUUPSUpgradeable {
     constructor() {
         _disableInitializers();
     }
@@ -14,6 +14,10 @@ contract SpaceVotingPlugin is PluginUUPSUpgradeable {
     /// @param _dao The address of the DAO to read the permissions from.
     function initialize(IDAO _dao) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
+    }
+
+    function editorCount() public pure returns (uint32) {
+        return 1;
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables without shifting down storage in the inheritance chain (see [OpenZeppelin's guide about storage gaps](https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps)).

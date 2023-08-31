@@ -4,17 +4,17 @@ pragma solidity ^0.8.8;
 
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
-import {SpaceVotingPlugin} from "./SpaceVotingPlugin.sol";
+import {MainVotingPlugin} from "./MainVotingPlugin.sol";
 
-/// @title SpaceVotingPluginSetup
+/// @title MainVotingPluginSetup
 /// @dev Release 1, Build 1
-contract SpaceVotingPluginSetup is PluginSetup {
+contract MainVotingPluginSetup is PluginSetup {
     bytes32 public constant CONTENT_PERMISSION_ID = keccak256("CONTENT_PERMISSION");
     bytes32 public constant SUBSPACE_PERMISSION_ID = keccak256("SUBSPACE_PERMISSION");
     address private immutable pluginImplementation;
 
     constructor() {
-        pluginImplementation = address(new SpaceVotingPlugin());
+        pluginImplementation = address(new MainVotingPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -28,11 +28,7 @@ contract SpaceVotingPluginSetup is PluginSetup {
         // Deploy new plugin instance
         plugin = createERC1967Proxy(
             pluginImplementation,
-            abi.encodeWithSelector(
-                SpaceVotingPlugin.initialize.selector,
-                _dao,
-                firstBlockContentUri
-            )
+            abi.encodeWithSelector(MainVotingPlugin.initialize.selector, _dao, firstBlockContentUri)
         );
 
         PermissionLib.MultiTargetPermission[]

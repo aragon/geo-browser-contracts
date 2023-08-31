@@ -25,7 +25,7 @@ export const defaultInitData: InitData = {
   contentUri: "ipfs://",
 };
 
-describe("Default Geo Browser Space", function () {
+describe("Default Main Voting plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
@@ -54,6 +54,7 @@ describe("Default Geo Browser Space", function () {
     );
 
     await memberAccessPlugin.initialize(dao.address, {
+      minApprovals: 0,
       proposalDuration: 60 * 60 * 24 * 5,
       mainVotingPlugin: spaceVotingPlugin.address,
     });
@@ -88,6 +89,7 @@ describe("Default Geo Browser Space", function () {
     it("reverts if trying to re-initialize", async () => {
       await expect(
         memberAccessPlugin.initialize(dao.address, {
+          minApprovals: 0,
           proposalDuration: 60 * 60 * 24 * 5,
           mainVotingPlugin: spaceVotingPlugin.address,
         }),
@@ -126,21 +128,6 @@ describe("Default Geo Browser Space", function () {
   //     .to.emit(memberAccessPlugin, "NumberStored")
   //     .withArgs(newNumber);
   // });
-
-  it("Allows any address to request membership");
-
-  describe("One editor", () => {
-    it("Only editors can approve memberships");
-    it("Only editors can reject memberships");
-    it("Membership approvals are immediate (one editor)");
-    it("Membership rejections are immediate (one editor)");
-  });
-  describe("Multiple editors", () => {
-    it("Only editors can approve memberships");
-    it("Only editors can reject memberships");
-    it("Memberships are approved after the first editor approves");
-    it("Memberships are rejected after the first editor rejects");
-  });
 
   it("Only members can create proposals");
   it("Only editors can vote on proposals");

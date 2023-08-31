@@ -10,6 +10,7 @@ import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
+import {MainVotingPlugin} from "./MainVotingPlugin.sol";
 
 /// @title Multisig - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
@@ -32,8 +33,14 @@ contract MemberAccessVotingPlugin is
     /// @notice The ID of the permission required to approve proposals.
     bytes32 public constant EDITOR_PERMISSION_ID = keccak256("EDITOR_PERMISSION");
 
-    /// @notice The base amount of minimum approvals to create proposals with. May be overridden when the creator is an editor.
-    uint16 internal constant MIN_APPROVALS = 1;
+    /// @notice The minimum amount of approvals required for proposals created by a non-editor
+    uint16 internal constant MIN_APPROVALS_NON_EDITOR = uint16(1);
+
+    /// @notice The minimum amount of approvals required for proposals created by an editor (single)
+    uint16 internal constant MIN_APPROVALS_EDITOR_SINGLE = uint16(1);
+
+    /// @notice The minimum amount of approvals required for proposals created by an editor (multiple)
+    uint16 internal constant MIN_APPROVALS_EDITOR_MANY = uint16(2);
 
     /// @notice A container for proposal-related information.
     /// @param executed Whether the proposal is executed or not.
@@ -41,7 +48,7 @@ contract MemberAccessVotingPlugin is
     /// @param parameters The proposal-specific approve settings at the time of the proposal creation.
     /// @param approvers The approves casted by the approvers.
     /// @param actions The actions to be executed when the proposal passes.
-    /// @param _failsafeActionMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
+    /// @param _failsafeActionMap A bitmap allowing the proposal to succeed, even if certain actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
     struct Proposal {
         bool executed;
         uint16 approvals;
@@ -65,9 +72,10 @@ contract MemberAccessVotingPlugin is
 
     /// @notice A container for the plugin settings.
     /// @param proposalDuration The amount of time before a non-approved proposal expires.
+    /// @param mainVotingPlugin The address of the main voting plugin. Used to apply permissions for it.
     struct MultisigSettings {
         uint64 proposalDuration;
-        address mainVotingPlugin;
+        MainVotingPlugin mainVotingPlugin;
     }
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -115,8 +123,8 @@ contract MemberAccessVotingPlugin is
 
     /// @notice Emitted when the plugin settings are set.
     /// @param proposalDuration The amount of time before a non-approved proposal expires.
-    /// @param mainVotingPlugin The address of the main voting plugin for the space.
-    event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
+    /// @param mainVotingPlugin The address of the main voting plugin for the space. Used to apply permissions for it.
+    event MultisigSettingsUpdated(uint64 proposalDuration, MainVotingPlugin mainVotingPlugin);
 
     /// @notice Initializes Release 1, Build 1.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
@@ -209,9 +217,6 @@ contract MemberAccessVotingPlugin is
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
 
-        // May be overridden below
-        proposal_.parameters.minApprovals = MIN_APPROVALS;
-
         for (uint256 i; i < _actions.length; ) {
             proposal_.actions.push(_actions[i]);
             unchecked {
@@ -220,11 +225,16 @@ contract MemberAccessVotingPlugin is
         }
 
         if (_isEditor) {
-            // If the creator is an editor, we assume that the editor approves
-            // and we require one more approval
-            proposal_.parameters.minApprovals = MIN_APPROVALS + 1;
+            if (multisigSettings.mainVotingPlugin.editorCount() < 2) {
+                proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_SINGLE;
+            } else {
+                proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_MANY;
+            }
 
+            // If the creator is an editor, we assume that the editor approves
             approve(proposalId, false);
+        } else {
+            proposal_.parameters.minApprovals = MIN_APPROVALS_NON_EDITOR;
         }
     }
 
@@ -293,7 +303,7 @@ contract MemberAccessVotingPlugin is
     }
 
     /// @inheritdoc IMultisig
-    /// @dev The second parameter is left empty for compatibility with the existing multisig interface
+    /// @dev The second parameter is left empty to keep compatibility with the existing multisig interface
     function approve(uint256 _proposalId, bool) public {
         address sender = _msgSender();
         if (!_canApprove(_proposalId, sender)) {
@@ -326,10 +336,7 @@ contract MemberAccessVotingPlugin is
 
         Proposal storage proposal_ = proposals[_proposalId];
 
-        // Disregard any potential creator-submitted approval
-        proposal_.approvals = 0;
-
-        // Prevent any further approvals
+        // Prevent any further approvals, expire it
         proposal_.parameters.endDate = block.timestamp.toUint64();
 
         emit Rejected({proposalId: _proposalId, editor: sender});

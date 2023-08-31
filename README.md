@@ -34,6 +34,12 @@ Governance plugin providing the default implementation for personal spaces, wher
 - PersonalSpaceVotingPlugin
 - PersonalSpaceVotingPlugin
 
+## General
+
+### Plugin upgradeability
+
+Best practices
+
 ## Getting started
 
 ```
