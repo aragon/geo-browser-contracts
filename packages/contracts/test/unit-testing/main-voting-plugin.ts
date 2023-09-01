@@ -54,7 +54,6 @@ describe("Default Main Voting plugin", function () {
     );
 
     await memberAccessPlugin.initialize(dao.address, {
-      minApprovals: 0,
       proposalDuration: 60 * 60 * 24 * 5,
       mainVotingPlugin: spaceVotingPlugin.address,
     });
@@ -89,7 +88,6 @@ describe("Default Main Voting plugin", function () {
     it("reverts if trying to re-initialize", async () => {
       await expect(
         memberAccessPlugin.initialize(dao.address, {
-          minApprovals: 0,
           proposalDuration: 60 * 60 * 24 * 5,
           mainVotingPlugin: spaceVotingPlugin.address,
         }),

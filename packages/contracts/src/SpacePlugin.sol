@@ -3,6 +3,11 @@ pragma solidity ^0.8.8;
 
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 
+bytes4 constant SPACE_INTERFACE_ID = SpacePlugin.initialize.selector ^
+    SpacePlugin.setContent.selector ^
+    SpacePlugin.acceptSubspace.selector ^
+    SpacePlugin.removeSubspace.selector;
+
 /// @title SpacePlugin
 /// @dev Release 1, Build 1
 contract SpacePlugin is PluginUUPSUpgradeable {
@@ -30,6 +35,15 @@ contract SpacePlugin is PluginUUPSUpgradeable {
         __PluginUUPSUpgradeable_init(_dao);
 
         emit ContentChanged({blockIndex: 0, itemIndex: 0, contentUri: _firstBlockContentUri});
+    }
+
+    /// @notice Checks if this or the parent contract supports an interface by its ID.
+    /// @param _interfaceId The ID of the interface.
+    /// @return Returns `true` if the interface is supported.
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view override(PluginUUPSUpgradeable) returns (bool) {
+        return _interfaceId == SPACE_INTERFACE_ID || super.supportsInterface(_interfaceId);
     }
 
     /// @notice Emits an event with new contents for the given block index. Caller needs CONTENT_PERMISSION.

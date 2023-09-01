@@ -10,7 +10,11 @@ import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
-import {MainVotingPlugin} from "./MainVotingPlugin.sol";
+import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
+
+bytes4 constant MULTISIG_INTERFACE_ID = MemberAccessVotingPlugin.initialize.selector ^
+    MemberAccessVotingPlugin.updateMultisigSettings.selector ^
+    MemberAccessVotingPlugin.getProposal.selector;
 
 /// @title Multisig - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
@@ -78,10 +82,6 @@ contract MemberAccessVotingPlugin is
         MainVotingPlugin mainVotingPlugin;
     }
 
-    /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
-    bytes4 internal constant MULTISIG_INTERFACE_ID =
-        this.initialize.selector ^ this.updateMultisigSettings.selector ^ this.getProposal.selector;
-
     /// @notice A mapping between proposal IDs and proposal information.
     mapping(uint256 => Proposal) internal proposals;
 
@@ -111,6 +111,9 @@ contract MemberAccessVotingPlugin is
     /// @notice Thrown when attempting to use addAddresses and removeAddresses.
     error AddresslistDisabled();
 
+    /// @notice Thrown when attempting to use an invalid contract.
+    error InvalidContract();
+
     /// @notice Emitted when a proposal is approved by an editor.
     /// @param proposalId The ID of the proposal.
     /// @param editor The editor casting the approve.
@@ -124,7 +127,7 @@ contract MemberAccessVotingPlugin is
     /// @notice Emitted when the plugin settings are set.
     /// @param proposalDuration The amount of time before a non-approved proposal expires.
     /// @param mainVotingPlugin The address of the main voting plugin for the space. Used to apply permissions for it.
-    event MultisigSettingsUpdated(uint64 proposalDuration, MainVotingPlugin mainVotingPlugin);
+    event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
 
     /// @notice Initializes Release 1, Build 1.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
@@ -254,7 +257,7 @@ contract MemberAccessVotingPlugin is
             value: 0,
             data: abi.encodeWithSelector(
                 PermissionManager.grant.selector, // grant()
-                multisigSettings.mainVotingPlugin, // where
+                address(multisigSettings.mainVotingPlugin), // where
                 _proposedMember, // who
                 MEMBER_PERMISSION_ID // permission ID
             )
@@ -286,7 +289,7 @@ contract MemberAccessVotingPlugin is
             value: 0,
             data: abi.encodeWithSelector(
                 PermissionManager.revoke.selector, // revoke()
-                multisigSettings.mainVotingPlugin, // where
+                address(multisigSettings.mainVotingPlugin), // where
                 _proposedMember, // who
                 MEMBER_PERMISSION_ID // permission ID
             )
@@ -468,12 +471,20 @@ contract MemberAccessVotingPlugin is
     /// @notice Internal function to update the plugin settings.
     /// @param _multisigSettings The new settings.
     function _updateMultisigSettings(MultisigSettings calldata _multisigSettings) internal {
+        if (
+            !MainVotingPlugin(_multisigSettings.mainVotingPlugin).supportsInterface(
+                MAIN_SPACE_VOTING_INTERFACE_ID
+            )
+        ) {
+            revert InvalidContract();
+        }
+
         multisigSettings = _multisigSettings;
         lastMultisigSettingsChange = block.number.toUint64();
 
         emit MultisigSettingsUpdated({
             proposalDuration: _multisigSettings.proposalDuration,
-            mainVotingPlugin: _multisigSettings.mainVotingPlugin
+            mainVotingPlugin: address(_multisigSettings.mainVotingPlugin)
         });
     }
 
