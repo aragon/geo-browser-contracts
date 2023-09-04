@@ -80,11 +80,6 @@ describe("Default Member Access plugin", function () {
     );
     // Bob is a member
     await dao.grant(
-      memberAccessPlugin.address,
-      bob.address,
-      MEMBER_PERMISSION_ID,
-    );
-    await dao.grant(
       mainVotingPlugin.address,
       bob.address,
       MEMBER_PERMISSION_ID,
@@ -178,49 +173,9 @@ describe("Default Member Access plugin", function () {
   });
 
   describe("One editor", () => {
-    it("proposeNewMember should generate the right action list", async () => {
-      await expect(
-        memberAccessPlugin.connect(charlie).proposeNewMember(
-          toUtf8Bytes("ipfs://1234"),
-          charlie.address,
-        ),
-      ).to.not.be.reverted;
-
-      const proposal = await memberAccessPlugin.getProposal(0);
-      expect(proposal.actions.length).to.eq(1);
-      expect(proposal.actions[0].to).to.eq(dao.address);
-      expect(proposal.actions[0].value).to.eq(0);
-      expect(proposal.actions[0].data).to.eq(
-        DAO__factory.createInterface().encodeFunctionData("grant", [
-          mainVotingPlugin.address,
-          charlie.address,
-          MEMBER_PERMISSION_ID,
-        ]),
-      );
-    });
-
-    it("proposeRemoveMember should generate the right action list", async () => {
-      await expect(
-        memberAccessPlugin.connect(charlie).proposeRemoveMember(
-          toUtf8Bytes("ipfs://1234"),
-          charlie.address,
-        ),
-      ).to.not.be.reverted;
-
-      const proposal = await memberAccessPlugin.getProposal(0);
-      expect(proposal.actions.length).to.eq(1);
-      expect(proposal.actions[0].to).to.eq(dao.address);
-      expect(proposal.actions[0].value).to.eq(0);
-      expect(proposal.actions[0].data).to.eq(
-        DAO__factory.createInterface().encodeFunctionData("revoke", [
-          mainVotingPlugin.address,
-          charlie.address,
-          MEMBER_PERMISSION_ID,
-        ]),
-      );
-    });
-
     it("Only the editor can approve memberships", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+
       expect(
         await dao.hasPermission(
           mainVotingPlugin.address,
@@ -246,10 +201,10 @@ describe("Default Member Access plugin", function () {
         ),
       ).to.eq(false);
 
-      // // Approve it (Bob) => fail
-      // await expect(
-      //   memberAccessPlugin.connect(alice).approve(0, false),
-      // ).to.be.reverted;
+      // Approve it (Bob) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).approve(0, false),
+      ).to.be.reverted;
 
       // Still not a member
       expect(
@@ -260,35 +215,6 @@ describe("Default Member Access plugin", function () {
           toUtf8Bytes(""),
         ),
       ).to.eq(false);
-
-      // let iface = DAO__factory.createInterface();
-      // console.log(
-      //   iface.parseError(
-      //     "0xa6a7dbbd0000000000000000000000000000000000000000000000000000000000000000",
-      //   ),
-      // );
-
-      // DAO ROOT on DAO
-      expect(
-        await dao.hasPermission(
-          dao.address,
-          dao.address,
-          ROOT_PERMISSION_ID,
-          toUtf8Bytes(""),
-        ),
-      ).to.eq(true);
-
-      const tx = await memberAccessPlugin.connect(alice).approve(0, false);
-      const receipt = await tx.wait();
-
-      // require("fs").promises.writeFile(
-      //   "./debug.json",
-      //   JSON.stringify(receipt, null, 2),
-      // );
-
-      // expect(receipt).to.eq(
-      //   "HI " + JSON.stringify(receipt, null, 2),
-      // );
 
       // Approve it (Alice) => success
       await expect(
@@ -303,25 +229,455 @@ describe("Default Member Access plugin", function () {
           MEMBER_PERMISSION_ID,
           toUtf8Bytes(""),
         ),
-      ).to.eq(false);
+      ).to.eq(true);
     });
-    it("Only the editor can reject memberships");
-    it("Membership approvals are immediate");
-    it("Membership rejections are immediate");
+
+    it("Only the editor can reject memberships", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Reject it (Bob) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).reject(0),
+      ).to.be.reverted;
+
+      // Still not a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Reject it (Alice) => success
+      await expect(
+        memberAccessPlugin.connect(alice).reject(0),
+      ).to.not.be.reverted;
+
+      // Charlie is not a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Try to approve it (Alice) => fail
+      await expect(
+        memberAccessPlugin.connect(alice).approve(0, false),
+      ).to.be.reverted;
+    });
+
+    it("Membership approvals are immediate", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      // Approve it (Alice) => success
+      await expect(
+        memberAccessPlugin.connect(alice).approve(0, false),
+      ).to.not.be.reverted;
+
+      const proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(true);
+
+      // Approve it (Alice) => fail
+      await expect(
+        memberAccessPlugin.connect(alice).approve(0, false),
+      ).to.be.reverted;
+    });
+
+    it("Membership rejections are immediate", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      // Reject it (Alice) => success
+      await expect(
+        memberAccessPlugin.connect(alice).reject(0),
+      ).to.not.be.reverted;
+
+      const proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(false);
+
+      // Try to approve it (Alice) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).reject(0),
+      ).to.be.reverted;
+    });
+
     it("Proposal execution is immediate when created by the only editor");
+    // it("Proposal execution is immediate when created by the only editor", async () => {
+    //   expect(await mainVotingPlugin.editorCount()).to.eq(1);
+
+    //  await expect(
+    //     memberAccessPlugin.connect(alice).proposeNewMember(
+    //       toUtf8Bytes("ipfs://1234"),
+    //       charlie.address,
+    //     ),
+    //   ).to.not.be.reverted;
+
+    //   const proposal = await memberAccessPlugin.getProposal(0);
+    //   expect(proposal.executed).to.eq(true);
+
+    //   // Charlie is not a member
+    //   expect(
+    //     await dao.hasPermission(
+    //       mainVotingPlugin.address,
+    //       charlie.address,
+    //       MEMBER_PERMISSION_ID,
+    //       toUtf8Bytes(""),
+    //     ),
+    //   ).to.eq(true);
+    // });
   });
+
   describe("Multiple editors", () => {
-    it("Only editors can approve memberships");
-    it("Proposals should be unsettled after created");
-    it("Only editors can reject memberships");
-    it("Memberships are approved after the first non-proposer editor approves");
-    it("Memberships are rejected after the first non-proposer editor rejects");
-    it("Proposal execution is immediate when the second editor approves");
-    it("Proposal rejection is immediate when the second editor rejects");
+    beforeEach(async () => {
+      // TODO: ADD AN EDITOR TO mainVotingPlugin
+    });
+
+    it("Only editors can approve memberships", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(2);
+
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Approve it (Bob) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).approve(0, false),
+      ).to.be.reverted;
+
+      // Still not a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      await dao.grant(
+        memberAccessPlugin.address,
+        bob.address,
+        EDITOR_PERMISSION_ID,
+      );
+
+      // Approve it (Bob) => success
+      await expect(
+        memberAccessPlugin.connect(bob).approve(0, false),
+      ).to.not.be.reverted;
+
+      // Now Charlie is a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(true);
+    });
+
+    it("Proposals should be unsettled after created", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(2);
+
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      const proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(false);
+      expect(proposal.parameters.minApprovals).to.eq(1);
+    });
+
+    it("Only editors can reject memberships", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(2);
+
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Reject it (Bob) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).reject(0),
+      ).to.be.reverted;
+
+      // Still not a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      await dao.grant(
+        memberAccessPlugin.address,
+        bob.address,
+        EDITOR_PERMISSION_ID,
+      );
+
+      // Reject it (Bob) => success
+      await expect(
+        memberAccessPlugin.connect(bob).reject(0),
+      ).to.not.be.reverted;
+
+      // Charlie is not a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Try to approve it (bob) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).approve(0, false),
+      ).to.be.reverted;
+    });
+
+    it("Memberships are approved when the first non-proposer editor approves", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(2);
+
+      // Alice creates
+      await expect(
+        memberAccessPlugin.connect(alice).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      let proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(false);
+
+      // Approve it (Bob) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).approve(0, false),
+      ).to.be.reverted;
+
+      await dao.grant(
+        memberAccessPlugin.address,
+        bob.address,
+        EDITOR_PERMISSION_ID,
+      );
+
+      // Approve it (Bob) => succeed
+      await expect(
+        memberAccessPlugin.connect(bob).approve(0, false),
+      ).to.not.be.reverted;
+
+      proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(true);
+
+      // Now Charlie is a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(true);
+    });
+
+    it("Memberships are rejected when the first non-proposer editor rejects", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(2);
+
+      // Alice creates
+      await expect(
+        memberAccessPlugin.connect(alice).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Reject it (Bob) => fail
+      await expect(
+        memberAccessPlugin.connect(bob).reject(0),
+      ).to.be.reverted;
+
+      // Still not a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      await dao.grant(
+        memberAccessPlugin.address,
+        bob.address,
+        EDITOR_PERMISSION_ID,
+      );
+
+      // Reject it (Bob) => success
+      await expect(
+        memberAccessPlugin.connect(bob).reject(0),
+      ).to.not.be.reverted;
+
+      // Charlie is not a member
+      expect(
+        await dao.hasPermission(
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+          toUtf8Bytes(""),
+        ),
+      ).to.eq(false);
+
+      // Try to approve it (Alice) => fail
+      await expect(
+        memberAccessPlugin.connect(alice).approve(0, false),
+      ).to.be.reverted;
+    });
+  });
+
+  it("proposeNewMember should generate the right action list", async () => {
+    await expect(
+      memberAccessPlugin.connect(charlie).proposeNewMember(
+        toUtf8Bytes("ipfs://1234"),
+        charlie.address,
+      ),
+    ).to.not.be.reverted;
+
+    const proposal = await memberAccessPlugin.getProposal(0);
+    expect(proposal.actions.length).to.eq(1);
+    expect(proposal.actions[0].to).to.eq(dao.address);
+    expect(proposal.actions[0].value).to.eq(0);
+    expect(proposal.actions[0].data).to.eq(
+      DAO__factory.createInterface().encodeFunctionData("grant", [
+        mainVotingPlugin.address,
+        charlie.address,
+        MEMBER_PERMISSION_ID,
+      ]),
+    );
+  });
+
+  it("proposeRemoveMember should generate the right action list", async () => {
+    await expect(
+      memberAccessPlugin.connect(charlie).proposeRemoveMember(
+        toUtf8Bytes("ipfs://1234"),
+        charlie.address,
+      ),
+    ).to.not.be.reverted;
+
+    const proposal = await memberAccessPlugin.getProposal(0);
+    expect(proposal.actions.length).to.eq(1);
+    expect(proposal.actions[0].to).to.eq(dao.address);
+    expect(proposal.actions[0].value).to.eq(0);
+    expect(proposal.actions[0].data).to.eq(
+      DAO__factory.createInterface().encodeFunctionData("revoke", [
+        mainVotingPlugin.address,
+        charlie.address,
+        MEMBER_PERMISSION_ID,
+      ]),
+    );
   });
 
   it("Proposals require editor approval when created by a member");
+
   it("Rejected proposals cannot be approved");
+
   it("Rejected proposals cannot be executed");
 
   it("Membership proposals only grant/revoke membership permissions");
