@@ -39,3 +39,10 @@ export const defaultMainVotingSettings = {
   minProposerVotingPower: 0,
   votingMode: EARLY_EXECUTION_MODE,
 };
+
+export enum VoteOption {
+  None = 0,
+  Abstain = 1,
+  Yes = 2,
+  No = 3,
+}

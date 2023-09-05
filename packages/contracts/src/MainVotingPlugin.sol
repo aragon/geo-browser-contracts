@@ -102,7 +102,7 @@ contract MainVotingPlugin is MajorityVotingBase {
         VoteOption _voteOption,
         bool _tryEarlyExecution
     ) external override returns (uint256 proposalId) {
-        if (!isEditor(_msgSender())) {
+        if (!isMember(_msgSender())) {
             revert ProposalCreationForbidden(_msgSender());
         }
 

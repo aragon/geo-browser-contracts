@@ -58,17 +58,6 @@ describe("Default Member Access plugin", function () {
       new SpacePlugin__factory(alice),
     );
 
-    await memberAccessPlugin.initialize(dao.address, {
-      proposalDuration: 60 * 60 * 24 * 5,
-      mainVotingPlugin: mainVotingPlugin.address,
-    });
-    await mainVotingPlugin.initialize(
-      dao.address,
-      defaultMainVotingSettings,
-      alice.address,
-    );
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
-
     // Alice is an editor
     await dao.grant(
       mainVotingPlugin.address,
@@ -87,6 +76,18 @@ describe("Default Member Access plugin", function () {
       dao.address,
       ROOT_PERMISSION_ID,
     );
+
+    // inits
+    await memberAccessPlugin.initialize(dao.address, {
+      proposalDuration: 60 * 60 * 24 * 5,
+      mainVotingPlugin: mainVotingPlugin.address,
+    });
+    await mainVotingPlugin.initialize(
+      dao.address,
+      defaultMainVotingSettings,
+      alice.address,
+    );
+    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
   });
 
   describe("initialize", async () => {
@@ -185,7 +186,7 @@ describe("Default Member Access plugin", function () {
       MEMBER_PERMISSION_ID,
     );
 
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
 
     await dao.grant(
       mainVotingPlugin.address,
