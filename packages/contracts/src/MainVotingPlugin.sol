@@ -50,7 +50,7 @@ contract MainVotingPlugin is MajorityVotingBase {
     ) external initializer {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
-        editorAdded(_initialEditor);
+        _editorAdded(_initialEditor);
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -64,26 +64,14 @@ contract MainVotingPlugin is MajorityVotingBase {
     /// @notice The function proposeNewEditor creates an action to call this function after an editor is added.
     /// @param _editor The address of the new editor
     /// @dev This function is also used during the plugin initialization.
-    function editorAdded(address _editor) public auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        if (!isEditor(_editor)) {
-            revert NotAnEditorYet();
-        }
-
-        editorCount++;
-        emit EditorAdded({editor: _editor});
+    function editorAdded(address _editor) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+        _editorAdded(_editor);
     }
 
     /// @notice The function proposeRemoveEditor creates an action to call this function after an editor is removed.
     /// @param _editor The addresses of the members to be removed.
     function editorRemoved(address _editor) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        if (isEditor(_editor)) {
-            revert StillAnEditor();
-        } else if (editorCount <= 1) {
-            revert NoEditorsLeft();
-        }
-
-        editorCount--;
-        emit EditorRemoved({editor: _editor});
+        _editorRemoved(_editor);
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -92,12 +80,16 @@ contract MainVotingPlugin is MajorityVotingBase {
         return editorCount;
     }
 
+    /// @notice Returns whether the given address holds membership permission on the main voting plugin
     function isMember(address _account) public view returns (bool) {
-        return dao().hasPermission(_account, address(this), MEMBER_PERMISSION_ID, bytes(""));
+        return
+            dao().hasPermission(address(this), _account, MEMBER_PERMISSION_ID, bytes("")) ||
+            isEditor(_account);
     }
 
+    /// @notice Returns whether the given address holds editor permission on the main voting plugin
     function isEditor(address _account) public view returns (bool) {
-        return dao().hasPermission(_account, address(this), EDITOR_PERMISSION_ID, bytes(""));
+        return dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""));
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -235,6 +227,26 @@ contract MainVotingPlugin is MajorityVotingBase {
         }
 
         return true;
+    }
+
+    function _editorAdded(address _editor) internal {
+        if (!isEditor(_editor)) {
+            revert NotAnEditorYet();
+        }
+
+        editorCount++;
+        emit EditorAdded({editor: _editor});
+    }
+
+    function _editorRemoved(address _editor) internal {
+        if (isEditor(_editor)) {
+            revert StillAnEditor();
+        } else if (editorCount <= 1) {
+            revert NoEditorsLeft();
+        }
+
+        editorCount--;
+        emit EditorRemoved({editor: _editor});
     }
 
     /// @dev This empty reserved space is put in place to allow future versions to add new

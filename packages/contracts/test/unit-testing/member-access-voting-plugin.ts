@@ -11,21 +11,19 @@ import {
 import { deployWithProxy, findEvent } from "../../utils/helpers";
 import { deployTestDao } from "../helpers/test-dao";
 import {
+  ADDRESS_ONE,
   ADDRESS_TWO,
-  CONTENT_PERMISSION_ID,
+  ADDRESS_ZERO,
   EDITOR_PERMISSION_ID,
-  EXECUTE_PERMISSION_ID,
   MEMBER_PERMISSION_ID,
   ROOT_PERMISSION_ID,
-  SUBSPACE_PERMISSION_ID,
-  UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
 } from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { ProposalCreatedEvent } from "../../typechain/src/MemberAccessVotingPlugin";
 import { DAO__factory } from "@aragon/osx-ethers";
-import { ExecutedEvent } from "../../typechain/@aragon/osx/core/dao/DAO";
+import { defaultMainVotingSettings } from "./common";
 
 export type InitData = { contentUri: string };
 export const defaultInitData: InitData = {
@@ -64,15 +62,14 @@ describe("Default Member Access plugin", function () {
       proposalDuration: 60 * 60 * 24 * 5,
       mainVotingPlugin: mainVotingPlugin.address,
     });
-    await mainVotingPlugin.initialize(dao.address);
+    await mainVotingPlugin.initialize(
+      dao.address,
+      defaultMainVotingSettings,
+      alice.address,
+    );
     await spacePlugin.initialize(dao.address, defaultInput.contentUri);
 
     // Alice is an editor
-    await dao.grant(
-      memberAccessPlugin.address,
-      alice.address,
-      EDITOR_PERMISSION_ID,
-    );
     await dao.grant(
       mainVotingPlugin.address,
       alice.address,
@@ -90,18 +87,6 @@ describe("Default Member Access plugin", function () {
       dao.address,
       ROOT_PERMISSION_ID,
     );
-    // The plugin can execute on the DAO
-    await dao.grant(
-      dao.address,
-      memberAccessPlugin.address,
-      EXECUTE_PERMISSION_ID,
-    );
-    // The DAO can update the plugin settings
-    await dao.grant(
-      memberAccessPlugin.address,
-      dao.address,
-      UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
-    );
   });
 
   describe("initialize", async () => {
@@ -113,7 +98,11 @@ describe("Default Member Access plugin", function () {
         }),
       ).to.be.revertedWith("Initializable: contract is already initialized");
       await expect(
-        mainVotingPlugin.initialize(dao.address),
+        mainVotingPlugin.initialize(
+          dao.address,
+          defaultMainVotingSettings,
+          alice.address,
+        ),
       ).to.be.revertedWith("Initializable: contract is already initialized");
       await expect(
         spacePlugin.initialize(dao.address, defaultInput.contentUri),
@@ -170,6 +159,59 @@ describe("Default Member Access plugin", function () {
       ]),
     );
     expect(event!.args.allowFailureMap).to.equal(0);
+  });
+
+  it("isMember() returns true when appropriate", async () => {
+    expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
+    expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+    expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
+
+    expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
+    expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
+
+    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+
+    await dao.grant(
+      mainVotingPlugin.address,
+      charlie.address,
+      MEMBER_PERMISSION_ID,
+    );
+
+    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+
+    await dao.revoke(
+      mainVotingPlugin.address,
+      charlie.address,
+      MEMBER_PERMISSION_ID,
+    );
+
+    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+
+    await dao.grant(
+      mainVotingPlugin.address,
+      charlie.address,
+      EDITOR_PERMISSION_ID,
+    );
+
+    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+  });
+
+  it("isEditor() returns true when appropriate", async () => {
+    expect(await memberAccessPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
+    expect(await memberAccessPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
+    expect(await memberAccessPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
+
+    expect(await memberAccessPlugin.isEditor(alice.address)).to.eq(true);
+    expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
+    expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
+
+    await dao.grant(
+      mainVotingPlugin.address,
+      charlie.address,
+      EDITOR_PERMISSION_ID,
+    );
+
+    expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
   });
 
   describe("One editor", () => {

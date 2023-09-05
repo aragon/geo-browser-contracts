@@ -23,13 +23,15 @@ import { ethers } from "hardhat";
 import { deployTestDao } from "../helpers/test-dao";
 import { hexlify } from "@ethersproject/bytes";
 import { toUtf8Bytes } from "ethers/lib/utils";
+import { defaultMainVotingSettings } from "./common";
+
+const SOME_CONTRACT_ADDRESS = "0x" + "1234567890".repeat(4);
 
 describe("Member Access condition", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
   let dao: DAO;
-  let mainVotingPlugin: MainVotingPlugin;
   let memberAccessExecuteCondition: MemberAccessExecuteCondition;
 
   before(async () => {
@@ -38,16 +40,10 @@ describe("Member Access condition", function () {
   });
 
   beforeEach(async () => {
-    mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
-      new MainVotingPlugin__factory(alice),
-    );
-
     const factory = new MemberAccessExecuteCondition__factory(alice);
     memberAccessExecuteCondition = await factory.deploy(
-      mainVotingPlugin.address,
+      SOME_CONTRACT_ADDRESS,
     );
-
-    await mainVotingPlugin.initialize(dao.address);
   });
 
   it("Should only accept granting and revoking", async () => {
@@ -58,7 +54,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -71,7 +67,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -122,7 +118,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -134,7 +130,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -148,7 +144,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           EDITOR_PERMISSION_ID,
         ]),
@@ -160,7 +156,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           EDITOR_PERMISSION_ID,
         ]),
@@ -172,7 +168,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           ROOT_PERMISSION_ID,
         ]),
@@ -184,7 +180,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           ROOT_PERMISSION_ID,
         ]),
@@ -196,7 +192,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           DEPLOYER_PERMISSION_ID,
         ]),
@@ -208,7 +204,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           DEPLOYER_PERMISSION_ID,
         ]),
@@ -224,7 +220,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -236,7 +232,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -302,7 +298,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           alice.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -314,7 +310,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           alice.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -328,7 +324,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           bob.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -340,7 +336,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           bob.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -354,7 +350,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -366,7 +362,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           charlie.address,
           MEMBER_PERMISSION_ID,
         ]),
@@ -380,7 +376,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           ADDRESS_ZERO,
           MEMBER_PERMISSION_ID,
         ]),
@@ -392,7 +388,7 @@ describe("Member Access condition", function () {
         ADDRESS_TWO, // who (used)
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
-          mainVotingPlugin.address,
+          SOME_CONTRACT_ADDRESS,
           ADDRESS_ZERO,
           MEMBER_PERMISSION_ID,
         ]),

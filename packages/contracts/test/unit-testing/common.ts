@@ -14,9 +14,28 @@ export const EXECUTE_PERMISSION_ID = ethers.utils.id("EXECUTE_PERMISSION");
 export const UPDATE_MULTISIG_SETTINGS_PERMISSION_ID = ethers.utils.id(
   "UPDATE_MULTISIG_SETTINGS_PERMISSION",
 );
+export const UPDATE_VOTING_SETTINGS_PERMISSION_ID = ethers.utils.id(
+  "UPDATE_VOTING_SETTINGS_PERMISSION",
+);
+export const UPDATE_ADDRESSES_PERMISSION_ID = ethers.utils.id(
+  "UPDATE_ADDRESSES_PERMISSION",
+);
 export const ROOT_PERMISSION_ID = ethers.utils.id("ROOT_PERMISSION");
 
 export const ADDRESS_ZERO = ethers.constants.AddressZero;
 export const ADDRESS_ONE = `0x${"0".repeat(39)}1`;
 export const ADDRESS_TWO = `0x${"0".repeat(39)}2`;
 export const NO_CONDITION = ADDRESS_ZERO;
+
+// MAIN VOTING PLUGIN
+
+const RATIO_BASE = 10 ** 6;
+const EARLY_EXECUTION_MODE = 1;
+
+export const defaultMainVotingSettings = {
+  minDuration: 60 * 60, // 1 second
+  minParticipation: 0.1 * RATIO_BASE,
+  supportThreshold: 0.5 * RATIO_BASE,
+  minProposerVotingPower: 0,
+  votingMode: EARLY_EXECUTION_MODE,
+};

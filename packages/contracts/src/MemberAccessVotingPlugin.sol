@@ -374,17 +374,19 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
         _execute(_proposalId);
     }
 
+    /// @notice Returns whether the given address holds membership permission on the main voting plugin
     function isMember(address _account) public view returns (bool) {
-        // Does the address hold the permission on the main voting plugin?
+        // Does the address hold the member or editor permission on the main voting plugin?
         return
             dao().hasPermission(
                 address(multisigSettings.mainVotingPlugin),
                 _account,
                 MEMBER_PERMISSION_ID,
                 bytes("")
-            );
+            ) || isEditor(_account);
     }
 
+    /// @notice Returns whether the given address holds editor permission on the main voting plugin
     function isEditor(address _account) public view returns (bool) {
         // Does the address hold the permission on the main voting plugin?
         return
