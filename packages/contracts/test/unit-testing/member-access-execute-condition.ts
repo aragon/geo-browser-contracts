@@ -3,8 +3,8 @@ import {
   DAO__factory,
   MainVotingPlugin,
   MainVotingPlugin__factory,
-  MembersAccessExecuteCondition,
-  MembersAccessExecuteCondition__factory,
+  MemberAccessExecuteCondition,
+  MemberAccessExecuteCondition__factory,
 } from "../../typechain";
 import { deployWithProxy } from "../../utils/helpers";
 import {
@@ -30,7 +30,7 @@ describe("Member Access condition", function () {
   let charlie: SignerWithAddress;
   let dao: DAO;
   let mainVotingPlugin: MainVotingPlugin;
-  let memberAccessExecuteCondition: MembersAccessExecuteCondition;
+  let memberAccessExecuteCondition: MemberAccessExecuteCondition;
 
   before(async () => {
     [alice, bob, charlie] = await ethers.getSigners();
@@ -42,7 +42,7 @@ describe("Member Access condition", function () {
       new MainVotingPlugin__factory(alice),
     );
 
-    const factory = new MembersAccessExecuteCondition__factory(alice);
+    const factory = new MemberAccessExecuteCondition__factory(alice);
     memberAccessExecuteCondition = await factory.deploy(
       mainVotingPlugin.address,
     );
@@ -295,7 +295,7 @@ describe("Member Access condition", function () {
     ).to.eq(false);
   });
 
-  it("Should allow granting to whever 'who' address", async () => {
+  it("Should allow granting to whatever 'who' address", async () => {
     expect(
       await memberAccessExecuteCondition.isGranted(
         ADDRESS_ONE, // where (used)

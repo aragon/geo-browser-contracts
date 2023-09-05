@@ -34,6 +34,10 @@ Governance plugin providing the default implementation for personal spaces, wher
 - PersonalSpaceVotingPlugin
 - PersonalSpaceVotingPlugin
 
+## DO's and DONT's
+
+- Always grant `EDITOR_PERMISSION_ID` without any condition attached to it
+
 ## General
 
 ### Plugin upgradeability

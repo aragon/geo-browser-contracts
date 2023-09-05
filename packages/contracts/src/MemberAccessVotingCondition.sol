@@ -6,7 +6,7 @@ import {PermissionCondition} from "@aragon/osx/core/permission/PermissionConditi
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 
 /// @notice The condition associated with `TestSharedPlugin`
-contract MembersAccessExecuteCondition is PermissionCondition {
+contract MemberAccessExecuteCondition is PermissionCondition {
     /// @notice The ID of the permission required to create proposals on the main voting plugin.
     bytes32 public constant MEMBER_PERMISSION_ID = keccak256("MEMBER_PERMISSION");
 
