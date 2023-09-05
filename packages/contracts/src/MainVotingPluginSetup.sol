@@ -5,12 +5,11 @@ pragma solidity ^0.8.8;
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {MainVotingPlugin} from "./MainVotingPlugin.sol";
+import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "./constants.sol";
 
 /// @title MainVotingPluginSetup
 /// @dev Release 1, Build 1
 contract MainVotingPluginSetup is PluginSetup {
-    bytes32 public constant CONTENT_PERMISSION_ID = keccak256("CONTENT_PERMISSION");
-    bytes32 public constant SUBSPACE_PERMISSION_ID = keccak256("SUBSPACE_PERMISSION");
     address private immutable pluginImplementation;
 
     constructor() {

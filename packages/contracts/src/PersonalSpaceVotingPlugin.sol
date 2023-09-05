@@ -6,6 +6,7 @@ import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgr
 import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {PluginCloneable} from "@aragon/osx/core/plugin/PluginCloneable.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {EDITOR_PERMISSION_ID} from "./constants.sol";
 
 /// @title PersonalSpaceVotingPlugin
 /// @author Aragon Association - 2022-2023
@@ -16,9 +17,6 @@ contract PersonalSpaceVotingPlugin is IMembership, PluginCloneable, ProposalUpgr
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 internal constant ADMIN_INTERFACE_ID =
         this.initialize.selector ^ this.executeProposal.selector;
-
-    /// @notice The ID of the permission required to call the `executeProposal` function.
-    bytes32 public constant EDITOR_PERMISSION_ID = keccak256("EDITOR_PERMISSION");
 
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.

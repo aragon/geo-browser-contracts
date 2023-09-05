@@ -9,6 +9,7 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PersonalSpaceVotingPlugin} from "./PersonalSpaceVotingPlugin.sol";
+import {EDITOR_PERMISSION_ID} from "./constants.sol";
 
 /// @title PersonalSpaceVotingPluginSetup
 /// @author Aragon Association - 2022-2023
@@ -56,7 +57,7 @@ contract PersonalSpaceVotingPluginSetup is PluginSetup {
             plugin,
             editor,
             PermissionLib.NO_CONDITION,
-            PersonalSpaceVotingPlugin(plugin).EDITOR_PERMISSION_ID()
+            EDITOR_PERMISSION_ID
         );
 
         // Grant `EXECUTE_PERMISSION` on the DAO to the plugin.

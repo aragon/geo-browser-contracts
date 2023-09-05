@@ -2,6 +2,7 @@
 pragma solidity ^0.8.8;
 
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
+import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "./constants.sol";
 
 bytes4 constant SPACE_INTERFACE_ID = SpacePlugin.initialize.selector ^
     SpacePlugin.setContent.selector ^
@@ -11,9 +12,6 @@ bytes4 constant SPACE_INTERFACE_ID = SpacePlugin.initialize.selector ^
 /// @title SpacePlugin
 /// @dev Release 1, Build 1
 contract SpacePlugin is PluginUUPSUpgradeable {
-    bytes32 public constant CONTENT_PERMISSION_ID = keccak256("CONTENT_PERMISSION");
-    bytes32 public constant SUBSPACE_PERMISSION_ID = keccak256("SUBSPACE_PERMISSION");
-
     /// @notice Emitted when the contents of a space change.
     /// @param blockIndex The index of the block whose items have new contents.
     /// @param itemIndex The index of the item that has new contents.

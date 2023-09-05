@@ -6,17 +6,18 @@ import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/mat
 
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
+// import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
 import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
+import {MEMBER_PERMISSION_ID, EDITOR_PERMISSION_ID} from "./constants.sol";
 
 bytes4 constant MULTISIG_INTERFACE_ID = MemberAccessVotingPlugin.initialize.selector ^
     MemberAccessVotingPlugin.updateMultisigSettings.selector ^
     MemberAccessVotingPlugin.getProposal.selector;
 
-/// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
+// The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
 bytes32 constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID = keccak256(
     "UPDATE_MULTISIG_SETTINGS_PERMISSION"
 );
@@ -24,19 +25,8 @@ bytes32 constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID = keccak256(
 /// @title Multisig - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
-contract MemberAccessVotingPlugin is
-    IMultisig,
-    IMembership,
-    PluginUUPSUpgradeable,
-    ProposalUpgradeable
-{
+contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
-
-    /// @notice The ID of the permission required to create proposals on the main voting plugin.
-    bytes32 public constant MEMBER_PERMISSION_ID = keccak256("MEMBER_PERMISSION");
-
-    /// @notice The ID of the permission required to approve proposals.
-    bytes32 public constant EDITOR_PERMISSION_ID = keccak256("EDITOR_PERMISSION");
 
     /// @notice The minimum amount of approvals required for proposals created by a non-editor
     uint16 internal constant MIN_APPROVALS_NON_EDITOR = uint16(1);
@@ -152,7 +142,6 @@ contract MemberAccessVotingPlugin is
         return
             _interfaceId == MULTISIG_INTERFACE_ID ||
             _interfaceId == type(IMultisig).interfaceId ||
-            _interfaceId == type(IMembership).interfaceId ||
             super.supportsInterface(_interfaceId);
     }
 
@@ -264,14 +253,7 @@ contract MemberAccessVotingPlugin is
             )
         });
 
-        bool isEditor = dao().hasPermission(
-            _msgSender(),
-            address(this),
-            EDITOR_PERMISSION_ID,
-            bytes("")
-        );
-
-        return createProposal(_metadata, _actions, isEditor);
+        return createProposal(_metadata, _actions, isEditor(_msgSender()));
     }
 
     /// @notice Creates a proposal to remove an existing member.
@@ -296,14 +278,7 @@ contract MemberAccessVotingPlugin is
             )
         });
 
-        bool isEditor = dao().hasPermission(
-            _msgSender(),
-            address(this),
-            EDITOR_PERMISSION_ID,
-            bytes("")
-        );
-
-        return createProposal(_metadata, _actions, isEditor);
+        return createProposal(_metadata, _actions, isEditor(_msgSender()));
     }
 
     /// @inheritdoc IMultisig
@@ -399,9 +374,26 @@ contract MemberAccessVotingPlugin is
         _execute(_proposalId);
     }
 
-    /// @inheritdoc IMembership
-    function isMember(address _account) external view returns (bool) {
-        return dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""));
+    function isMember(address _account) public view returns (bool) {
+        // Does the address hold the permission on the main voting plugin?
+        return
+            dao().hasPermission(
+                address(multisigSettings.mainVotingPlugin),
+                _account,
+                MEMBER_PERMISSION_ID,
+                bytes("")
+            );
+    }
+
+    function isEditor(address _account) public view returns (bool) {
+        // Does the address hold the permission on the main voting plugin?
+        return
+            dao().hasPermission(
+                address(multisigSettings.mainVotingPlugin),
+                _account,
+                EDITOR_PERMISSION_ID,
+                bytes("")
+            );
     }
 
     /// @notice Internal function to execute a vote. It assumes the queried proposal exists.
@@ -429,14 +421,10 @@ contract MemberAccessVotingPlugin is
         if (!_isProposalOpen(proposal_)) {
             // The proposal was executed already
             return false;
-        }
-
-        if (!dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""))) {
+        } else if (!isEditor(_account)) {
             // The approver has no voting power.
             return false;
-        }
-
-        if (proposal_.approvers[_account]) {
+        } else if (proposal_.approvers[_account]) {
             // The approver has already approved
             return false;
         }

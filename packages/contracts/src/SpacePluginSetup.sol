@@ -5,6 +5,7 @@ pragma solidity ^0.8.8;
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {SpacePlugin} from "./SpacePlugin.sol";
+import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "./constants.sol";
 
 /// @title SpacePluginSetup
 /// @dev Release 1, Build 1
@@ -38,7 +39,7 @@ contract SpacePluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: SpacePlugin(pluginImplementation).CONTENT_PERMISSION_ID()
+            permissionId: CONTENT_PERMISSION_ID
         });
         // The DAO can accept a subspace
         permissions[1] = PermissionLib.MultiTargetPermission({
@@ -46,7 +47,7 @@ contract SpacePluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: SpacePlugin(pluginImplementation).SUBSPACE_PERMISSION_ID()
+            permissionId: SUBSPACE_PERMISSION_ID
         });
 
         preparedSetupData.permissions = permissions;
@@ -56,7 +57,7 @@ contract SpacePluginSetup is PluginSetup {
     function prepareUninstallation(
         address _dao,
         SetupPayload calldata _payload
-    ) external view returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
+    ) external pure returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
         permissionChanges = new PermissionLib.MultiTargetPermission[](2);
 
         // The DAO can make it emit content
@@ -65,7 +66,7 @@ contract SpacePluginSetup is PluginSetup {
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: SpacePlugin(pluginImplementation).CONTENT_PERMISSION_ID()
+            permissionId: CONTENT_PERMISSION_ID
         });
         // The DAO can make it accept/reject a subspace
         permissionChanges[1] = PermissionLib.MultiTargetPermission({
@@ -73,7 +74,7 @@ contract SpacePluginSetup is PluginSetup {
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: SpacePlugin(pluginImplementation).SUBSPACE_PERMISSION_ID()
+            permissionId: SUBSPACE_PERMISSION_ID
         });
     }
 

@@ -5,7 +5,7 @@ pragma solidity ^0.8.8;
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {MemberAccessVotingPlugin, UPDATE_MULTISIG_SETTINGS_PERMISSION_ID} from "./MemberAccessVotingPlugin.sol";
-import {MemberAccessVotingCondition} from "./MemberAccessVotingCondition.sol";
+import {MemberAccessExecuteCondition} from "./MemberAccessExecuteCondition.sol";
 
 /// @title MemberAccessPluginSetup
 /// @dev Release 1, Build 1
@@ -37,7 +37,7 @@ contract MemberAccessPluginSetup is PluginSetup {
         );
 
         // Condition contract
-        address conditionContract = address(new MemberAccessVotingCondition(mainVotingPlugin));
+        address conditionContract = address(new MemberAccessExecuteCondition(mainVotingPlugin));
 
         PermissionLib.MultiTargetPermission[]
             memory permissions = new PermissionLib.MultiTargetPermission[](2);
