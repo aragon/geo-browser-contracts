@@ -6,7 +6,6 @@ import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/mat
 
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-// import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";

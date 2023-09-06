@@ -34,8 +34,8 @@ const EARLY_EXECUTION_MODE = 1;
 
 export const defaultMainVotingSettings = {
   minDuration: 60 * 60, // 1 second
-  minParticipation: 0.1 * RATIO_BASE,
-  supportThreshold: 0.5 * RATIO_BASE,
+  minParticipation: 0.3 * RATIO_BASE, // 30%
+  supportThreshold: 0.5 * RATIO_BASE, // 50% + 1
   minProposerVotingPower: 0,
   votingMode: EARLY_EXECUTION_MODE,
 };

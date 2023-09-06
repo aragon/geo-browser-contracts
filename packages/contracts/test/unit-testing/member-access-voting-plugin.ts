@@ -719,6 +719,10 @@ describe("Default Member Access plugin", function () {
 
   it("Proposals require editor approval when created by a member");
 
+  it("Attempting to approve twice fails");
+
+  it("Attempting to reject twice fails");
+
   it("Rejected proposals cannot be approved");
 
   it("Rejected proposals cannot be executed");

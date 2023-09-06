@@ -117,4 +117,6 @@ describe("SpacePlugin", function () {
       .to.emit(spacePlugin, "SubspaceRemoved")
       .withArgs(ADDRESS_TWO);
   });
+
+  it("Only the DAO can call functions on the space plugin");
 });

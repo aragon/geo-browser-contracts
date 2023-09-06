@@ -3,6 +3,7 @@ pragma solidity ^0.8.8;
 
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
+import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
@@ -80,7 +81,7 @@ contract MainVotingPlugin is MajorityVotingBase {
         return editorCount;
     }
 
-    /// @notice Returns whether the given address holds membership permission on the main voting plugin
+    /// @notice Returns whether the given address holds membership/editor permission on the main voting plugin
     function isMember(address _account) public view returns (bool) {
         return
             dao().hasPermission(address(this), _account, MEMBER_PERMISSION_ID, bytes("")) ||
@@ -106,11 +107,6 @@ contract MainVotingPlugin is MajorityVotingBase {
             revert ProposalCreationForbidden(_msgSender());
         }
 
-        uint64 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
-        }
-
         (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
 
         proposalId = _createProposal({
@@ -127,11 +123,11 @@ contract MainVotingPlugin is MajorityVotingBase {
 
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
-        proposal_.parameters.snapshotBlock = snapshotBlock;
+        // proposal_.parameters.snapshotBlock = 0;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
         proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower(snapshotBlock),
+            totalVotingPower(0),
             minParticipation()
         );
 
