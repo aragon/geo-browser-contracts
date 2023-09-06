@@ -104,6 +104,12 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
     /// @notice Thrown when attempting to use an invalid contract.
     error InvalidContract();
 
+    /// @notice Thrown when attempting request membership for a current member.
+    error AlreadyMember(address _member);
+
+    /// @notice Thrown when attempting propose removing membership for a non-member.
+    error AlreadyNotMember(address _member);
+
     /// @notice Emitted when a proposal is approved by an editor.
     /// @param proposalId The ID of the proposal.
     /// @param editor The editor casting the approve.
@@ -169,12 +175,10 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
     /// @notice Creates a new multisig proposal wrapped by proposeNewMember and proposeRemoveMember.
     /// @param _metadata The metadata of the proposal.
     /// @param _actions A list of actions wrapped by proposeNewMember and proposeRemoveMember.
-    /// @param _isEditor Whether the proposal creator is an editor or not.
     /// @return proposalId The ID of the proposal.
     function createProposal(
         bytes calldata _metadata,
-        IDAO.Action[] memory _actions,
-        bool _isEditor
+        IDAO.Action[] memory _actions
     ) internal returns (uint256 proposalId) {
         uint64 snapshotBlock;
         unchecked {
@@ -216,7 +220,7 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
             }
         }
 
-        if (_isEditor) {
+        if (isEditor(_msgSender())) {
             if (multisigSettings.mainVotingPlugin.editorCount() < 2) {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_SINGLE;
             } else {
@@ -238,6 +242,10 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
         bytes calldata _metadata,
         address _proposedMember
     ) external returns (uint256 proposalId) {
+        if (isMember(_proposedMember)) {
+            revert AlreadyMember(_proposedMember);
+        }
+
         // Build the list of actions
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
@@ -252,7 +260,7 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
             )
         });
 
-        return createProposal(_metadata, _actions, isEditor(_msgSender()));
+        return createProposal(_metadata, _actions);
     }
 
     /// @notice Creates a proposal to remove an existing member.
@@ -263,6 +271,10 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
         bytes calldata _metadata,
         address _proposedMember
     ) external returns (uint256 proposalId) {
+        if (!isMember(_proposedMember)) {
+            revert AlreadyNotMember(_proposedMember);
+        }
+
         // Build the list of actions
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
@@ -277,7 +289,7 @@ contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalU
             )
         });
 
-        return createProposal(_metadata, _actions, isEditor(_msgSender()));
+        return createProposal(_metadata, _actions);
     }
 
     /// @inheritdoc IMultisig
