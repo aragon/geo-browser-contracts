@@ -1,10 +1,12 @@
 import { hexlify, toUtf8Bytes } from "ethers/lib/utils";
 import {
   DAO,
+  IDAO,
   MainVotingPlugin,
   MainVotingPlugin__factory,
   MemberAccessVotingPlugin,
   MemberAccessVotingPlugin__factory,
+  PermissionManager__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from "../../typechain";
@@ -17,6 +19,7 @@ import {
   EDITOR_PERMISSION_ID,
   MEMBER_PERMISSION_ID,
   ROOT_PERMISSION_ID,
+  VoteOption,
 } from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
@@ -34,6 +37,7 @@ describe("Default Member Access plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
+  let debbie: SignerWithAddress;
   let dao: DAO;
   let memberAccessPlugin: MemberAccessVotingPlugin;
   let mainVotingPlugin: MainVotingPlugin;
@@ -41,7 +45,7 @@ describe("Default Member Access plugin", function () {
   let defaultInput: InitData;
 
   before(async () => {
-    [alice, bob, charlie] = await ethers.getSigners();
+    [alice, bob, charlie, debbie] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
     defaultInput = { contentUri: "ipfs://" };
@@ -387,115 +391,87 @@ describe("Default Member Access plugin", function () {
       ).to.be.reverted;
     });
 
-    it("Proposal execution is immediate when created by the only editor");
-    // it("Proposal execution is immediate when created by the only editor", async () => {
-    //   expect(await mainVotingPlugin.editorCount()).to.eq(1);
-
-    //  await expect(
-    //     memberAccessPlugin.connect(alice).proposeNewMember(
-    //       toUtf8Bytes("ipfs://1234"),
-    //       charlie.address,
-    //     ),
-    //   ).to.not.be.reverted;
-
-    //   const proposal = await memberAccessPlugin.getProposal(0);
-    //   expect(proposal.executed).to.eq(true);
-
-    //   // Charlie is not a member
-    //   expect(
-    //     await dao.hasPermission(
-    //       mainVotingPlugin.address,
-    //       charlie.address,
-    //       MEMBER_PERMISSION_ID,
-    //       toUtf8Bytes(""),
-    //     ),
-    //   ).to.eq(true);
-    // });
-  });
-
-  describe("Multiple editors", () => {
-    beforeEach(async () => {
-      // TODO: ADD AN EDITOR TO mainVotingPlugin
-    });
-
-    it("Only editors can approve memberships", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(2);
+    it("Proposal execution is immediate when created by the only editor", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(1);
 
       expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          charlie.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes(""),
-        ),
+        await memberAccessPlugin.isMember(charlie.address),
       ).to.eq(false);
 
+      // Alice proposes
       await expect(
-        memberAccessPlugin.connect(charlie).proposeNewMember(
+        memberAccessPlugin.proposeNewMember(
           toUtf8Bytes("ipfs://1234"),
           charlie.address,
         ),
-      ).to.not.be.reverted;
-
-      expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          charlie.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes(""),
-        ),
-      ).to.eq(false);
-
-      // Approve it (Bob) => fail
-      await expect(
-        memberAccessPlugin.connect(bob).approve(0, false),
-      ).to.be.reverted;
-
-      // Still not a member
-      expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          charlie.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes(""),
-        ),
-      ).to.eq(false);
-
-      await dao.grant(
-        memberAccessPlugin.address,
-        bob.address,
-        EDITOR_PERMISSION_ID,
-      );
-
-      // Approve it (Bob) => success
-      await expect(
-        memberAccessPlugin.connect(bob).approve(0, false),
       ).to.not.be.reverted;
 
       // Now Charlie is a member
       expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          charlie.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes(""),
-        ),
+        await memberAccessPlugin.isMember(charlie.address),
       ).to.eq(true);
+    });
+  });
+
+  describe("Multiple editors", () => {
+    // Alice, Bob and Charlie are editors
+
+    beforeEach(async () => {
+      let pidMainVoting = 0;
+      await proposeNewEditor(bob.address);
+      await proposeNewEditor(charlie.address);
+      pidMainVoting = 1;
+      await mainVotingPlugin.connect(bob).vote(
+        pidMainVoting,
+        VoteOption.Yes,
+        true,
+      );
+    });
+
+    it("Only editors can approve memberships", async () => {
+      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+
+      expect(await memberAccessPlugin.isMember(debbie.address)).to.eq(false);
+
+      await expect(
+        memberAccessPlugin.connect(debbie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          debbie.address,
+        ),
+      ).to.not.be.reverted;
+
+      expect(await memberAccessPlugin.isMember(debbie.address)).to.eq(false);
+
+      // Approve it (Alice)
+      await expect(
+        memberAccessPlugin.connect(alice).approve(0, false),
+      ).to.not.be.reverted;
+
+      // Still not a member
+      expect(await memberAccessPlugin.isMember(debbie.address)).to.eq(false);
+
+      // Approve it (Bob)
+      await expect(
+        memberAccessPlugin.connect(bob).approve(0, false),
+      ).to.not.be.reverted;
+
+      // Now Debbie is a member
+      expect(await memberAccessPlugin.isMember(debbie.address)).to.eq(true);
     });
 
     it("Proposals should be unsettled after created", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(2);
+      expect(await mainVotingPlugin.editorCount()).to.eq(3);
 
       await expect(
-        memberAccessPlugin.connect(charlie).proposeNewMember(
+        memberAccessPlugin.connect(debbie).proposeNewMember(
           toUtf8Bytes("ipfs://1234"),
-          charlie.address,
+          debbie.address,
         ),
       ).to.not.be.reverted;
 
       const proposal = await memberAccessPlugin.getProposal(0);
       expect(proposal.executed).to.eq(false);
-      expect(proposal.parameters.minApprovals).to.eq(1);
+      expect(proposal.parameters.minApprovals).to.eq(2);
     });
 
     it("Only editors can reject memberships", async () => {
@@ -730,4 +706,74 @@ describe("Default Member Access plugin", function () {
   it("Membership proposals only grant/revoke membership permissions");
   it("Only the DAO can call the plugin to update the settings");
   it("The DAO and deployers can upgrade the plugin");
+
+  // Helpers
+
+  const proposeNewEditor = (_editor: string, proposer = alice) => {
+    const actions: IDAO.ActionStruct[] = [
+      // Grant the permission
+      {
+        to: dao.address,
+        value: 0,
+        data: PermissionManager__factory.createInterface().encodeFunctionData(
+          "grant",
+          [mainVotingPlugin.address, _editor, EDITOR_PERMISSION_ID],
+        ),
+      },
+
+      // Notify the new editor
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          "editorAdded",
+          [_editor],
+        ),
+      },
+    ];
+
+    return mainVotingPlugin.connect(proposer).createProposal(
+      toUtf8Bytes("ipfs://"),
+      actions,
+      0, // fail safe
+      0, // start date
+      0, // end date
+      VoteOption.Yes,
+      true, // auto execute
+    ).then((tx) => tx.wait());
+  };
+
+  const proposeRemoveEditor = (_editor: string, proposer = alice) => {
+    const actions: IDAO.ActionStruct[] = [
+      // Grant the permission
+      {
+        to: dao.address,
+        value: 0,
+        data: PermissionManager__factory.createInterface().encodeFunctionData(
+          "revoke",
+          [mainVotingPlugin.address, _editor, EDITOR_PERMISSION_ID],
+        ),
+      },
+
+      // Notify the removed editor
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          "editorRemoved",
+          [_editor],
+        ),
+      },
+    ];
+
+    return mainVotingPlugin.connect(proposer).createProposal(
+      toUtf8Bytes("ipfs://"),
+      actions,
+      0, // fail safe
+      0, // start date
+      0, // end date
+      VoteOption.Yes,
+      true, // auto execute
+    ).then((tx) => tx.wait());
+  };
 });

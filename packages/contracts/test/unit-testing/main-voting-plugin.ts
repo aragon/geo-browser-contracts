@@ -499,8 +499,11 @@ describe("Default Main Voting plugin", function () {
 
     //
 
+    // Now with Bob as editor
     await proposeNewEditor(bob.address); // Alice auto approves
+    pid++;
     await expect(createDummyProposal(bob, false)).to.not.be.reverted;
+    pid++;
     expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
     // Charlie cannot execute
