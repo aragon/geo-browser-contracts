@@ -16,6 +16,7 @@ import {
   ADDRESS_TWO,
   ADDRESS_ZERO,
   EDITOR_PERMISSION_ID,
+  EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   MEMBER_PERMISSION_ID,
   ROOT_PERMISSION_ID,
@@ -23,6 +24,7 @@ import {
   UPDATE_VOTING_SETTINGS_PERMISSION_ID,
   UPGRADE_PLUGIN_PERMISSION_ID,
   VoteOption,
+  ZERO_BYTES32,
 } from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
@@ -39,6 +41,7 @@ describe("Default Main Voting plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
+  let debbie: SignerWithAddress;
   let dao: DAO;
   let memberAccessPlugin: MemberAccessVotingPlugin;
   let mainVotingPlugin: MainVotingPlugin;
@@ -46,7 +49,7 @@ describe("Default Main Voting plugin", function () {
   let defaultInput: InitData;
 
   before(async () => {
-    [alice, bob, charlie] = await ethers.getSigners();
+    [alice, bob, charlie, debbie] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
     defaultInput = { contentUri: "ipfs://" };
@@ -81,6 +84,12 @@ describe("Default Main Voting plugin", function () {
       mainVotingPlugin.address,
       EXECUTE_PERMISSION_ID,
     );
+    // The DAO can report new/removed editors
+    await dao.grant(
+      mainVotingPlugin.address,
+      dao.address,
+      UPDATE_ADDRESSES_PERMISSION_ID,
+    );
     // The DAO can update the plugin settings
     await dao.grant(
       mainVotingPlugin.address,
@@ -89,22 +98,14 @@ describe("Default Main Voting plugin", function () {
     );
     // The DAO can upgrade the plugin
     await dao.grant(
-      memberAccessPlugin.address,
+      mainVotingPlugin.address,
       dao.address,
       UPGRADE_PLUGIN_PERMISSION_ID,
     );
-    // The DAO can report new/removed editors
-    await dao.grant(
-      mainVotingPlugin.address,
-      dao.address,
-      UPDATE_ADDRESSES_PERMISSION_ID,
-    );
     // The DAO is ROOT on itself
-    await dao.grant(
-      dao.address,
-      dao.address,
-      ROOT_PERMISSION_ID,
-    );
+    await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
+    // Alice can make the DAO execute arbitrary stuff (test)
+    await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
 
     // inits
     await memberAccessPlugin.initialize(dao.address, {
@@ -180,6 +181,22 @@ describe("Default Main Voting plugin", function () {
       "ProposalCreationForbidden",
     )
       .withArgs(charlie.address);
+
+    await expect(
+      mainVotingPlugin.connect(debbie).createProposal(
+        toUtf8Bytes("ipfs://"),
+        [],
+        0, // fail safe
+        0, // start date
+        0, // end date
+        VoteOption.None,
+        true, // auto execute
+      ),
+    ).to.be.revertedWithCustomError(
+      mainVotingPlugin,
+      "ProposalCreationForbidden",
+    )
+      .withArgs(debbie.address);
   });
 
   it("Only editors can vote on proposals", async () => {
@@ -199,9 +216,22 @@ describe("Default Main Voting plugin", function () {
     expect(proposal.executed).to.eq(false);
 
     // Bob can't vote
-    await expect(mainVotingPlugin.connect(bob).vote(0, VoteOption.Yes, true)).to
-      .be
-      .reverted;
+    await expect(mainVotingPlugin.connect(bob).vote(0, VoteOption.Yes, false))
+      .to.be.reverted;
+
+    // Charlie can't vote
+    await expect(
+      mainVotingPlugin.connect(charlie).vote(0, VoteOption.Yes, false),
+    ).to.be.reverted;
+
+    // Debbie can't vote
+    await expect(
+      mainVotingPlugin.connect(debbie).vote(0, VoteOption.Yes, false),
+    )
+      .to.be.reverted;
+
+    proposal = await mainVotingPlugin.getProposal(0);
+    expect(proposal.executed).to.eq(false);
 
     // Alice can vote
     await expect(mainVotingPlugin.vote(0, VoteOption.Yes, true)).to.not.be
@@ -211,7 +241,61 @@ describe("Default Main Voting plugin", function () {
     expect(proposal.executed).to.eq(true);
   });
 
-  it("Only editors can vote when creating proposals");
+  it("Only editors can vote when creating proposals", async () => {
+    expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(false);
+
+    // Bob can't create and vote
+    await expect(
+      mainVotingPlugin.connect(bob).createProposal(
+        toUtf8Bytes("ipfs://"),
+        [],
+        0, // fail safe
+        0, // start date
+        0, // end date
+        VoteOption.Yes,
+        true, // auto execute
+      ),
+    ).to.be.reverted;
+
+    // Bob can create without voting
+    await expect(
+      mainVotingPlugin.connect(bob).createProposal(
+        toUtf8Bytes("ipfs://"),
+        [],
+        0, // fail safe
+        0, // start date
+        0, // end date
+        VoteOption.None,
+        true, // auto execute
+      ),
+    ).to.not.be.reverted;
+
+    // Alice can create and vote
+    await expect(
+      mainVotingPlugin.connect(alice).createProposal(
+        toUtf8Bytes("ipfs://"),
+        [],
+        0, // fail safe
+        0, // start date
+        0, // end date
+        VoteOption.Yes,
+        true, // auto execute
+      ),
+    ).to.not.be.reverted;
+
+    // Alice can create without a vote
+    await expect(
+      mainVotingPlugin.connect(alice).createProposal(
+        toUtf8Bytes("ipfs://"),
+        [],
+        0, // fail safe
+        0, // start date
+        0, // end date
+        VoteOption.None,
+        true, // auto execute
+      ),
+    ).to.not.be.reverted;
+  });
 
   it("The plugin has one editor after created", async () => {
     expect(await mainVotingPlugin.editorCount()).to.eq(1);
@@ -383,10 +467,6 @@ describe("Default Main Voting plugin", function () {
       ).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(true);
     });
-
-    it("A minimum participation is required");
-
-    it("A minimum support threshold is required");
   });
 
   it("Adding an editor increases the editorCount", async () => {
@@ -430,9 +510,6 @@ describe("Default Main Voting plugin", function () {
       .not.be.reverted;
     expect(await mainVotingPlugin.editorCount()).to.eq(1);
   });
-
-  it("Reporting an already existing editor reverts");
-  it("Reporting the removal of a non existing editor reverts");
 
   it("Attempting to remove the last editor reverts", async () => {
     // Try to remove Alice
@@ -566,8 +643,91 @@ describe("Default Main Voting plugin", function () {
     ).withArgs(0, 12345, 23456, 60 * 60 * 3, 0);
   });
 
-  it("The DAO can report added/removed editors");
-  it("The DAO and deployers can upgrade the plugins");
+  it("The DAO can report added/removed editors", async () => {
+    // Nobody else can
+    await expect(
+      mainVotingPlugin.connect(alice).editorAdded(alice.address),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(bob).editorRemoved(bob.address),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(charlie).editorAdded(debbie.address),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(debbie).editorRemoved(alice.address),
+    ).to.be.reverted;
+
+    // The DAO can
+    const actions: IDAO.ActionStruct[] = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("editorAdded", [
+            alice.address,
+          ]),
+      },
+    ];
+
+    await expect(
+      dao.execute(
+        ZERO_BYTES32,
+        actions,
+        0,
+      ),
+    ).to.not.be.reverted;
+  });
+
+  it("The DAO can upgrade the plugin", async () => {
+    // Nobody else can
+    await expect(
+      mainVotingPlugin.connect(alice).upgradeTo(ADDRESS_ONE),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(bob).upgradeTo(ADDRESS_ONE),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(charlie).upgradeToAndCall(
+        mainVotingPlugin.implementation(), // upgrade to itself
+        EMPTY_DATA,
+      ),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(debbie).upgradeToAndCall(
+        mainVotingPlugin.implementation(), // upgrade to itself
+        EMPTY_DATA,
+      ),
+    ).to.be.reverted;
+
+    // The DAO can
+    const actions: IDAO.ActionStruct[] = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("upgradeTo", [
+            await mainVotingPlugin.implementation(),
+          ]),
+      },
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("supportsInterface", [
+            "0x12345678",
+          ]),
+      },
+    ];
+
+    await expect(
+      dao.execute(
+        ZERO_BYTES32,
+        actions,
+        0,
+      ),
+    ).to.not.be.reverted;
+  });
 
   it("COPY THE APPLICABLE ADDRESS LIST TESTS");
 

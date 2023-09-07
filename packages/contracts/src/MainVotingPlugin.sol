@@ -40,6 +40,13 @@ contract MainVotingPlugin is MajorityVotingBase {
     /// @notice Thrown if reporting a removed editor, when there would be no editors left.
     error NoEditorsLeft();
 
+    modifier onlyMembers() {
+        if (!isMember(_msgSender())) {
+            revert ProposalCreationForbidden(_msgSender());
+        }
+        _;
+    }
+
     /// @notice Initializes the component.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     /// @param _dao The IDAO interface of the associated DAO.
@@ -102,11 +109,7 @@ contract MainVotingPlugin is MajorityVotingBase {
         uint64 _endDate,
         VoteOption _voteOption,
         bool _tryEarlyExecution
-    ) external override returns (uint256 proposalId) {
-        if (!isMember(_msgSender())) {
-            revert ProposalCreationForbidden(_msgSender());
-        }
-
+    ) external override onlyMembers returns (uint256 proposalId) {
         (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
 
         proposalId = _createProposal({

@@ -113,7 +113,7 @@ describe("Default Member Access plugin", function () {
     );
     // The DAO is ROOT on itself
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
-    // Alice can make the DAO execute arbitrary stuff
+    // Alice can make the DAO execute arbitrary stuff (test)
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
 
     // inits
