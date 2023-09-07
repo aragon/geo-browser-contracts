@@ -21,6 +21,7 @@ import {
   ROOT_PERMISSION_ID,
   UPDATE_ADDRESSES_PERMISSION_ID,
   UPDATE_VOTING_SETTINGS_PERMISSION_ID,
+  UPGRADE_PLUGIN_PERMISSION_ID,
   VoteOption,
 } from "./common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -74,12 +75,6 @@ describe("Default Main Voting plugin", function () {
       bob.address,
       MEMBER_PERMISSION_ID,
     );
-    // The DAO is ROOT on itself
-    await dao.grant(
-      dao.address,
-      dao.address,
-      ROOT_PERMISSION_ID,
-    );
     // The plugin can execute on the DAO
     await dao.grant(
       dao.address,
@@ -92,11 +87,23 @@ describe("Default Main Voting plugin", function () {
       dao.address,
       UPDATE_VOTING_SETTINGS_PERMISSION_ID,
     );
+    // The DAO can upgrade the plugin
+    await dao.grant(
+      memberAccessPlugin.address,
+      dao.address,
+      UPGRADE_PLUGIN_PERMISSION_ID,
+    );
     // The DAO can report new/removed editors
     await dao.grant(
       mainVotingPlugin.address,
       dao.address,
       UPDATE_ADDRESSES_PERMISSION_ID,
+    );
+    // The DAO is ROOT on itself
+    await dao.grant(
+      dao.address,
+      dao.address,
+      ROOT_PERMISSION_ID,
     );
 
     // inits

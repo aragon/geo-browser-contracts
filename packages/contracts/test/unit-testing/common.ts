@@ -2,6 +2,8 @@ import { ethers } from "hardhat";
 
 export const abiCoder = ethers.utils.defaultAbiCoder;
 export const EMPTY_DATA = "0x";
+export const ZERO_BYTES32 =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 export const DEPLOYER_PERMISSION_ID = ethers.utils.id("DEPLOYER_PERMISSION");
 export const EDITOR_PERMISSION_ID = ethers.utils.id("EDITOR_PERMISSION");
@@ -19,6 +21,9 @@ export const UPDATE_VOTING_SETTINGS_PERMISSION_ID = ethers.utils.id(
 );
 export const UPDATE_ADDRESSES_PERMISSION_ID = ethers.utils.id(
   "UPDATE_ADDRESSES_PERMISSION",
+);
+export const UPGRADE_PLUGIN_PERMISSION_ID = ethers.utils.id(
+  "UPGRADE_PLUGIN_PERMISSION",
 );
 export const ROOT_PERMISSION_ID = ethers.utils.id("ROOT_PERMISSION");
 
