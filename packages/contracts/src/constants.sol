@@ -13,6 +13,3 @@ bytes32 constant CONTENT_PERMISSION_ID = keccak256("CONTENT_PERMISSION");
 
 // The ID of the permission to accept a space as a subspace
 bytes32 constant SUBSPACE_PERMISSION_ID = keccak256("SUBSPACE_PERMISSION");
-
-// The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
-bytes32 constant UPDATE_ADDRESSES_PERMISSION_ID = keccak256("UPDATE_ADDRESSES_PERMISSION");

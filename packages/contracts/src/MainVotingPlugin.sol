@@ -7,7 +7,7 @@ import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.s
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
-import {MEMBER_PERMISSION_ID, EDITOR_PERMISSION_ID, UPDATE_ADDRESSES_PERMISSION_ID} from "./constants.sol";
+import {MEMBER_PERMISSION_ID, EDITOR_PERMISSION_ID} from "./constants.sol";
 
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
     MainVotingPlugin.editorAdded.selector ^
@@ -21,6 +21,10 @@ bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.sel
 /// @dev This contract inherits from `MajorityVotingBase` and implements the `IMajorityVoting` interface.
 contract MainVotingPlugin is MajorityVotingBase {
     using SafeCastUpgradeable for uint256;
+
+    /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
+    bytes32 public constant UPDATE_ADDRESSES_PERMISSION_ID =
+        keccak256("UPDATE_ADDRESSES_PERMISSION");
 
     /// @notice The amount of editors added by this plugin
     uint256 public editorCount;

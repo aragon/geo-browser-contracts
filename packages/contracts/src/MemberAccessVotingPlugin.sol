@@ -16,16 +16,15 @@ bytes4 constant MULTISIG_INTERFACE_ID = MemberAccessVotingPlugin.initialize.sele
     MemberAccessVotingPlugin.updateMultisigSettings.selector ^
     MemberAccessVotingPlugin.getProposal.selector;
 
-// The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
-bytes32 constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID = keccak256(
-    "UPDATE_MULTISIG_SETTINGS_PERMISSION"
-);
-
 /// @title Multisig - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
 contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
+
+    /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
+    bytes32 public constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID =
+        keccak256("UPDATE_MULTISIG_SETTINGS_PERMISSION");
 
     /// @notice The minimum amount of approvals required for proposals created by a non-editor
     uint16 internal constant MIN_APPROVALS_NON_EDITOR = uint16(1);

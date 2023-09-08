@@ -3,15 +3,15 @@
 pragma solidity ^0.8.8;
 
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
+import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
-import {MemberAccessVotingPlugin, UPDATE_MULTISIG_SETTINGS_PERMISSION_ID} from "./MemberAccessVotingPlugin.sol";
+import {MemberAccessVotingPlugin} from "./MemberAccessVotingPlugin.sol";
 import {MemberAccessExecuteCondition} from "./MemberAccessExecuteCondition.sol";
 
 /// @title MemberAccessPluginSetup
 /// @dev Release 1, Build 1
 contract MemberAccessPluginSetup is PluginSetup {
     address private immutable pluginImplementation;
-    bytes32 public constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
 
     constructor() {
         pluginImplementation = address(new MemberAccessVotingPlugin());
@@ -40,7 +40,7 @@ contract MemberAccessPluginSetup is PluginSetup {
         address conditionContract = address(new MemberAccessExecuteCondition(mainVotingPlugin));
 
         PermissionLib.MultiTargetPermission[]
-            memory permissions = new PermissionLib.MultiTargetPermission[](2);
+            memory permissions = new PermissionLib.MultiTargetPermission[](3);
 
         // The plugin needs to execute on the DAO
         permissions[0] = PermissionLib.MultiTargetPermission({
@@ -48,7 +48,7 @@ contract MemberAccessPluginSetup is PluginSetup {
             where: _dao,
             who: plugin,
             condition: conditionContract,
-            permissionId: EXECUTE_PERMISSION_ID
+            permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
 
         // The DAO needs to be able to update the plugin settings
@@ -57,7 +57,18 @@ contract MemberAccessPluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: UPDATE_MULTISIG_SETTINGS_PERMISSION_ID
+            permissionId: MemberAccessVotingPlugin(pluginImplementation)
+                .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
+        });
+
+        // The DAO needs to be able to upgrade the plugin
+        permissions[2] = PermissionLib.MultiTargetPermission({
+            operation: PermissionLib.Operation.Grant,
+            where: plugin,
+            who: _dao,
+            condition: PermissionLib.NO_CONDITION,
+            permissionId: MemberAccessVotingPlugin(pluginImplementation)
+                .UPGRADE_PLUGIN_PERMISSION_ID()
         });
 
         preparedSetupData.permissions = permissions;
@@ -67,22 +78,31 @@ contract MemberAccessPluginSetup is PluginSetup {
     function prepareUninstallation(
         address _dao,
         SetupPayload calldata _payload
-    ) external pure returns (PermissionLib.MultiTargetPermission[] memory permissions) {
-        permissions = new PermissionLib.MultiTargetPermission[](2);
+    ) external view returns (PermissionLib.MultiTargetPermission[] memory permissions) {
+        permissions = new PermissionLib.MultiTargetPermission[](3);
 
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _dao,
             who: _payload.plugin,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: EXECUTE_PERMISSION_ID
+            permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         permissions[1] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: UPDATE_MULTISIG_SETTINGS_PERMISSION_ID
+            permissionId: MemberAccessVotingPlugin(pluginImplementation)
+                .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
+        });
+        permissions[2] = PermissionLib.MultiTargetPermission({
+            operation: PermissionLib.Operation.Revoke,
+            where: _payload.plugin,
+            who: _dao,
+            condition: PermissionLib.NO_CONDITION,
+            permissionId: MemberAccessVotingPlugin(pluginImplementation)
+                .UPGRADE_PLUGIN_PERMISSION_ID()
         });
     }
 
