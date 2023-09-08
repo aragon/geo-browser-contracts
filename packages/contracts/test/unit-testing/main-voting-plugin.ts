@@ -903,7 +903,7 @@ describe("Tests replicated from the original AddressList plugin", async () => {
 
     // Values
     id = 0;
-    votingSettings = defaultMainVotingSettings;
+    votingSettings = JSON.parse(JSON.stringify(defaultMainVotingSettings));
     dummyMetadata = ethers.utils.hexlify(ethers.utils.toUtf8Bytes("ipfs://"));
     dummyActions = [
       {
