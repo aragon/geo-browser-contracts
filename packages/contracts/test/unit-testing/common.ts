@@ -1,4 +1,6 @@
+import { BigNumber } from "@ethersproject/bignumber";
 import { ethers } from "hardhat";
+import { expect } from "chai";
 
 export const abiCoder = ethers.utils.defaultAbiCoder;
 export const EMPTY_DATA = "0x";
@@ -27,23 +29,41 @@ export const UPGRADE_PLUGIN_PERMISSION_ID = ethers.utils.id(
 );
 export const ROOT_PERMISSION_ID = ethers.utils.id("ROOT_PERMISSION");
 
+export const MAX_UINT64 = ethers.BigNumber.from(2).pow(64).sub(1);
 export const ADDRESS_ZERO = ethers.constants.AddressZero;
 export const ADDRESS_ONE = `0x${"0".repeat(39)}1`;
 export const ADDRESS_TWO = `0x${"0".repeat(39)}2`;
 export const NO_CONDITION = ADDRESS_ZERO;
 
+export async function getTime(): Promise<number> {
+  return (await ethers.provider.getBlock("latest")).timestamp;
+}
+
+export async function advanceTime(time: number) {
+  await ethers.provider.send("evm_increaseTime", [time]);
+  await ethers.provider.send("evm_mine", []);
+}
+
+export async function advanceTimeTo(timestamp: number) {
+  const delta = timestamp - (await getTime());
+  await advanceTime(delta);
+}
+
+export async function advanceIntoVoteTime(startDate: number, endDate: number) {
+  await advanceTimeTo(startDate);
+  expect(await getTime()).to.be.greaterThanOrEqual(startDate);
+  expect(await getTime()).to.be.lessThan(endDate);
+}
+
+export async function advanceAfterVoteEnd(endDate: number) {
+  await advanceTimeTo(endDate);
+  expect(await getTime()).to.be.greaterThanOrEqual(endDate);
+}
+
 // MAIN VOTING PLUGIN
 
-const RATIO_BASE = 10 ** 6;
-const EARLY_EXECUTION_MODE = 1;
-
-export const defaultMainVotingSettings = {
-  minDuration: 60 * 60, // 1 second
-  minParticipation: 0.3 * RATIO_BASE, // 30%
-  supportThreshold: 0.5 * RATIO_BASE, // 50% + 1
-  minProposerVotingPower: 0,
-  votingMode: EARLY_EXECUTION_MODE,
-};
+export const RATIO_BASE = ethers.BigNumber.from(10).pow(6); // 100% => 10**6
+export const pctToRatio = (x: number) => RATIO_BASE.mul(x).div(100);
 
 export enum VoteOption {
   None = 0,
@@ -51,3 +71,25 @@ export enum VoteOption {
   Yes = 2,
   No = 3,
 }
+
+export enum VotingMode {
+  Standard,
+  EarlyExecution,
+  VoteReplacement,
+}
+
+export type VotingSettings = {
+  votingMode: number;
+  supportThreshold: BigNumber;
+  minParticipation: BigNumber;
+  minDuration: number;
+  minProposerVotingPower: number;
+};
+
+export const defaultMainVotingSettings: VotingSettings = {
+  minDuration: 60 * 60, // 1 second
+  minParticipation: pctToRatio(30), // 30%
+  supportThreshold: pctToRatio(50), // 50% + 1
+  minProposerVotingPower: 0,
+  votingMode: VotingMode.EarlyExecution,
+};
