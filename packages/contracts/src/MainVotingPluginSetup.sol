@@ -82,7 +82,7 @@ contract MainVotingPluginSetup is PluginSetup {
         address _dao,
         SetupPayload calldata _payload
     ) external view returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
-        permissionChanges = new PermissionLib.MultiTargetPermission[](2);
+        permissionChanges = new PermissionLib.MultiTargetPermission[](4);
 
         // The plugin can no longer execute on the DAO
         permissionChanges[0] = PermissionLib.MultiTargetPermission({
