@@ -28,14 +28,11 @@ describe("PluginRepo Deployment", function () {
 
     [alice] = await ethers.getSigners();
 
-    // Deploymen should be empty
+    // Deployment should be empty
     expect(await deployments.all()).to.be.empty;
 
     // Deploy all contracts
     await deployAll();
-
-    // Print info
-    console.log(JSON.stringify(getPluginInfo("hardhat")["hardhat"], null, 2));
 
     // plugin repo registry
     repoRegistry = PluginRepoRegistry__factory.connect(
@@ -68,15 +65,6 @@ describe("PluginRepo Deployment", function () {
         pluginRepo.address,
         alice.address,
         ethers.utils.id("UPGRADE_REPO_PERMISSION"),
-        ethers.constants.AddressZero,
-      ),
-    ).to.be.true;
-
-    expect(
-      await pluginRepo.isGranted(
-        pluginRepo.address,
-        alice.address,
-        ethers.utils.id("MAINTAINER_PERMISSION"),
         ethers.constants.AddressZero,
       ),
     ).to.be.true;

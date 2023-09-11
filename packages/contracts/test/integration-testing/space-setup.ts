@@ -1,4 +1,4 @@
-import { METADATA } from "../../plugin-settings";
+import { SpacePluginDetails } from "../../plugin-details";
 import {
   PluginRepo,
   SpacePlugin,
@@ -108,7 +108,8 @@ describe("PluginSetup Processing", function () {
         pluginSetupRef,
         ethers.utils.defaultAbiCoder.encode(
           getNamedTypesFromMetadata(
-            METADATA.build.pluginSetup.prepareInstallation.inputs,
+            SpacePluginDetails.METADATA.build.pluginSetup.prepareInstallation
+              .inputs,
           ),
           [123],
         ),
@@ -134,7 +135,8 @@ describe("PluginSetup Processing", function () {
         pluginSetupRef,
         ethers.utils.defaultAbiCoder.encode(
           getNamedTypesFromMetadata(
-            METADATA.build.pluginSetup.prepareUninstallation.inputs,
+            SpacePluginDetails.METADATA.build.pluginSetup.prepareUninstallation
+              .inputs,
           ),
           [],
         ),
