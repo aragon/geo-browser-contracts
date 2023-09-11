@@ -1,0 +1,34 @@
+{
+  "ui": {},
+  "change": "Initial build.",
+  "pluginSetup": {
+    "prepareInstallation": {
+      "description": "The information required for the installation of build 1.",
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint64",
+              "name": "proposalDuration",
+              "type": "uint64"
+            },
+            {
+              "internalType": "contract MainVotingPlugin",
+              "name": "mainVotingPlugin",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct MemberAccessVotingPlugin.MultisigSettings",
+          "name": "_multisigSettings",
+          "type": "tuple",
+          "description": "The settings of the multisig approval logic"
+        }
+      ]
+    },
+    "prepareUpdate": {},
+    "prepareUninstallation": {
+      "description": "The information required for the uninstallation of build 1.",
+      "inputs": []
+    }
+  }
+}

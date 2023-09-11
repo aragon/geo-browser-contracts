@@ -50,10 +50,7 @@ import {
 } from "../../typechain/src/MainVotingPlugin";
 import { ExecutedEvent } from "../../typechain/@aragon/osx/core/dao/DAO";
 
-export type InitData = { contentUri: string };
-export const defaultInitData: InitData = {
-  contentUri: "ipfs://",
-};
+type InitData = { contentUri: string };
 
 describe("Main Voting plugin (default)", function () {
   let signers: SignerWithAddress[];
@@ -1739,7 +1736,7 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         expect(await mainVotingPlugin.canExecute(id)).to.be.false;
       });
 
-      it("does not execute `if participation is high enough but support is t`oo low", async () => {
+      it("does not execute if participation is high enough but support is too low", async () => {
         await advanceIntoVoteTime(startDate, endDate);
 
         await voteWithSigners(mainVotingPlugin, id, signers, {

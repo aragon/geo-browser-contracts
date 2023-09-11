@@ -7,15 +7,11 @@ import {
 } from "../../typechain";
 import { deployTestDao } from "../helpers/test-dao";
 import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
-import { defaultInitData } from "./main-voting-plugin";
 import {
   abiCoder,
   ADDRESS_ZERO,
   CONTENT_PERMISSION_ID,
-  DEPLOYER_PERMISSION_ID,
-  EDITOR_PERMISSION_ID,
   EMPTY_DATA,
-  MEMBER_PERMISSION_ID,
   NO_CONDITION,
   SUBSPACE_PERMISSION_ID,
 } from "./common";
@@ -28,6 +24,7 @@ describe("SpacePlugin Setup", function () {
   let spacePluginSetup: SpacePluginSetup;
   let SpacePluginSetup: SpacePluginSetup__factory;
   let dao: DAO;
+  const defaultInitData = { contentUri: "ipfs://" };
 
   before(async () => {
     [alice] = await ethers.getSigners();
@@ -91,7 +88,6 @@ describe("SpacePlugin Setup", function () {
 
       // initialization is correct
       expect(await myPlugin.dao()).to.eq(dao.address);
-      // expect(await myPlugin.number()).to.be.eq(defaultInitData.number);
     });
   });
 

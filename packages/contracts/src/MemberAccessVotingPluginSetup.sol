@@ -22,10 +22,10 @@ contract MemberAccessPluginSetup is PluginSetup {
         address _dao,
         bytes memory _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
-        (
-            address mainVotingPlugin,
-            MemberAccessVotingPlugin.MultisigSettings memory _multisigSettings
-        ) = abi.decode(_data, (address, MemberAccessVotingPlugin.MultisigSettings));
+        MemberAccessVotingPlugin.MultisigSettings memory _multisigSettings = abi.decode(
+            _data,
+            (MemberAccessVotingPlugin.MultisigSettings)
+        );
 
         plugin = createERC1967Proxy(
             pluginImplementation,
@@ -37,7 +37,9 @@ contract MemberAccessPluginSetup is PluginSetup {
         );
 
         // Condition contract
-        address conditionContract = address(new MemberAccessExecuteCondition(mainVotingPlugin));
+        address conditionContract = address(
+            new MemberAccessExecuteCondition(address(_multisigSettings.mainVotingPlugin))
+        );
 
         PermissionLib.MultiTargetPermission[]
             memory permissions = new PermissionLib.MultiTargetPermission[](3);
