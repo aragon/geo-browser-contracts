@@ -1,9 +1,9 @@
 import {
-  MainVotingPluginDetails,
-  MemberAccessPluginDetails,
-  PersonalSpaceVotingPluginDetails,
-  SpacePluginDetails,
-} from "../../plugin-details";
+  MainVotingPluginSetupParams,
+  MemberAccessPluginSetupParams,
+  PersonalSpaceVotingPluginSetupParams,
+  SpacePluginSetupParams,
+} from "../../plugin-setup-params";
 import {
   MainVotingPlugin__factory,
   MainVotingPluginSetup__factory,
@@ -30,11 +30,11 @@ async function concludeSpaceSetup(hre: HardhatRuntimeEnvironment) {
   const [deployer] = await hre.ethers.getSigners();
 
   console.log(
-    `Concluding ${SpacePluginDetails.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
+    `Concluding ${SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
   );
 
   const setupDeployment = await deployments.get(
-    SpacePluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+    SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   );
   const setup = SpacePluginSetup__factory.connect(
     setupDeployment.address,
@@ -47,7 +47,7 @@ async function concludeSpaceSetup(hre: HardhatRuntimeEnvironment) {
 
   // Add a timeout for polygon because the call to `implementation()` can fail for newly deployed contracts in the first few seconds
   if (network.name === "polygon") {
-    console.log(`Waiting 30secs for ${network.name} to finish up...`);
+    console.log(`Waiting 30 secs for ${network.name} to finish up...`);
     await setTimeout(30000);
   }
 
@@ -68,11 +68,11 @@ async function concludePersonalSpaceVotingSetup(
   const [deployer] = await hre.ethers.getSigners();
 
   console.log(
-    `Concluding ${PersonalSpaceVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
+    `Concluding ${PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
   );
 
   const setupDeployment = await deployments.get(
-    PersonalSpaceVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+    PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   );
   const setup = PersonalSpaceVotingPluginSetup__factory.connect(
     setupDeployment.address,
@@ -106,11 +106,11 @@ async function concludeMemberAccessVotingSetup(
   const [deployer] = await hre.ethers.getSigners();
 
   console.log(
-    `Concluding ${MemberAccessPluginDetails.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
+    `Concluding ${MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
   );
 
   const setupDeployment = await deployments.get(
-    MemberAccessPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+    MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   );
   const setup = MemberAccessPluginSetup__factory.connect(
     setupDeployment.address,
@@ -144,11 +144,11 @@ async function concludeMainVotingSetup(
   const [deployer] = await hre.ethers.getSigners();
 
   console.log(
-    `Concluding ${MainVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
+    `Concluding ${MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
   );
 
   const setupDeployment = await deployments.get(
-    MainVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+    MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   );
   const setup = MainVotingPluginSetup__factory.connect(
     setupDeployment.address,
@@ -177,9 +177,9 @@ async function concludeMainVotingSetup(
 
 export default func;
 func.tags = [
-  SpacePluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  PersonalSpaceVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  MemberAccessPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  MainVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+  SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   "Verification",
 ];

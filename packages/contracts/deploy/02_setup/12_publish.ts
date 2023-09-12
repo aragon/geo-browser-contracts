@@ -1,10 +1,10 @@
 import {
-  MainVotingPluginDetails,
-  MemberAccessPluginDetails,
-  PersonalSpaceVotingPluginDetails,
-  PluginDetails,
-  SpacePluginDetails,
-} from "../../plugin-details";
+  MainVotingPluginSetupParams,
+  MemberAccessPluginSetupParams,
+  PersonalSpaceVotingPluginSetupParams,
+  PluginSetupParams,
+  SpacePluginSetupParams,
+} from "../../plugin-setup-params";
 import { addCreatedVersion, getPluginInfo } from "../../utils/helpers";
 import { toHex } from "../../utils/ipfs";
 import { uploadToIPFS } from "../../utils/ipfs";
@@ -13,18 +13,18 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
-  return publishPlugin(hre, SpacePluginDetails)
-    .then(() => publishPlugin(hre, PersonalSpaceVotingPluginDetails))
-    .then(() => publishPlugin(hre, MemberAccessPluginDetails))
-    .then(() => publishPlugin(hre, MainVotingPluginDetails));
+  return publishPlugin(hre, SpacePluginSetupParams)
+    .then(() => publishPlugin(hre, PersonalSpaceVotingPluginSetupParams))
+    .then(() => publishPlugin(hre, MemberAccessPluginSetupParams))
+    .then(() => publishPlugin(hre, MainVotingPluginSetupParams));
 };
 
 async function publishPlugin(
   hre: HardhatRuntimeEnvironment,
-  pluginDetails: PluginDetails,
+  pluginSetupParams: PluginSetupParams,
 ) {
   console.log(
-    `Publishing ${pluginDetails.PLUGIN_SETUP_CONTRACT_NAME} as v${pluginDetails.VERSION.release}.${pluginDetails.VERSION.build} in the "${pluginDetails.PLUGIN_REPO_ENS_NAME}" plugin repo`,
+    `Publishing ${pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} as v${pluginSetupParams.VERSION.release}.${pluginSetupParams.VERSION.build} in the "${pluginSetupParams.PLUGIN_REPO_ENS_NAME}" plugin repo`,
   );
 
   const { deployments, network } = hre;
@@ -32,11 +32,11 @@ async function publishPlugin(
 
   // Upload the metadata to IPFS
   const releaseMetadataURI = `ipfs://${await uploadToIPFS(
-    JSON.stringify(pluginDetails.METADATA.release),
+    JSON.stringify(pluginSetupParams.METADATA.release),
     false,
   )}`;
   const buildMetadataURI = `ipfs://${await uploadToIPFS(
-    JSON.stringify(pluginDetails.METADATA.build),
+    JSON.stringify(pluginSetupParams.METADATA.build),
     false,
   )}`;
 
@@ -44,7 +44,9 @@ async function publishPlugin(
   console.log(`Uploaded build metadata: ${buildMetadataURI}`);
 
   // Get PluginSetup
-  const setup = await deployments.get(pluginDetails.PLUGIN_SETUP_CONTRACT_NAME);
+  const setup = await deployments.get(
+    pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  );
 
   // Get PluginRepo
   const pluginRepo = PluginRepo__factory.connect(
@@ -54,9 +56,9 @@ async function publishPlugin(
 
   // Check release number
   const latestRelease = await pluginRepo.latestRelease();
-  if (pluginDetails.VERSION.release > latestRelease + 1) {
+  if (pluginSetupParams.VERSION.release > latestRelease + 1) {
     throw Error(
-      `Publishing with release number ${pluginDetails.VERSION.release} is not possible. 
+      `Publishing with release number ${pluginSetupParams.VERSION.release} is not possible. 
       The latest release is ${latestRelease} and the next release you can publish is release number ${
         latestRelease + 1
       }.`,
@@ -65,16 +67,16 @@ async function publishPlugin(
 
   // Check build number
   const latestBuild =
-    (await pluginRepo.buildCount(pluginDetails.VERSION.release)).toNumber();
-  if (pluginDetails.VERSION.build <= latestBuild) {
+    (await pluginRepo.buildCount(pluginSetupParams.VERSION.release)).toNumber();
+  if (pluginSetupParams.VERSION.build <= latestBuild) {
     throw Error(
-      `Publishing with build number ${pluginDetails.VERSION.build} is not possible. 
-      The latest build is ${latestBuild} and build ${pluginDetails.VERSION.build} has been deployed already.`,
+      `Publishing with build number ${pluginSetupParams.VERSION.build} is not possible. 
+      The latest build is ${latestBuild} and build ${pluginSetupParams.VERSION.build} has been deployed already.`,
     );
   }
-  if (pluginDetails.VERSION.build > latestBuild + 1) {
+  if (pluginSetupParams.VERSION.build > latestBuild + 1) {
     throw Error(
-      `Publishing with build number ${pluginDetails.VERSION.build} is not possible. 
+      `Publishing with build number ${pluginSetupParams.VERSION.build} is not possible. 
       The latest build is ${latestBuild} and the next release you can publish is release number ${
         latestBuild + 1
       }.`,
@@ -83,7 +85,7 @@ async function publishPlugin(
 
   // Create Version
   const tx = await pluginRepo.createVersion(
-    pluginDetails.VERSION.release,
+    pluginSetupParams.VERSION.release,
     setup.address,
     toHex(buildMetadataURI),
     toHex(releaseMetadataURI),
@@ -96,9 +98,9 @@ async function publishPlugin(
   }
 
   const version = await pluginRepo["getLatestVersion(uint8)"](
-    pluginDetails.VERSION.release,
+    pluginSetupParams.VERSION.release,
   );
-  if (pluginDetails.VERSION.release !== version.tag.release) {
+  if (pluginSetupParams.VERSION.release !== version.tag.release) {
     throw Error("something went wrong");
   }
 
@@ -108,22 +110,22 @@ async function publishPlugin(
   ).implementation();
 
   console.log(
-    `Published ${pluginDetails.PLUGIN_SETUP_CONTRACT_NAME} at ${setup.address} in PluginRepo ${pluginDetails.PLUGIN_REPO_ENS_NAME} at ${pluginRepo.address} at block ${blockNumberOfPublication}.`,
+    `Published ${pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} at ${setup.address} in PluginRepo ${pluginSetupParams.PLUGIN_REPO_ENS_NAME} at ${pluginRepo.address} at block ${blockNumberOfPublication}.`,
   );
 
   addCreatedVersion(
     network.name,
-    { release: pluginDetails.VERSION.release, build: version.tag.build },
+    { release: pluginSetupParams.VERSION.release, build: version.tag.build },
     { release: releaseMetadataURI, build: buildMetadataURI },
     blockNumberOfPublication,
     {
-      name: pluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+      name: pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
       address: setup.address,
       args: [],
       blockNumberOfDeployment: setup.receipt.blockNumber,
     },
     {
-      name: pluginDetails.PLUGIN_CONTRACT_NAME,
+      name: pluginSetupParams.PLUGIN_CONTRACT_NAME,
       address: implementationAddress,
       args: [],
       blockNumberOfDeployment: setup.receipt.blockNumber,
@@ -134,9 +136,9 @@ async function publishPlugin(
 
 export default func;
 func.tags = [
-  SpacePluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  PersonalSpaceVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  MemberAccessPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  MainVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+  SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   "Publication",
 ];

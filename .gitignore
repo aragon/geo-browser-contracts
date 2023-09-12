@@ -21,7 +21,7 @@ packages/subgraph/tests/.bin
 .pnp.*
 coverage.json
 
-packages/contracts/plugin-info.json
+packages/contracts/plugin-repo-info-dev.json
 
 packages/subgraph/deploy-output.txt
 packages/subgraph/subgraph.yaml

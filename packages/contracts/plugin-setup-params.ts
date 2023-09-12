@@ -7,7 +7,7 @@ import memberAccessVotingReleaseMetadata from "./src/member-access-voting-releas
 import mainVotingBuildMetadata from "./src/main-voting-build-metadata.json";
 import mainVotingReleaseMetadata from "./src/main-voting-release-metadata.json";
 
-export const SpacePluginDetails: PluginDetails = {
+export const SpacePluginSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: "geo-browser-space",
   PLUGIN_CONTRACT_NAME: "SpacePlugin",
   PLUGIN_SETUP_CONTRACT_NAME: "SpacePluginSetup",
@@ -21,7 +21,7 @@ export const SpacePluginDetails: PluginDetails = {
   },
 };
 
-export const PersonalSpaceVotingPluginDetails: PluginDetails = {
+export const PersonalSpaceVotingPluginSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: "geo-browser-personal-voting",
   PLUGIN_CONTRACT_NAME: "PersonalSpaceVotingPlugin",
   PLUGIN_SETUP_CONTRACT_NAME: "PersonalSpaceVotingPluginSetup",
@@ -35,7 +35,7 @@ export const PersonalSpaceVotingPluginDetails: PluginDetails = {
   },
 };
 
-export const MemberAccessPluginDetails: PluginDetails = {
+export const MemberAccessPluginSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: "geo-browser-member-access-voting",
   PLUGIN_CONTRACT_NAME: "MemberAccessPlugin",
   PLUGIN_SETUP_CONTRACT_NAME: "MemberAccessPluginSetup",
@@ -49,7 +49,7 @@ export const MemberAccessPluginDetails: PluginDetails = {
   },
 };
 
-export const MainVotingPluginDetails: PluginDetails = {
+export const MainVotingPluginSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: "geo-browser-main-voting",
   PLUGIN_CONTRACT_NAME: "MainVotingPlugin",
   PLUGIN_SETUP_CONTRACT_NAME: "MainVotingPluginSetup",
@@ -65,7 +65,7 @@ export const MainVotingPluginDetails: PluginDetails = {
 
 // Types
 
-export type PluginDetails = {
+export type PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: string;
   PLUGIN_CONTRACT_NAME: string;
   PLUGIN_SETUP_CONTRACT_NAME: string;

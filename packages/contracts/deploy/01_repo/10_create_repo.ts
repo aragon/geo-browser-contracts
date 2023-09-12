@@ -1,9 +1,9 @@
 import {
-  MainVotingPluginDetails,
-  MemberAccessPluginDetails,
-  PersonalSpaceVotingPluginDetails,
-  SpacePluginDetails,
-} from "../../plugin-details";
+  MainVotingPluginSetupParams,
+  MemberAccessPluginSetupParams,
+  PersonalSpaceVotingPluginSetupParams,
+  SpacePluginSetupParams,
+} from "../../plugin-setup-params";
 import {
   addDeployedRepo as addCreatedRepo,
   findEventTopicLog,
@@ -18,12 +18,16 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
-  return deployRepo(hre, SpacePluginDetails.PLUGIN_REPO_ENS_NAME)
+  return deployRepo(hre, SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME)
     .then(() =>
-      deployRepo(hre, PersonalSpaceVotingPluginDetails.PLUGIN_REPO_ENS_NAME)
+      deployRepo(hre, PersonalSpaceVotingPluginSetupParams.PLUGIN_REPO_ENS_NAME)
     )
-    .then(() => deployRepo(hre, MemberAccessPluginDetails.PLUGIN_REPO_ENS_NAME))
-    .then(() => deployRepo(hre, MainVotingPluginDetails.PLUGIN_REPO_ENS_NAME));
+    .then(() =>
+      deployRepo(hre, MemberAccessPluginSetupParams.PLUGIN_REPO_ENS_NAME)
+    )
+    .then(() =>
+      deployRepo(hre, MainVotingPluginSetupParams.PLUGIN_REPO_ENS_NAME)
+    );
 };
 
 async function deployRepo(

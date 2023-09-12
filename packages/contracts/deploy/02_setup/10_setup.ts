@@ -1,9 +1,9 @@
 import {
-  MainVotingPluginDetails,
-  MemberAccessPluginDetails,
-  PersonalSpaceVotingPluginDetails,
-  SpacePluginDetails,
-} from "../../plugin-details";
+  MainVotingPluginSetupParams,
+  MemberAccessPluginSetupParams,
+  PersonalSpaceVotingPluginSetupParams,
+  SpacePluginSetupParams,
+} from "../../plugin-setup-params";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -13,9 +13,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
 
   // Space
-  console.log(`\nDeploying ${SpacePluginDetails.PLUGIN_SETUP_CONTRACT_NAME}`);
+  console.log(
+    `\nDeploying ${SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`,
+  );
 
-  await deploy(SpacePluginDetails.PLUGIN_SETUP_CONTRACT_NAME, {
+  await deploy(SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME, {
     from: deployer,
     args: [],
     log: true,
@@ -23,10 +25,24 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Space
   console.log(
-    `\nDeploying ${PersonalSpaceVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME}`,
+    `\nDeploying ${PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`,
   );
 
-  await deploy(PersonalSpaceVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME, {
+  await deploy(
+    PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+    {
+      from: deployer,
+      args: [],
+      log: true,
+    },
+  );
+
+  // Space
+  console.log(
+    `\nDeploying ${MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`,
+  );
+
+  await deploy(MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME, {
     from: deployer,
     args: [],
     log: true,
@@ -34,21 +50,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Space
   console.log(
-    `\nDeploying ${MemberAccessPluginDetails.PLUGIN_SETUP_CONTRACT_NAME}`,
+    `\nDeploying ${MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`,
   );
 
-  await deploy(MemberAccessPluginDetails.PLUGIN_SETUP_CONTRACT_NAME, {
-    from: deployer,
-    args: [],
-    log: true,
-  });
-
-  // Space
-  console.log(
-    `\nDeploying ${MainVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME}`,
-  );
-
-  await deploy(MainVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME, {
+  await deploy(MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME, {
     from: deployer,
     args: [],
     log: true,
@@ -57,9 +62,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = [
-  SpacePluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  PersonalSpaceVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  MemberAccessPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
-  MainVotingPluginDetails.PLUGIN_SETUP_CONTRACT_NAME,
+  SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   "Deployment",
 ];

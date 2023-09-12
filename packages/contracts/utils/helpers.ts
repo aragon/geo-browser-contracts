@@ -69,9 +69,9 @@ export function getPluginInfo(networkName: string): any {
   let pluginInfo: any = {};
 
   if (["localhost", "hardhat", "coverage"].includes(networkName)) {
-    pluginInfoFilePath = "plugin-info-testing.json";
+    pluginInfoFilePath = "plugin-repo-info-dev.json";
   } else {
-    pluginInfoFilePath = "plugin-info.json";
+    pluginInfoFilePath = "plugin-repo-info.json";
   }
 
   if (
@@ -92,12 +92,12 @@ export function getPluginInfo(networkName: string): any {
 function storePluginInfo(networkName: string, pluginInfo: any) {
   if (["localhost", "hardhat", "coverage"].includes(networkName)) {
     writeFileSync(
-      "plugin-info-testing.json",
+      "plugin-repo-info-dev.json",
       JSON.stringify(pluginInfo, null, 2) + "\n",
     );
   } else {
     writeFileSync(
-      "plugin-info.json",
+      "plugin-repo-info.json",
       JSON.stringify(pluginInfo, null, 2) + "\n",
     );
   }

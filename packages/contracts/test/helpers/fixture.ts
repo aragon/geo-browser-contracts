@@ -1,5 +1,5 @@
 import { networks } from "../../hardhat.config";
-import { deployments, network } from "hardhat";
+import { network } from "hardhat";
 
 export async function initializeFork(
   forkNetwork: string,
@@ -20,12 +20,4 @@ export async function initializeFork(
       },
     ],
   });
-}
-
-export async function initializeDeploymentFixture(tag: string | string[]) {
-  const fixture = deployments.createFixture(async () => {
-    await deployments.fixture(tag); // ensure you start from a fresh deployments
-  });
-
-  await fixture();
 }
