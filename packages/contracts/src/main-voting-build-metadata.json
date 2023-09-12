@@ -34,12 +34,17 @@
             }
           ],
           "internalType": "struct MajorityVotingBase.VotingSettings",
-          "name": "_votingSettings",
+          "name": "votingSettings",
           "type": "tuple"
         },
         {
           "internalType": "address",
-          "name": "_initialEditor",
+          "name": "initialEditor",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "pluginUpgrader",
           "type": "address"
         }
       ]
@@ -47,7 +52,13 @@
     "prepareUpdate": {},
     "prepareUninstallation": {
       "description": "The information required for the uninstallation of build 1.",
-      "inputs": []
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "pluginUpgrader",
+          "type": "address"
+        }
+      ]
     }
   }
 }

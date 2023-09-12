@@ -23,8 +23,11 @@ contract MainVotingPluginSetup is PluginSetup {
         bytes memory _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
         // Decode incoming params
-        (MajorityVotingBase.VotingSettings memory _votingSettings, address _initialEditor) = abi
-            .decode(_data, (MajorityVotingBase.VotingSettings, address));
+        (
+            MajorityVotingBase.VotingSettings memory _votingSettings,
+            address _initialEditor,
+            address _pluginUpgrader
+        ) = abi.decode(_data, (MajorityVotingBase.VotingSettings, address, address));
 
         // Deploy new plugin instance
         plugin = createERC1967Proxy(
@@ -38,7 +41,9 @@ contract MainVotingPluginSetup is PluginSetup {
         );
 
         PermissionLib.MultiTargetPermission[]
-            memory permissions = new PermissionLib.MultiTargetPermission[](4);
+            memory permissions = new PermissionLib.MultiTargetPermission[](
+                _pluginUpgrader == address(0x0) ? 4 : 5
+            );
 
         // The plugin can execute on the DAO
         permissions[0] = PermissionLib.MultiTargetPermission({
@@ -73,6 +78,16 @@ contract MainVotingPluginSetup is PluginSetup {
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
         });
+        // _pluginUpgrader can upgrade the plugin
+        if (_pluginUpgrader != address(0x0)) {
+            permissions[4] = PermissionLib.MultiTargetPermission({
+                operation: PermissionLib.Operation.Grant,
+                where: plugin,
+                who: _pluginUpgrader,
+                condition: PermissionLib.NO_CONDITION,
+                permissionId: MainVotingPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
+            });
+        }
 
         preparedSetupData.permissions = permissions;
     }
@@ -82,7 +97,12 @@ contract MainVotingPluginSetup is PluginSetup {
         address _dao,
         SetupPayload calldata _payload
     ) external view returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
-        permissionChanges = new PermissionLib.MultiTargetPermission[](4);
+        // Decode incoming params
+        address _pluginUpgrader = abi.decode(_payload.data, (address));
+
+        permissionChanges = new PermissionLib.MultiTargetPermission[](
+            _pluginUpgrader == address(0x0) ? 4 : 5
+        );
 
         // The plugin can no longer execute on the DAO
         permissionChanges[0] = PermissionLib.MultiTargetPermission({
@@ -117,6 +137,16 @@ contract MainVotingPluginSetup is PluginSetup {
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
         });
+        // pluginUpgrader can no longer upgrade the plugin
+        if (_pluginUpgrader != address(0x0)) {
+            permissionChanges[4] = PermissionLib.MultiTargetPermission({
+                operation: PermissionLib.Operation.Revoke,
+                where: _payload.plugin,
+                who: _pluginUpgrader,
+                condition: PermissionLib.NO_CONDITION,
+                permissionId: MainVotingPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
+            });
+        }
     }
 
     /// @inheritdoc IPluginSetup

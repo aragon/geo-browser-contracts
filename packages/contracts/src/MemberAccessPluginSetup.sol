@@ -22,10 +22,10 @@ contract MemberAccessPluginSetup is PluginSetup {
         address _dao,
         bytes memory _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
-        MemberAccessPlugin.MultisigSettings memory _multisigSettings = abi.decode(
-            _data,
-            (MemberAccessPlugin.MultisigSettings)
-        );
+        (
+            MemberAccessPlugin.MultisigSettings memory _multisigSettings,
+            address _pluginUpgrader
+        ) = abi.decode(_data, (MemberAccessPlugin.MultisigSettings, address));
 
         plugin = createERC1967Proxy(
             pluginImplementation,
@@ -38,7 +38,9 @@ contract MemberAccessPluginSetup is PluginSetup {
         );
 
         PermissionLib.MultiTargetPermission[]
-            memory permissions = new PermissionLib.MultiTargetPermission[](3);
+            memory permissions = new PermissionLib.MultiTargetPermission[](
+                _pluginUpgrader == address(0x0) ? 3 : 4
+            );
 
         // The plugin needs to execute on the DAO
         permissions[0] = PermissionLib.MultiTargetPermission({
@@ -68,6 +70,18 @@ contract MemberAccessPluginSetup is PluginSetup {
             permissionId: MemberAccessPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
         });
 
+        // pluginUpgrader needs to be able to upgrade the plugin
+        if (_pluginUpgrader != address(0x0)) {
+            permissions[3] = PermissionLib.MultiTargetPermission({
+                operation: PermissionLib.Operation.Grant,
+                where: plugin,
+                who: _pluginUpgrader,
+                condition: PermissionLib.NO_CONDITION,
+                permissionId: MemberAccessPlugin(pluginImplementation)
+                    .UPGRADE_PLUGIN_PERMISSION_ID()
+            });
+        }
+
         preparedSetupData.permissions = permissions;
     }
 
@@ -76,7 +90,12 @@ contract MemberAccessPluginSetup is PluginSetup {
         address _dao,
         SetupPayload calldata _payload
     ) external view returns (PermissionLib.MultiTargetPermission[] memory permissions) {
-        permissions = new PermissionLib.MultiTargetPermission[](3);
+        // Decode incoming params
+        address _pluginUpgrader = abi.decode(_payload.data, (address));
+
+        permissions = new PermissionLib.MultiTargetPermission[](
+            _pluginUpgrader == address(0x0) ? 3 : 4
+        );
 
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
@@ -100,6 +119,16 @@ contract MemberAccessPluginSetup is PluginSetup {
             condition: PermissionLib.NO_CONDITION,
             permissionId: MemberAccessPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
         });
+        if (_pluginUpgrader != address(0x0)) {
+            permissions[3] = PermissionLib.MultiTargetPermission({
+                operation: PermissionLib.Operation.Revoke,
+                where: _payload.plugin,
+                who: _pluginUpgrader,
+                condition: PermissionLib.NO_CONDITION,
+                permissionId: MemberAccessPlugin(pluginImplementation)
+                    .UPGRADE_PLUGIN_PERMISSION_ID()
+            });
+        }
     }
 
     /// @inheritdoc IPluginSetup

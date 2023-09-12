@@ -22,13 +22,24 @@
           "name": "_multisigSettings",
           "type": "tuple",
           "description": "The settings of the multisig approval logic"
+        },
+        {
+          "internalType": "address",
+          "name": "pluginUpgrader",
+          "type": "address"
         }
       ]
     },
     "prepareUpdate": {},
     "prepareUninstallation": {
       "description": "The information required for the uninstallation of build 1.",
-      "inputs": []
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "pluginUpgrader",
+          "type": "address"
+        }
+      ]
     }
   }
 }
