@@ -1,9 +1,9 @@
 import spaceBuildMetadata from "./src/space-build-metadata.json";
 import spaceReleaseMetadata from "./src/space-release-metadata.json";
-import personalSpaceBuildMetadata from "./src/personal-space-voting-build-metadata.json";
-import personalSpaceReleaseMetadata from "./src/personal-space-voting-release-metadata.json";
-import memberAccessVotingBuildMetadata from "./src/member-access-voting-build-metadata.json";
-import memberAccessVotingReleaseMetadata from "./src/member-access-voting-release-metadata.json";
+import personalSpaceAdminBuildMetadata from "./src/personal-space-admin-build-metadata.json";
+import personalSpaceAdminReleaseMetadata from "./src/personal-space-admin-release-metadata.json";
+import memberAccessBuildMetadata from "./src/member-access-build-metadata.json";
+import memberAccessReleaseMetadata from "./src/member-access-release-metadata.json";
 import mainVotingBuildMetadata from "./src/main-voting-build-metadata.json";
 import mainVotingReleaseMetadata from "./src/main-voting-release-metadata.json";
 
@@ -21,17 +21,17 @@ export const SpacePluginSetupParams: PluginSetupParams = {
   },
 };
 
-export const PersonalSpaceVotingPluginSetupParams: PluginSetupParams = {
+export const PersonalSpaceAdminPluginSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: "geo-browser-personal-voting",
-  PLUGIN_CONTRACT_NAME: "PersonalSpaceVotingPlugin",
-  PLUGIN_SETUP_CONTRACT_NAME: "PersonalSpaceVotingPluginSetup",
+  PLUGIN_CONTRACT_NAME: "PersonalSpaceAdminPlugin",
+  PLUGIN_SETUP_CONTRACT_NAME: "PersonalSpaceAdminPluginSetup",
   VERSION: {
     release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
     build: 1, // Increment this number if non-breaking/compatible changes were made. Updates to newer builds are possible.
   },
   METADATA: {
-    build: personalSpaceBuildMetadata,
-    release: personalSpaceReleaseMetadata,
+    build: personalSpaceAdminBuildMetadata,
+    release: personalSpaceAdminReleaseMetadata,
   },
 };
 
@@ -44,8 +44,8 @@ export const MemberAccessPluginSetupParams: PluginSetupParams = {
     build: 1, // Increment this number if non-breaking/compatible changes were made. Updates to newer builds are possible.
   },
   METADATA: {
-    build: memberAccessVotingBuildMetadata,
-    release: memberAccessVotingReleaseMetadata,
+    build: memberAccessBuildMetadata,
+    release: memberAccessReleaseMetadata,
   },
 };
 

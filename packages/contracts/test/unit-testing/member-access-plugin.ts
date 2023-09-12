@@ -4,8 +4,8 @@ import {
   IDAO,
   MainVotingPlugin,
   MainVotingPlugin__factory,
-  MemberAccessVotingPlugin,
-  MemberAccessVotingPlugin__factory,
+  MemberAccessPlugin,
+  MemberAccessPlugin__factory,
   PermissionManager__factory,
   SpacePlugin,
   SpacePlugin__factory,
@@ -30,7 +30,7 @@ import {
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { ProposalCreatedEvent } from "../../typechain/src/MemberAccessVotingPlugin";
+import { ProposalCreatedEvent } from "../../typechain/src/MemberAccessPlugin";
 import { DAO__factory } from "@aragon/osx-ethers";
 import { defaultMainVotingSettings } from "./common";
 import { BigNumber } from "ethers";
@@ -40,13 +40,13 @@ export const defaultInitData: InitData = {
   contentUri: "ipfs://",
 };
 
-describe("Default Member Access plugin", function () {
+describe("Member Access Plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
   let debbie: SignerWithAddress;
   let dao: DAO;
-  let memberAccessPlugin: MemberAccessVotingPlugin;
+  let memberAccessPlugin: MemberAccessPlugin;
   let mainVotingPlugin: MainVotingPlugin;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -59,8 +59,8 @@ describe("Default Member Access plugin", function () {
   });
 
   beforeEach(async () => {
-    memberAccessPlugin = await deployWithProxy<MemberAccessVotingPlugin>(
-      new MemberAccessVotingPlugin__factory(alice),
+    memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
+      new MemberAccessPlugin__factory(alice),
     );
     mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
       new MainVotingPlugin__factory(alice),
@@ -151,8 +151,8 @@ describe("Default Member Access plugin", function () {
 
     it("Fails to initialize with an incompatible main voting plugin", async () => {
       // ok
-      memberAccessPlugin = await deployWithProxy<MemberAccessVotingPlugin>(
-        new MemberAccessVotingPlugin__factory(alice),
+      memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
+        new MemberAccessPlugin__factory(alice),
       );
       await expect(
         memberAccessPlugin.initialize(dao.address, {
@@ -162,8 +162,8 @@ describe("Default Member Access plugin", function () {
       ).to.not.be.reverted;
 
       // not ok
-      memberAccessPlugin = await deployWithProxy<MemberAccessVotingPlugin>(
-        new MemberAccessVotingPlugin__factory(alice),
+      memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
+        new MemberAccessPlugin__factory(alice),
       );
       await expect(
         memberAccessPlugin.initialize(dao.address, {
@@ -173,8 +173,8 @@ describe("Default Member Access plugin", function () {
       ).to.be.reverted;
 
       // not ok
-      memberAccessPlugin = await deployWithProxy<MemberAccessVotingPlugin>(
-        new MemberAccessVotingPlugin__factory(alice),
+      memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
+        new MemberAccessPlugin__factory(alice),
       );
       await expect(
         memberAccessPlugin.initialize(dao.address, {
@@ -1226,7 +1226,7 @@ describe("Default Member Access plugin", function () {
         {
           to: memberAccessPlugin.address,
           value: 0,
-          data: MemberAccessVotingPlugin__factory.createInterface()
+          data: MemberAccessPlugin__factory.createInterface()
             .encodeFunctionData("updateMultisigSettings", [{
               proposalDuration: 60 * 60 * 24 * 5,
               mainVotingPlugin: targetAddr,
@@ -1316,7 +1316,7 @@ describe("Default Member Access plugin", function () {
       {
         to: memberAccessPlugin.address,
         value: 0,
-        data: MemberAccessVotingPlugin__factory.createInterface()
+        data: MemberAccessPlugin__factory.createInterface()
           .encodeFunctionData("updateMultisigSettings", [{
             proposalDuration: 60 * 60 * 24 * 5,
             mainVotingPlugin: mainVotingPlugin.address,
@@ -1359,7 +1359,7 @@ describe("Default Member Access plugin", function () {
       {
         to: memberAccessPlugin.address,
         value: 0,
-        data: MemberAccessVotingPlugin__factory.createInterface()
+        data: MemberAccessPlugin__factory.createInterface()
           .encodeFunctionData("upgradeTo", [
             await memberAccessPlugin.implementation(),
           ]),
@@ -1367,7 +1367,7 @@ describe("Default Member Access plugin", function () {
       {
         to: memberAccessPlugin.address,
         value: 0,
-        data: MemberAccessVotingPlugin__factory.createInterface()
+        data: MemberAccessPlugin__factory.createInterface()
           .encodeFunctionData("supportsInterface", [
             "0x12345678",
           ]),

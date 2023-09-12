@@ -1,16 +1,15 @@
 import {
   DAO__factory,
-  IMembership__factory,
   IPlugin__factory,
   IProposal__factory,
 } from "@aragon/osx-ethers";
 import {
   DAO,
   IERC165Upgradeable__factory,
-  PersonalSpaceVotingCloneFactory,
-  PersonalSpaceVotingCloneFactory__factory,
-  PersonalSpaceVotingPlugin,
-  PersonalSpaceVotingPlugin__factory,
+  PersonalSpaceAdminCloneFactory,
+  PersonalSpaceAdminCloneFactory__factory,
+  PersonalSpaceAdminPlugin,
+  PersonalSpaceAdminPlugin__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from "../../typechain";
@@ -22,7 +21,9 @@ import {
 } from "../../utils/helpers";
 import { deployTestDao } from "../helpers/test-dao";
 import {
+  ADDRESS_ONE,
   ADDRESS_TWO,
+  ADDRESS_ZERO,
   CONTENT_PERMISSION_ID,
   EDITOR_PERMISSION_ID,
   EXECUTE_PERMISSION_ID,
@@ -33,7 +34,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { getInterfaceID } from "../../utils/interfaces";
-import { ProposalCreatedEvent } from "../../typechain/src/PersonalSpaceVotingPlugin";
+import { ProposalCreatedEvent } from "../../typechain/src/PersonalSpaceAdminPlugin";
 import { ExecutedEvent } from "../../typechain/@aragon/osx/core/dao/IDAO";
 
 export type InitData = { contentUri: string };
@@ -45,13 +46,13 @@ export const psvpInterface = new ethers.utils.Interface([
   "function executeProposal(bytes,tuple(address,uint256,bytes)[],uint256)",
 ]);
 
-describe("Personal Geo Browser Space", function () {
+describe("Personal Space Admin Plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
   let dao: DAO;
-  let personalSpaceVotingPlugin: PersonalSpaceVotingPlugin;
-  let personalSpaceVotingCloneFactory: PersonalSpaceVotingCloneFactory;
+  let personalSpaceVotingPlugin: PersonalSpaceAdminPlugin;
+  let personalSpaceVotingCloneFactory: PersonalSpaceAdminCloneFactory;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
   let dummyActions: any;
@@ -73,9 +74,9 @@ describe("Personal Geo Browser Space", function () {
       ethers.utils.toUtf8Bytes("0x123456789"),
     );
 
-    const PersonalSpaceVotingCloneFactory =
-      new PersonalSpaceVotingCloneFactory__factory(alice);
-    personalSpaceVotingCloneFactory = await PersonalSpaceVotingCloneFactory
+    const PersonalSpaceAdminCloneFactory =
+      new PersonalSpaceAdminCloneFactory__factory(alice);
+    personalSpaceVotingCloneFactory = await PersonalSpaceAdminCloneFactory
       .deploy();
   });
 
@@ -87,7 +88,7 @@ describe("Personal Geo Browser Space", function () {
     await spacePlugin.initialize(dao.address, defaultInput.contentUri);
 
     // Personal Space Voting
-    const PersonalSpaceVotingFactory = new PersonalSpaceVotingPlugin__factory(
+    const PersonalSpaceVotingFactory = new PersonalSpaceAdminPlugin__factory(
       alice,
     );
     const nonce = await ethers.provider.getTransactionCount(
@@ -141,7 +142,7 @@ describe("Personal Geo Browser Space", function () {
   describe("initialize: ", async () => {
     it("reverts if trying to re-initialize", async () => {
       // recreate
-      const PersonalSpaceVotingFactory = new PersonalSpaceVotingPlugin__factory(
+      const PersonalSpaceVotingFactory = new PersonalSpaceAdminPlugin__factory(
         alice,
       );
       const nonce = await ethers.provider.getTransactionCount(
@@ -161,42 +162,6 @@ describe("Personal Geo Browser Space", function () {
       await expect(initializePSVPlugin()).to.be.revertedWith(
         "Initializable: contract is already initialized",
       );
-    });
-
-    it("emits the `MembershipContractAnnounced` event and returns the admin as a member afterwards", async () => {
-      // recreate
-      const PersonalSpaceVotingFactory = new PersonalSpaceVotingPlugin__factory(
-        alice,
-      );
-      const nonce = await ethers.provider.getTransactionCount(
-        personalSpaceVotingCloneFactory.address,
-      );
-      const anticipatedPluginAddress = ethers.utils.getContractAddress({
-        from: personalSpaceVotingCloneFactory.address,
-        nonce,
-      });
-      await personalSpaceVotingCloneFactory.deployClone();
-      personalSpaceVotingPlugin = PersonalSpaceVotingFactory.attach(
-        anticipatedPluginAddress,
-      );
-
-      await expect(personalSpaceVotingPlugin.initialize(dao.address))
-        .to.emit(
-          personalSpaceVotingPlugin,
-          "MembershipContractAnnounced",
-        )
-        .withArgs(dao.address);
-
-      await dao.grant(
-        personalSpaceVotingPlugin.address,
-        alice.address,
-        EDITOR_PERMISSION_ID,
-      );
-
-      expect(await personalSpaceVotingPlugin.isMember(alice.address)).to.be
-        .true; // signer[0] has `EDITOR_PERMISSION_ID`
-      expect(await personalSpaceVotingPlugin.isMember(bob.address)).to.be
-        .false; // signer[1] does not
     });
   });
 
@@ -233,15 +198,6 @@ describe("Personal Geo Browser Space", function () {
       ).to.be.true;
     });
 
-    it("supports the `IMembership` interface", async () => {
-      const iface = IMembership__factory.createInterface();
-      expect(
-        await personalSpaceVotingPlugin.supportsInterface(
-          getInterfaceID(iface),
-        ),
-      ).to.be.true;
-    });
-
     it("supports the `Admin` interface", async () => {
       expect(
         await personalSpaceVotingPlugin.supportsInterface(
@@ -250,6 +206,28 @@ describe("Personal Geo Browser Space", function () {
       ).to
         .be.true;
     });
+  });
+
+  it("isEditor() returns true when appropriate", async () => {
+    expect(await personalSpaceVotingPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
+    expect(await personalSpaceVotingPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
+    expect(await personalSpaceVotingPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
+
+    expect(await personalSpaceVotingPlugin.isEditor(alice.address)).to.eq(true);
+    expect(await personalSpaceVotingPlugin.isEditor(bob.address)).to.eq(false);
+    expect(await personalSpaceVotingPlugin.isEditor(charlie.address)).to.eq(
+      false,
+    );
+
+    await dao.grant(
+      personalSpaceVotingPlugin.address,
+      charlie.address,
+      EDITOR_PERMISSION_ID,
+    );
+
+    expect(await personalSpaceVotingPlugin.isEditor(charlie.address)).to.eq(
+      true,
+    );
   });
 
   describe("execute proposal: ", async () => {

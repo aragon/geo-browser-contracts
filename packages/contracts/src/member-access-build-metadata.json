@@ -18,7 +18,7 @@
               "type": "address"
             }
           ],
-          "internalType": "struct MemberAccessVotingPlugin.MultisigSettings",
+          "internalType": "struct MemberAccessPlugin.MultisigSettings",
           "name": "_multisigSettings",
           "type": "tuple",
           "description": "The settings of the multisig approval logic"

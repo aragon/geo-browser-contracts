@@ -25,7 +25,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("MainVotingPlugin Setup", function () {
+describe("Main Voting Plugin Setup", function () {
   let alice: SignerWithAddress;
   let mainVotingPluginSetup: MainVotingPluginSetup;
   let dao: DAO;

@@ -5,7 +5,7 @@ pragma solidity ^0.8.8;
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
-import {MemberAccessVotingPlugin} from "./MemberAccessVotingPlugin.sol";
+import {MemberAccessPlugin} from "./MemberAccessPlugin.sol";
 import {MemberAccessExecuteCondition} from "./MemberAccessExecuteCondition.sol";
 
 /// @title MemberAccessPluginSetup
@@ -14,7 +14,7 @@ contract MemberAccessPluginSetup is PluginSetup {
     address private immutable pluginImplementation;
 
     constructor() {
-        pluginImplementation = address(new MemberAccessVotingPlugin());
+        pluginImplementation = address(new MemberAccessPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -22,18 +22,14 @@ contract MemberAccessPluginSetup is PluginSetup {
         address _dao,
         bytes memory _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
-        MemberAccessVotingPlugin.MultisigSettings memory _multisigSettings = abi.decode(
+        MemberAccessPlugin.MultisigSettings memory _multisigSettings = abi.decode(
             _data,
-            (MemberAccessVotingPlugin.MultisigSettings)
+            (MemberAccessPlugin.MultisigSettings)
         );
 
         plugin = createERC1967Proxy(
             pluginImplementation,
-            abi.encodeWithSelector(
-                MemberAccessVotingPlugin.initialize.selector,
-                _dao,
-                _multisigSettings
-            )
+            abi.encodeWithSelector(MemberAccessPlugin.initialize.selector, _dao, _multisigSettings)
         );
 
         // Condition contract
@@ -59,7 +55,7 @@ contract MemberAccessPluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: MemberAccessVotingPlugin(pluginImplementation)
+            permissionId: MemberAccessPlugin(pluginImplementation)
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
 
@@ -69,8 +65,7 @@ contract MemberAccessPluginSetup is PluginSetup {
             where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: MemberAccessVotingPlugin(pluginImplementation)
-                .UPGRADE_PLUGIN_PERMISSION_ID()
+            permissionId: MemberAccessPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
         });
 
         preparedSetupData.permissions = permissions;
@@ -95,7 +90,7 @@ contract MemberAccessPluginSetup is PluginSetup {
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: MemberAccessVotingPlugin(pluginImplementation)
+            permissionId: MemberAccessPlugin(pluginImplementation)
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
         permissions[2] = PermissionLib.MultiTargetPermission({
@@ -103,8 +98,7 @@ contract MemberAccessPluginSetup is PluginSetup {
             where: _payload.plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: MemberAccessVotingPlugin(pluginImplementation)
-                .UPGRADE_PLUGIN_PERMISSION_ID()
+            permissionId: MemberAccessPlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
         });
     }
 

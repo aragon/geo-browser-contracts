@@ -19,7 +19,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("SpacePlugin Setup", function () {
+describe("Space Plugin Setup", function () {
   let alice: SignerWithAddress;
   let spacePluginSetup: SpacePluginSetup;
   let SpacePluginSetup: SpacePluginSetup__factory;

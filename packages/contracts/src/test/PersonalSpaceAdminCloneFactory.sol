@@ -4,15 +4,15 @@ pragma solidity 0.8.17;
 
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import {PersonalSpaceVotingPlugin} from "../PersonalSpaceVotingPlugin.sol";
+import {PersonalSpaceAdminPlugin} from "../PersonalSpaceAdminPlugin.sol";
 
-contract PersonalSpaceVotingCloneFactory {
+contract PersonalSpaceAdminCloneFactory {
     using Clones for address;
 
     address private immutable implementation;
 
     constructor() {
-        implementation = address(new PersonalSpaceVotingPlugin());
+        implementation = address(new PersonalSpaceAdminPlugin());
     }
 
     function deployClone() external returns (address clone) {

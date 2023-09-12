@@ -4,8 +4,8 @@ import {
   IDAO,
   MainVotingPlugin,
   MainVotingPlugin__factory,
-  MemberAccessVotingPlugin,
-  MemberAccessVotingPlugin__factory,
+  MemberAccessPlugin,
+  MemberAccessPlugin__factory,
   PermissionManager__factory,
   SpacePlugin,
   SpacePlugin__factory,
@@ -52,14 +52,14 @@ import { ExecutedEvent } from "../../typechain/@aragon/osx/core/dao/DAO";
 
 type InitData = { contentUri: string };
 
-describe("Main Voting plugin (default)", function () {
+describe("Main Voting Plugin", function () {
   let signers: SignerWithAddress[];
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
   let debbie: SignerWithAddress;
   let dao: DAO;
-  let memberAccessPlugin: MemberAccessVotingPlugin;
+  let memberAccessPlugin: MemberAccessPlugin;
   let mainVotingPlugin: MainVotingPlugin;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -73,8 +73,8 @@ describe("Main Voting plugin (default)", function () {
   });
 
   beforeEach(async () => {
-    memberAccessPlugin = await deployWithProxy<MemberAccessVotingPlugin>(
-      new MemberAccessVotingPlugin__factory(alice),
+    memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
+      new MemberAccessPlugin__factory(alice),
     );
     mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
       new MainVotingPlugin__factory(alice),

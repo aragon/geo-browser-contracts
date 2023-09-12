@@ -2,12 +2,12 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import {
-  PersonalSpaceVotingPlugin__factory,
-  PersonalSpaceVotingPluginSetup,
-  PersonalSpaceVotingPluginSetup__factory,
+  PersonalSpaceAdminPlugin__factory,
+  PersonalSpaceAdminPluginSetup,
+  PersonalSpaceAdminPluginSetup__factory,
 } from "../../typechain";
-import metadata from "../../src/personal-space-voting-build-metadata.json";
-import { psvpInterface } from "./personal-space-governance";
+import metadata from "../../src/personal-space-admin-build-metadata.json";
+import { psvpInterface } from "./personal-space-admin-plugin";
 import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
 import { deployTestDao } from "../helpers/test-dao";
 import { getInterfaceID } from "../../utils/interfaces";
@@ -22,10 +22,10 @@ const EDITOR_PERMISSION_ID = ethers.utils.id(
 );
 const EXECUTE_PERMISSION_ID = ethers.utils.id("EXECUTE_PERMISSION");
 
-describe("Personal Space Voting Plugin Setup", function () {
+describe("Personal Space Admin Plugin Setup", function () {
   let ownerAddress: string;
   let signers: any;
-  let adminSetup: PersonalSpaceVotingPluginSetup;
+  let adminSetup: PersonalSpaceAdminPluginSetup;
   let implementationAddress: string;
   let targetDao: any;
   let minimum_data: any;
@@ -42,9 +42,9 @@ describe("Personal Space Voting Plugin Setup", function () {
       [ownerAddress],
     );
 
-    const PersonalSpaceVotingPluginSetup =
-      new PersonalSpaceVotingPluginSetup__factory(signers[0]);
-    adminSetup = await PersonalSpaceVotingPluginSetup.deploy();
+    const PersonalSpaceAdminPluginSetup =
+      new PersonalSpaceAdminPluginSetup__factory(signers[0]);
+    adminSetup = await PersonalSpaceAdminPluginSetup.deploy();
 
     implementationAddress = await adminSetup.implementation();
   });
@@ -54,7 +54,7 @@ describe("Personal Space Voting Plugin Setup", function () {
   });
 
   it("creates admin address base with the correct interface", async () => {
-    const factory = new PersonalSpaceVotingPlugin__factory(signers[0]);
+    const factory = new PersonalSpaceAdminPlugin__factory(signers[0]);
     const adminAddressContract = factory.attach(implementationAddress);
 
     expect(
@@ -151,7 +151,7 @@ describe("Personal Space Voting Plugin Setup", function () {
 
       await adminSetup.prepareInstallation(daoAddress, minimum_data);
 
-      const factory = new PersonalSpaceVotingPlugin__factory(signers[0]);
+      const factory = new PersonalSpaceAdminPlugin__factory(signers[0]);
       const adminAddressContract = factory.attach(anticipatedPluginAddress);
 
       expect(await adminAddressContract.dao()).to.be.equal(daoAddress);

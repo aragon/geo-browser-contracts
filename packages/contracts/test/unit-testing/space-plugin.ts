@@ -15,7 +15,7 @@ export const defaultInitData: InitData = {
   contentUri: "ipfs://",
 };
 
-describe("SpacePlugin", function () {
+describe("Space Plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;

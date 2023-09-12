@@ -1,16 +1,16 @@
 import {
   MainVotingPluginSetupParams,
   MemberAccessPluginSetupParams,
-  PersonalSpaceVotingPluginSetupParams,
+  PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from "../../plugin-setup-params";
 import {
   MainVotingPlugin__factory,
   MainVotingPluginSetup__factory,
+  MemberAccessPlugin__factory,
   MemberAccessPluginSetup__factory,
-  MemberAccessVotingPlugin__factory,
-  PersonalSpaceVotingPlugin__factory,
-  PersonalSpaceVotingPluginSetup__factory,
+  PersonalSpaceAdminPlugin__factory,
+  PersonalSpaceAdminPluginSetup__factory,
   SpacePlugin__factory,
   SpacePluginSetup__factory,
 } from "../../typechain";
@@ -68,17 +68,17 @@ async function concludePersonalSpaceVotingSetup(
   const [deployer] = await hre.ethers.getSigners();
 
   console.log(
-    `Concluding ${PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
+    `Concluding ${PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`,
   );
 
   const setupDeployment = await deployments.get(
-    PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+    PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   );
-  const setup = PersonalSpaceVotingPluginSetup__factory.connect(
+  const setup = PersonalSpaceAdminPluginSetup__factory.connect(
     setupDeployment.address,
     deployer,
   );
-  const implementation = PersonalSpaceVotingPlugin__factory.connect(
+  const implementation = PersonalSpaceAdminPlugin__factory.connect(
     await setup.implementation(),
     deployer,
   );
@@ -116,7 +116,7 @@ async function concludeMemberAccessVotingSetup(
     setupDeployment.address,
     deployer,
   );
-  const implementation = MemberAccessVotingPlugin__factory.connect(
+  const implementation = MemberAccessPlugin__factory.connect(
     await setup.implementation(),
     deployer,
   );
@@ -178,7 +178,7 @@ async function concludeMainVotingSetup(
 export default func;
 func.tags = [
   SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   "Verification",

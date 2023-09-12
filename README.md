@@ -27,12 +27,12 @@ Default governance plugin for spaces, where all proposals are voted by editors.
 - SpaceVotingPlugin
 - SpaceVotingPlugin
 
-### PersonalSpaceVotingPlugin
+### PersonalSpaceAdminPlugin
 
 Governance plugin providing the default implementation for personal spaces, where addresses with editor permissioin can apply proposals right away.
 
-- PersonalSpaceVotingPlugin
-- PersonalSpaceVotingPlugin
+- PersonalSpaceAdminPlugin
+- PersonalSpaceAdminPlugin
 
 ## DO's and DONT's
 

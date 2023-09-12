@@ -1,7 +1,7 @@
 import {
   MainVotingPluginSetupParams,
   MemberAccessPluginSetupParams,
-  PersonalSpaceVotingPluginSetupParams,
+  PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from "../../plugin-setup-params";
 import {
@@ -20,7 +20,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
   return deployRepo(hre, SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME)
     .then(() =>
-      deployRepo(hre, PersonalSpaceVotingPluginSetupParams.PLUGIN_REPO_ENS_NAME)
+      deployRepo(hre, PersonalSpaceAdminPluginSetupParams.PLUGIN_REPO_ENS_NAME)
     )
     .then(() =>
       deployRepo(hre, MemberAccessPluginSetupParams.PLUGIN_REPO_ENS_NAME)

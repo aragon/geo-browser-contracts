@@ -1,11 +1,11 @@
-import buildMetadata from "../../src/member-access-voting-build-metadata.json";
+import buildMetadata from "../../src/member-access-build-metadata.json";
 import {
   DAO,
   MainVotingPlugin,
   MainVotingPlugin__factory,
+  MemberAccessPlugin__factory,
   MemberAccessPluginSetup,
   MemberAccessPluginSetup__factory,
-  MemberAccessVotingPlugin__factory,
 } from "../../typechain";
 import { deployWithProxy } from "../../utils/helpers";
 import { deployTestDao } from "../helpers/test-dao";
@@ -24,7 +24,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("MemberAccessVotingPlugin Setup", function () {
+describe("Member Access Plugin Setup", function () {
   let alice: SignerWithAddress;
   let memberAccessPluginSetup: MemberAccessPluginSetup;
   let mainVotingPlugin: MainVotingPlugin;
@@ -119,7 +119,7 @@ describe("MemberAccessVotingPlugin Setup", function () {
       ]);
 
       await memberAccessPluginSetup.prepareInstallation(dao.address, initData);
-      const myPlugin = new MemberAccessVotingPlugin__factory(alice).attach(
+      const myPlugin = new MemberAccessPlugin__factory(alice).attach(
         plugin,
       );
 

@@ -12,14 +12,14 @@ import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
 import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
 import {MEMBER_PERMISSION_ID, EDITOR_PERMISSION_ID} from "./constants.sol";
 
-bytes4 constant MULTISIG_INTERFACE_ID = MemberAccessVotingPlugin.initialize.selector ^
-    MemberAccessVotingPlugin.updateMultisigSettings.selector ^
-    MemberAccessVotingPlugin.getProposal.selector;
+bytes4 constant MULTISIG_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
+    MemberAccessPlugin.updateMultisigSettings.selector ^
+    MemberAccessPlugin.getProposal.selector;
 
 /// @title Multisig - Release 1, Build 1
 /// @author Aragon Association - 2022-2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
-contract MemberAccessVotingPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
+contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.

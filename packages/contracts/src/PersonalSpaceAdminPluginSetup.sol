@@ -8,25 +8,25 @@ import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/Plug
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
-import {PersonalSpaceVotingPlugin} from "./PersonalSpaceVotingPlugin.sol";
+import {PersonalSpaceAdminPlugin} from "./PersonalSpaceAdminPlugin.sol";
 import {EDITOR_PERMISSION_ID} from "./constants.sol";
 
-/// @title PersonalSpaceVotingPluginSetup
+/// @title PersonalSpaceAdminPluginSetup
 /// @author Aragon Association - 2022-2023
-/// @notice The setup contract of the `PersonalSpaceVotingPlugin` plugin.
-contract PersonalSpaceVotingPluginSetup is PluginSetup {
+/// @notice The setup contract of the `PersonalSpaceAdminPlugin` plugin.
+contract PersonalSpaceAdminPluginSetup is PluginSetup {
     using Clones for address;
 
-    /// @notice The address of the `PersonalSpaceVotingPlugin` plugin logic contract to be cloned.
+    /// @notice The address of the `PersonalSpaceAdminPlugin` plugin logic contract to be cloned.
     address private immutable implementation_;
 
     /// @notice Thrown if the editor address is zero.
     /// @param editor The initial editor address.
     error EditorAddressInvalid(address editor);
 
-    /// @notice The constructor setting the `PersonalSpaceVotingPlugin` implementation contract to clone from.
+    /// @notice The constructor setting the `PersonalSpaceAdminPlugin` implementation contract to clone from.
     constructor() {
-        implementation_ = address(new PersonalSpaceVotingPlugin());
+        implementation_ = address(new PersonalSpaceAdminPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -34,7 +34,7 @@ contract PersonalSpaceVotingPluginSetup is PluginSetup {
         address _dao,
         bytes calldata _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
-        // Decode `_data` to extract the params needed for cloning and initializing the `PersonalSpaceVotingPlugin` plugin.
+        // Decode `_data` to extract the params needed for cloning and initializing the `PersonalSpaceAdminPlugin` plugin.
         address editor = abi.decode(_data, (address));
 
         if (editor == address(0)) {
@@ -45,7 +45,7 @@ contract PersonalSpaceVotingPluginSetup is PluginSetup {
         plugin = implementation_.clone();
 
         // Initialize cloned plugin contract.
-        PersonalSpaceVotingPlugin(plugin).initialize(IDAO(_dao));
+        PersonalSpaceAdminPlugin(plugin).initialize(IDAO(_dao));
 
         // Prepare permissions
         PermissionLib.MultiTargetPermission[]

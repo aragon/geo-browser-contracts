@@ -1,7 +1,7 @@
 import {
   MainVotingPluginSetupParams,
   MemberAccessPluginSetupParams,
-  PersonalSpaceVotingPluginSetupParams,
+  PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from "../../plugin-setup-params";
 import { DeployFunction } from "hardhat-deploy/types";
@@ -25,11 +25,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Space
   console.log(
-    `\nDeploying ${PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`,
+    `\nDeploying ${PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`,
   );
 
   await deploy(
-    PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+    PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
     {
       from: deployer,
       args: [],
@@ -63,7 +63,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 export default func;
 func.tags = [
   SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  PersonalSpaceVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   "Deployment",

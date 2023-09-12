@@ -1,12 +1,9 @@
 import {
   DAO,
   DAO__factory,
-  MainVotingPlugin,
-  MainVotingPlugin__factory,
   MemberAccessExecuteCondition,
   MemberAccessExecuteCondition__factory,
 } from "../../typechain";
-import { deployWithProxy } from "../../utils/helpers";
 import {
   ADDRESS_ONE,
   ADDRESS_TWO,
@@ -23,11 +20,10 @@ import { ethers } from "hardhat";
 import { deployTestDao } from "../helpers/test-dao";
 import { hexlify } from "@ethersproject/bytes";
 import { toUtf8Bytes } from "ethers/lib/utils";
-import { defaultMainVotingSettings } from "./common";
 
 const SOME_CONTRACT_ADDRESS = "0x" + "1234567890".repeat(4);
 
-describe("Member Access condition", function () {
+describe("Member Access Condition", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
