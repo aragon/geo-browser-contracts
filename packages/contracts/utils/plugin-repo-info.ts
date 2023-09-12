@@ -4,7 +4,7 @@ type PluginRepos = {
   [k: string]: PluginRepoInfo[];
 };
 export type PluginRepoInfo = {
-  name: string;
+  ensName: string;
   address: string;
   blockNumberOfDeployment: number;
   releases: { [k: string]: PluginRepoRelease };
@@ -41,7 +41,7 @@ function getFilePathFromNetwork(networkName: string): string {
 }
 
 export function getPluginRepoInfo(
-  repoName: string,
+  repoEnsName: string,
   networkName: string,
 ): PluginRepoInfo | null {
   const pluginReposFilePath = getFilePathFromNetwork(networkName);
@@ -59,7 +59,8 @@ export function getPluginRepoInfo(
   if (!pluginRepos[networkName]?.length) {
     return null;
   }
-  return pluginRepos[networkName].find((r) => r.name === repoName) || null;
+  return pluginRepos[networkName].find((r) => r.ensName === repoEnsName) ||
+    null;
 }
 
 function storePluginRepoInfo(
@@ -75,7 +76,7 @@ function storePluginRepoInfo(
     pluginRepos[networkName] = [];
   }
   const idx = pluginRepos[networkName].findIndex((r) =>
-    r.name === pluginRepoInfo.name
+    r.ensName === pluginRepoInfo.ensName
   );
   if (idx < 0) {
     pluginRepos[networkName].push(pluginRepoInfo);
@@ -90,20 +91,20 @@ function storePluginRepoInfo(
 }
 
 export function addDeployedRepo(
-  repoName: string,
+  repoEnsName: string,
   networkName: string,
   contractAddr: string,
   blockNumber: number,
 ) {
-  const pluginRepoInfo = getPluginRepoInfo(repoName, networkName);
+  const pluginRepoInfo = getPluginRepoInfo(repoEnsName, networkName);
   if (pluginRepoInfo !== null) {
     console.warn(
-      `Warning: Adding a deployed plugin repo over the existing ${repoName}`,
+      `Warning: Adding a deployed plugin repo over the existing ${repoEnsName}`,
     );
   }
 
   const newPluginRepoInfo: PluginRepoInfo = {
-    name: repoName,
+    ensName: repoEnsName,
     address: contractAddr,
     blockNumberOfDeployment: blockNumber,
     releases: {},
@@ -112,13 +113,13 @@ export function addDeployedRepo(
 }
 
 export function addDeployedVersion(
-  repoName: string,
+  repoEnsName: string,
   networkName: string,
   releaseMetadataURI: string,
   version: { release: number; build: number },
   pluginRepoBuild: PluginRepoBuild,
 ) {
-  const pluginRepoInfo = getPluginRepoInfo(repoName, networkName);
+  const pluginRepoInfo = getPluginRepoInfo(repoEnsName, networkName);
   if (!pluginRepoInfo) {
     throw new Error("The plugin repo info entry doesn't exist");
   }
@@ -139,7 +140,7 @@ export function addDeployedVersion(
 
   if (pluginRepoInfo.releases[version.release].builds[version.build]) {
     console.warn(
-      `Warning: Writing a build on top of the existing build ${version.build} or ${repoName}`,
+      `Warning: Writing a build on top of the existing build ${version.build} or ${repoEnsName}`,
     );
   }
   pluginRepoInfo.releases[version.release].builds[version.build] =

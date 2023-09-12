@@ -7,7 +7,8 @@ import {
   SpacePluginSetup__factory,
 } from "../../typechain";
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
-import { getPluginInfo, osxContracts } from "../../utils/helpers";
+import { osxContracts } from "../../utils/helpers";
+import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
 import { initializeFork } from "../helpers/fixture";
 import { installPLugin, uninstallPLugin } from "../helpers/setup";
 import { deployTestDao } from "../helpers/test-dao";
@@ -23,7 +24,7 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 
-describe("PluginSetup Processing", function () {
+describe("SpacePluginSetup Processing", function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -35,12 +36,13 @@ describe("PluginSetup Processing", function () {
 
     const hardhatForkNetwork = "goerli";
 
-    await initializeFork(
-      hardhatForkNetwork,
-      getPluginInfo(hardhatForkNetwork)[hardhatForkNetwork]["releases"]["1"][
-        "builds"
-      ]["1"]["blockNumberOfPublication"],
+    const pluginRepoInfo = getPluginRepoInfo(
+      SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME,
+      "hardhat",
     );
+    if (!pluginRepoInfo) {
+      throw new Error("The plugin setup details are not available");
+    }
 
     // PSP
     psp = PluginSetupProcessor__factory.connect(
@@ -73,7 +75,7 @@ describe("PluginSetup Processing", function () {
     );
 
     pluginRepo = PluginRepo__factory.connect(
-      getPluginInfo(hardhatForkNetwork)[hardhatForkNetwork].address,
+      pluginRepoInfo.address,
       alice,
     );
   });
