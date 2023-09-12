@@ -6,7 +6,6 @@ import {
   keccak256,
   LogDescription,
 } from "ethers/lib/utils";
-import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
 import { ethers } from "hardhat";
 import { upgrades } from "hardhat";
 
@@ -64,130 +63,6 @@ export function getPluginRepoFactoryAddress(networkName: string) {
   return pluginRepoFactoryAddr;
 }
 
-export function getPluginInfo(networkName: string): any {
-  let pluginInfoFilePath: string;
-  let pluginInfo: any = {};
-
-  if (["localhost", "hardhat", "coverage"].includes(networkName)) {
-    pluginInfoFilePath = "plugin-repo-info-dev.json";
-  } else {
-    pluginInfoFilePath = "plugin-repo-info.json";
-  }
-
-  if (
-    existsSync(pluginInfoFilePath) &&
-    statSync(pluginInfoFilePath).size !== 0
-  ) {
-    pluginInfo = JSON.parse(readFileSync(pluginInfoFilePath, "utf-8"));
-
-    if (!pluginInfo[networkName]) {
-      pluginInfo[networkName] = {};
-    }
-  } else {
-    pluginInfo[networkName] = {};
-  }
-  return pluginInfo;
-}
-
-function storePluginInfo(networkName: string, pluginInfo: any) {
-  if (["localhost", "hardhat", "coverage"].includes(networkName)) {
-    writeFileSync(
-      "plugin-repo-info-dev.json",
-      JSON.stringify(pluginInfo, null, 2) + "\n",
-    );
-  } else {
-    writeFileSync(
-      "plugin-repo-info.json",
-      JSON.stringify(pluginInfo, null, 2) + "\n",
-    );
-  }
-}
-
-export function addDeployedRepo(
-  networkName: string,
-  repoName: string,
-  contractAddr: string,
-  args: [],
-  blockNumber: number,
-) {
-  const pluginInfo = getPluginInfo(networkName);
-
-  pluginInfo[networkName]["repo"] = repoName;
-  pluginInfo[networkName]["address"] = contractAddr;
-  pluginInfo[networkName]["args"] = args;
-  pluginInfo[networkName]["blockNumberOfDeployment"] = blockNumber;
-
-  storePluginInfo(networkName, pluginInfo);
-}
-
-export function addCreatedVersion(
-  networkName: string,
-  version: { release: number; build: number },
-  metadataURIs: { release: string; build: string },
-  blockNumberOfPublication: number,
-  setup: {
-    name: string;
-    address: string;
-    args: [];
-    blockNumberOfDeployment: number;
-  },
-  implementation: {
-    name: string;
-    address: string;
-    args: [];
-    blockNumberOfDeployment: number;
-  },
-  helpers:
-    | [
-      {
-        name: string;
-        address: string;
-        args: [];
-        blockNumberOfDeployment: number;
-      },
-    ]
-    | [],
-) {
-  const pluginInfo = getPluginInfo(networkName);
-
-  // Releases can already exist
-  if (!pluginInfo[networkName]["releases"]) {
-    pluginInfo[networkName]["releases"] = {};
-  }
-  if (!pluginInfo[networkName]["releases"][version.release]) {
-    pluginInfo[networkName]["releases"][version.release] = {};
-    pluginInfo[networkName]["releases"][version.release]["builds"] = {};
-  }
-
-  // Update the releaseMetadataURI
-  pluginInfo[networkName]["releases"][version.release]["releaseMetadataURI"] =
-    metadataURIs.release;
-
-  pluginInfo[networkName]["releases"][`${version.release}`]["builds"][
-    `${version.build}`
-  ] = {};
-
-  pluginInfo[networkName]["releases"][`${version.release}`]["builds"][
-    `${version.build}`
-  ] = {
-    setup: setup,
-    implementation: implementation,
-    helpers: helpers,
-    buildMetadataURI: metadataURIs.build,
-    blockNumberOfPublication: blockNumberOfPublication,
-  };
-
-  storePluginInfo(networkName, pluginInfo);
-}
-
-export function toBytes(string: string) {
-  return ethers.utils.formatBytes32String(string);
-}
-
-export function hashHelpers(helpers: string[]) {
-  return keccak256(defaultAbiCoder.encode(["address[]"], [helpers]));
-}
-
 export async function findEvent<T>(tx: ContractTransaction, eventName: string) {
   const receipt = await tx.wait();
 
@@ -229,6 +104,14 @@ export async function deployWithProxy<T>(
     unsafeAllow: ["constructor"],
     constructorArgs: options.constructurArgs || [],
   }) as unknown as Promise<T>;
+}
+
+export function toBytes(string: string) {
+  return ethers.utils.formatBytes32String(string);
+}
+
+export function hashHelpers(helpers: string[]) {
+  return keccak256(defaultAbiCoder.encode(["address[]"], [helpers]));
 }
 
 export function toBytes32(num: number): string {

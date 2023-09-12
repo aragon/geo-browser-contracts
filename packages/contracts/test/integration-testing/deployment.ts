@@ -3,7 +3,14 @@ import {
   SpacePluginSetup,
   SpacePluginSetup__factory,
 } from "../../typechain";
-import { getPluginInfo, osxContracts } from "../../utils/helpers";
+import { osxContracts } from "../../utils/helpers";
+import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
+import {
+  MainVotingPluginSetupParams,
+  MemberAccessPluginSetupParams,
+  PersonalSpaceAdminPluginSetupParams,
+  SpacePluginSetupParams,
+} from "../../plugin-setup-params";
 import { toHex } from "../../utils/ipfs";
 import { PluginRepoRegistry__factory } from "@aragon/osx-ethers";
 import { PluginRepoRegistry } from "@aragon/osx-ethers";
@@ -22,10 +29,6 @@ describe("PluginRepo Deployment", function () {
   let pluginRepo: PluginRepo;
 
   before(async () => {
-    const hardhatForkNetwork = process.env.NETWORK_NAME
-      ? process.env.NETWORK_NAME
-      : "mainnet";
-
     [alice] = await ethers.getSigners();
 
     // Deployment should be empty
@@ -33,62 +36,117 @@ describe("PluginRepo Deployment", function () {
 
     // Deploy all contracts
     await deployAll();
-
-    // plugin repo registry
-    repoRegistry = PluginRepoRegistry__factory.connect(
-      osxContracts[hardhatForkNetwork]["PluginRepoRegistry"],
-      alice,
-    );
-
-    pluginRepo = PluginRepo__factory.connect(
-      getPluginInfo("hardhat")["hardhat"].address,
-      alice,
-    );
   });
 
-  it("creates the repo", async () => {
-    expect(await repoRegistry.entries(pluginRepo.address)).to.be.true;
-  });
+  const setups = [
+    MainVotingPluginSetupParams,
+    MemberAccessPluginSetupParams,
+    PersonalSpaceAdminPluginSetupParams,
+    SpacePluginSetupParams,
+  ];
 
-  it("makes the deployer the repo maintainer", async () => {
-    expect(
-      await pluginRepo.isGranted(
-        pluginRepo.address,
-        alice.address,
-        ethers.utils.id("ROOT_PERMISSION"),
-        ethers.constants.AddressZero,
-      ),
-    ).to.be.true;
+  setups.forEach((pluginSetupParams) => {
+    context(pluginSetupParams.PLUGIN_CONTRACT_NAME, () => {
+      before(() => {
+        const hardhatForkNetwork = process.env.NETWORK_NAME
+          ? process.env.NETWORK_NAME
+          : "mainnet";
 
-    expect(
-      await pluginRepo.isGranted(
-        pluginRepo.address,
-        alice.address,
-        ethers.utils.id("UPGRADE_REPO_PERMISSION"),
-        ethers.constants.AddressZero,
-      ),
-    ).to.be.true;
-  });
+        // plugin repo registry
+        repoRegistry = PluginRepoRegistry__factory.connect(
+          osxContracts[hardhatForkNetwork]["PluginRepoRegistry"],
+          alice,
+        );
 
-  context("SpacePluginSetup Publication", () => {
-    let setup: SpacePluginSetup;
-
-    before(async () => {
-      setup = SpacePluginSetup__factory.connect(
-        (await deployments.get("SpacePluginSetup")).address,
-        alice,
-      );
-    });
-    it("registerd the setup", async () => {
-      const results = await pluginRepo["getVersion((uint8,uint16))"]({
-        release: 1,
-        build: 1,
+        const pluginRepoInfo = getPluginRepoInfo(
+          pluginSetupParams.PLUGIN_REPO_ENS_NAME,
+          "hardhat",
+        );
+        if (!pluginRepoInfo) {
+          throw new Error(
+            `${pluginSetupParams.PLUGIN_CONTRACT_NAME}: Cannot find the deployment entry`,
+          );
+        }
+        pluginRepo = PluginRepo__factory.connect(
+          pluginRepoInfo.address,
+          alice,
+        );
       });
 
-      expect(results.pluginSetup).to.equal(setup.address);
-      expect(results.buildMetadata).to.equal(
-        toHex("ipfs://QmY919VZ9gkeF6L169qQo89ucsUB9ScTaJVbGn8vMGGHxr"),
-      );
+      it("creates the repo", async () => {
+        expect(await repoRegistry.entries(pluginRepo.address)).to.be.true;
+      });
+
+      it("makes the deployer the repo maintainer", async () => {
+        expect(
+          await pluginRepo.isGranted(
+            pluginRepo.address,
+            alice.address,
+            ethers.utils.id("ROOT_PERMISSION"),
+            ethers.constants.AddressZero,
+          ),
+        ).to.be.true;
+
+        expect(
+          await pluginRepo.isGranted(
+            pluginRepo.address,
+            alice.address,
+            ethers.utils.id("UPGRADE_REPO_PERMISSION"),
+            ethers.constants.AddressZero,
+          ),
+        ).to.be.true;
+      });
+
+      context("Publication", () => {
+        it("registerd the setup", async () => {
+          const results = await pluginRepo["getVersion((uint8,uint16))"](
+            pluginSetupParams.VERSION,
+          );
+
+          expect(results.pluginSetup).to.equal(
+            (await deployments.get(
+              pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+            )).address,
+          );
+
+          const receivedStriMetadata = Buffer.from(
+            results.buildMetadata.slice(2),
+            "hex",
+          ).toString();
+
+          switch (pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME) {
+            case SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
+              expect(receivedStriMetadata).to.equal(
+                "ipfs://QmXkXFPqU8hFPNMpVyctFXHpf32SsT4sbYN771kfVSqo5a",
+              );
+              break;
+
+            case PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
+              expect(receivedStriMetadata).to.equal(
+                "ipfs://QmYKrFvNmsEzZmtGGBfUJXzevR6YLk7a16VEAeuPDhwzCJ",
+              );
+              break;
+
+            case MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
+              expect(receivedStriMetadata).to.equal(
+                "ipfs://QmTsQDc7WfZcrYdZZoeZvQkvd4HhKS3YT1bsfCctb9aqDS",
+              );
+              break;
+
+            case MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
+              expect(receivedStriMetadata).to.equal(
+                "ipfs://QmfYayt4r2MczdVAv2SmAbAzndagg8Liw9pMoj8Ugga3ep",
+              );
+              break;
+
+            default:
+              throw new Error(
+                "Unexpected contract name: " +
+                  pluginSetupParams.PLUGIN_CONTRACT_NAME,
+              );
+          }
+        });
+      });
     });
   });
 });

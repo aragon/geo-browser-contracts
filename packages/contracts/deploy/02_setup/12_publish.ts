@@ -5,7 +5,11 @@ import {
   PluginSetupParams,
   SpacePluginSetupParams,
 } from "../../plugin-setup-params";
-import { addCreatedVersion, getPluginInfo } from "../../utils/helpers";
+import {
+  addDeployedVersion,
+  getPluginRepoInfo,
+  PluginRepoBuild,
+} from "../../utils/plugin-repo-info";
 import { toHex } from "../../utils/ipfs";
 import { uploadToIPFS } from "../../utils/ipfs";
 import { PluginRepo__factory, PluginSetup__factory } from "@aragon/osx-ethers";
@@ -49,8 +53,13 @@ async function publishPlugin(
   );
 
   // Get PluginRepo
+  const pluginRepoInfo = getPluginRepoInfo(
+    pluginSetupParams.PLUGIN_REPO_ENS_NAME,
+    network.name,
+  );
+  if (!pluginRepoInfo) throw new Error("The plugin repo cannot be found");
   const pluginRepo = PluginRepo__factory.connect(
-    getPluginInfo(network.name)[network.name]["address"],
+    pluginRepoInfo.address,
     deployer,
   );
 
@@ -113,24 +122,27 @@ async function publishPlugin(
     `Published ${pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} at ${setup.address} in PluginRepo ${pluginSetupParams.PLUGIN_REPO_ENS_NAME} at ${pluginRepo.address} at block ${blockNumberOfPublication}.`,
   );
 
-  addCreatedVersion(
-    network.name,
-    { release: pluginSetupParams.VERSION.release, build: version.tag.build },
-    { release: releaseMetadataURI, build: buildMetadataURI },
-    blockNumberOfPublication,
-    {
+  const pluginBuild: PluginRepoBuild = {
+    setup: {
       name: pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
       address: setup.address,
-      args: [],
       blockNumberOfDeployment: setup.receipt.blockNumber,
     },
-    {
+    implementation: {
       name: pluginSetupParams.PLUGIN_CONTRACT_NAME,
       address: implementationAddress,
-      args: [],
       blockNumberOfDeployment: setup.receipt.blockNumber,
     },
-    [],
+    helpers: [],
+    buildMetadataURI: buildMetadataURI,
+    blockNumberOfPublication: blockNumberOfPublication,
+  };
+  addDeployedVersion(
+    pluginSetupParams.PLUGIN_REPO_ENS_NAME,
+    network.name,
+    releaseMetadataURI,
+    { release: pluginSetupParams.VERSION.release, build: version.tag.build },
+    pluginBuild,
   );
 }
 

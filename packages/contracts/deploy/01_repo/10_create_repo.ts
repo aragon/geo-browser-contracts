@@ -5,10 +5,10 @@ import {
   SpacePluginSetupParams,
 } from "../../plugin-setup-params";
 import {
-  addDeployedRepo as addCreatedRepo,
   findEventTopicLog,
   getPluginRepoFactoryAddress,
 } from "../../utils/helpers";
+import { addDeployedRepo } from "../../utils/plugin-repo-info";
 import {
   PluginRepo__factory,
   PluginRepoFactory__factory,
@@ -78,11 +78,10 @@ async function deployRepo(
   );
 
   // Store the information
-  addCreatedRepo(
-    network.name,
+  addDeployedRepo(
     ensSubdomain,
+    network.name,
     pluginRepo.address,
-    [],
     blockNumberOfDeployment,
   );
 }
