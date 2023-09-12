@@ -117,7 +117,7 @@ describe("PluginRepo Deployment", function () {
           switch (pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME) {
             case SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
               expect(receivedStriMetadata).to.equal(
-                "ipfs://QmXkXFPqU8hFPNMpVyctFXHpf32SsT4sbYN771kfVSqo5a",
+                "ipfs://QmdEAfaFb6iYW4UKE7cnkY3DD3uXdSe2ZnRExjJRbJSfNN",
               );
               break;
 
@@ -129,13 +129,13 @@ describe("PluginRepo Deployment", function () {
 
             case MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
               expect(receivedStriMetadata).to.equal(
-                "ipfs://QmTsQDc7WfZcrYdZZoeZvQkvd4HhKS3YT1bsfCctb9aqDS",
+                "ipfs://Qmd6LmivjWNMisxMKqZgmD9HasnQq2JngKJH3WTmqMjCNn",
               );
               break;
 
             case MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
               expect(receivedStriMetadata).to.equal(
-                "ipfs://QmfYayt4r2MczdVAv2SmAbAzndagg8Liw9pMoj8Ugga3ep",
+                "ipfs://QmXpSTcaw8FmC75Kbrdt6Uw8tV1bTyAix4LU6NC7RhQk9r",
               );
               break;
 

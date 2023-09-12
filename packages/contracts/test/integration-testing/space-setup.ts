@@ -23,6 +23,8 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
+import { ADDRESS_ZERO } from "../unit-testing/common";
+import { toHex } from "../../utils/ipfs";
 
 describe("SpacePluginSetup Processing", function () {
   let alice: SignerWithAddress;
@@ -102,8 +104,9 @@ describe("SpacePluginSetup Processing", function () {
     });
 
     beforeEach(async () => {
-      // Install build 1.
+      const pluginUpgrader = ADDRESS_ZERO;
 
+      // Install build 1.
       const results = await installPLugin(
         psp,
         dao,
@@ -114,7 +117,7 @@ describe("SpacePluginSetup Processing", function () {
               .prepareInstallation
               .inputs,
           ),
-          [123],
+          [toHex("ipfs://1234"), pluginUpgrader],
         ),
       );
 
@@ -125,6 +128,8 @@ describe("SpacePluginSetup Processing", function () {
     });
 
     it("installs & uninstalls", async () => {
+      const pluginUpgrader = ADDRESS_ZERO;
+
       // Check implementation.
       expect(await plugin.implementation()).to.be.eq(
         await setup.implementation(),
@@ -142,7 +147,7 @@ describe("SpacePluginSetup Processing", function () {
               .prepareUninstallation
               .inputs,
           ),
-          [],
+          [pluginUpgrader],
         ),
         [],
       );
