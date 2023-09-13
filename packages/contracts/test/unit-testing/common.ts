@@ -39,6 +39,10 @@ export async function getTime(): Promise<number> {
   return (await ethers.provider.getBlock("latest")).timestamp;
 }
 
+export function mineBlock() {
+  return ethers.provider.send("evm_mine", []);
+}
+
 export async function advanceTime(time: number) {
   await ethers.provider.send("evm_increaseTime", [time]);
   await ethers.provider.send("evm_mine", []);

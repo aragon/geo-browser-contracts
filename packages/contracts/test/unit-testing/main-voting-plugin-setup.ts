@@ -11,7 +11,6 @@ import {
   abiCoder,
   ADDRESS_ONE,
   ADDRESS_ZERO,
-  EDITOR_PERMISSION_ID,
   EXECUTE_PERMISSION_ID,
   NO_CONDITION,
   pctToRatio,
@@ -55,7 +54,7 @@ describe("Main Voting Plugin Setup", function () {
             minDuration: 60 * 60 * 24 * 5,
             minProposerVotingPower: 0,
           },
-          alice.address,
+          [alice.address],
           pluginUpgrader,
         ],
       );
@@ -66,12 +65,6 @@ describe("Main Voting Plugin Setup", function () {
         from: mainVotingPluginSetup.address,
         nonce,
       });
-
-      await dao.grant(
-        anticipatedPluginAddress,
-        alice.address,
-        EDITOR_PERMISSION_ID,
-      ).then((tx) => tx.wait());
 
       const {
         plugin,
@@ -122,6 +115,7 @@ describe("Main Voting Plugin Setup", function () {
 
       // initialization is correct
       expect(await myPlugin.dao()).to.eq(dao.address);
+      expect(await myPlugin.isEditor(alice.address)).to.be.true;
     });
 
     it("returns the plugin, helpers, and permissions (with a pluginUpgrader)", async () => {
@@ -140,7 +134,7 @@ describe("Main Voting Plugin Setup", function () {
             minDuration: 60 * 60 * 24 * 5,
             minProposerVotingPower: 0,
           },
-          alice.address,
+          [alice.address],
           pluginUpgrader,
         ],
       );
@@ -151,12 +145,6 @@ describe("Main Voting Plugin Setup", function () {
         from: mainVotingPluginSetup.address,
         nonce,
       });
-
-      await dao.grant(
-        anticipatedPluginAddress,
-        alice.address,
-        EDITOR_PERMISSION_ID,
-      ).then((tx) => tx.wait());
 
       const {
         plugin,
@@ -214,6 +202,7 @@ describe("Main Voting Plugin Setup", function () {
 
       // initialization is correct
       expect(await myPlugin.dao()).to.eq(dao.address);
+      expect(await myPlugin.isEditor(alice.address)).to.be.true;
     });
   });
 

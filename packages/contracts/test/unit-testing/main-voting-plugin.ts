@@ -6,7 +6,6 @@ import {
   MainVotingPlugin__factory,
   MemberAccessPlugin,
   MemberAccessPlugin__factory,
-  PermissionManager__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from "../../typechain";
@@ -23,12 +22,12 @@ import {
   ADDRESS_ZERO,
   advanceAfterVoteEnd,
   advanceIntoVoteTime,
-  EDITOR_PERMISSION_ID,
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   getTime,
   MAX_UINT64,
   MEMBER_PERMISSION_ID,
+  mineBlock,
   pctToRatio,
   ROOT_PERMISSION_ID,
   UPDATE_ADDRESSES_PERMISSION_ID,
@@ -83,11 +82,24 @@ describe("Main Voting Plugin", function () {
       new SpacePlugin__factory(alice),
     );
 
-    // Alice is an editor
+    // inits
+    await memberAccessPlugin.initialize(dao.address, {
+      proposalDuration: 60 * 60 * 24 * 5,
+      mainVotingPlugin: mainVotingPlugin.address,
+    });
+    await mainVotingPlugin.initialize(
+      dao.address,
+      defaultMainVotingSettings,
+      [alice.address],
+    );
+    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
+
+    // Alice is already an editor (see initialize)
+
     await dao.grant(
       mainVotingPlugin.address,
-      alice.address,
-      EDITOR_PERMISSION_ID,
+      bob.address,
+      MEMBER_PERMISSION_ID,
     );
     // Bob is a member
     await dao.grant(
@@ -101,7 +113,7 @@ describe("Main Voting Plugin", function () {
       mainVotingPlugin.address,
       EXECUTE_PERMISSION_ID,
     );
-    // The DAO can report new/removed editors
+    // The DAO can add/remove editors
     await dao.grant(
       mainVotingPlugin.address,
       dao.address,
@@ -123,18 +135,6 @@ describe("Main Voting Plugin", function () {
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
     // Alice can make the DAO execute arbitrary stuff (test)
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
-
-    // inits
-    await memberAccessPlugin.initialize(dao.address, {
-      proposalDuration: 60 * 60 * 24 * 5,
-      mainVotingPlugin: mainVotingPlugin.address,
-    });
-    await mainVotingPlugin.initialize(
-      dao.address,
-      defaultMainVotingSettings,
-      alice.address,
-    );
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
   });
 
   describe("initialize", async () => {
@@ -149,12 +149,58 @@ describe("Main Voting Plugin", function () {
         mainVotingPlugin.initialize(
           dao.address,
           defaultMainVotingSettings,
-          alice.address,
+          [alice.address],
         ),
       ).to.be.revertedWith("Initializable: contract is already initialized");
       await expect(
         spacePlugin.initialize(dao.address, defaultInput.contentUri),
       ).to.be.revertedWith("Initializable: contract is already initialized");
+    });
+
+    it("The plugin has one editor after created", async () => {
+      // Alice
+      mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
+        new MainVotingPlugin__factory(alice),
+      );
+      await mainVotingPlugin.initialize(
+        dao.address,
+        defaultMainVotingSettings,
+        [alice.address],
+      );
+      await mineBlock();
+
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+      expect(await mainVotingPlugin.totalVotingPower(0)).to.eq(0);
+      expect(
+        await mainVotingPlugin.totalVotingPower(
+          await ethers.provider.getBlockNumber() - 1,
+        ),
+      ).to.eq(1);
+
+      expect(await mainVotingPlugin.isEditor(alice.address)).to.be.true;
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+
+      // Bob
+      mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
+        new MainVotingPlugin__factory(alice),
+      );
+      await mainVotingPlugin.initialize(
+        dao.address,
+        defaultMainVotingSettings,
+        [bob.address],
+      );
+      await mineBlock();
+
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+      expect(await mainVotingPlugin.totalVotingPower(0)).to.eq(0);
+      expect(
+        await mainVotingPlugin.totalVotingPower(
+          await ethers.provider.getBlockNumber() - 1,
+        ),
+      ).to.eq(1);
+
+      expect(await mainVotingPlugin.isEditor(alice.address)).to.be.false;
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.true;
     });
   });
 
@@ -195,7 +241,7 @@ describe("Main Voting Plugin", function () {
       ),
     ).to.be.revertedWithCustomError(
       mainVotingPlugin,
-      "ProposalCreationForbidden",
+      "NotAMember",
     )
       .withArgs(charlie.address);
 
@@ -211,7 +257,7 @@ describe("Main Voting Plugin", function () {
       ),
     ).to.be.revertedWithCustomError(
       mainVotingPlugin,
-      "ProposalCreationForbidden",
+      "NotAMember",
     )
       .withArgs(debbie.address);
   });
@@ -314,12 +360,6 @@ describe("Main Voting Plugin", function () {
     ).to.not.be.reverted;
   });
 
-  it("The plugin has one editor after created", async () => {
-    expect(await mainVotingPlugin.editorCount()).to.eq(1);
-    expect(await mainVotingPlugin.totalVotingPower(0)).to.eq(1);
-    expect(await mainVotingPlugin.totalVotingPower(100)).to.eq(1);
-  });
-
   it("isMember() returns true when appropriate", async () => {
     expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
     expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
@@ -346,11 +386,7 @@ describe("Main Voting Plugin", function () {
 
     expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
 
-    await dao.grant(
-      mainVotingPlugin.address,
-      charlie.address,
-      EDITOR_PERMISSION_ID,
-    );
+    await makeEditor(charlie.address);
 
     expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
   });
@@ -364,18 +400,14 @@ describe("Main Voting Plugin", function () {
     expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
     expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
 
-    await dao.grant(
-      mainVotingPlugin.address,
-      charlie.address,
-      EDITOR_PERMISSION_ID,
-    );
+    await makeEditor(charlie.address);
 
     expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
   });
 
   describe("One editor", () => {
     it("Proposals take immediate effect when created by the only editor", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
       await expect(
         mainVotingPlugin.createProposal(
@@ -394,7 +426,7 @@ describe("Main Voting Plugin", function () {
     });
 
     it("Proposals created by a member require the editor's vote", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
       await expect(
         mainVotingPlugin.connect(bob).createProposal(
@@ -487,22 +519,22 @@ describe("Main Voting Plugin", function () {
   });
 
   it("Adding an editor increases the editorCount", async () => {
-    expect(await mainVotingPlugin.editorCount()).to.eq(1);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
     // Add Bob
     await proposeNewEditor(bob.address);
-    expect(await mainVotingPlugin.editorCount()).to.eq(2);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
     expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(true);
 
     // Propose Charlie
     await proposeNewEditor(charlie.address);
-    expect(await mainVotingPlugin.editorCount()).to.eq(2);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
     expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(false);
 
     // Confirm Charlie
     await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true)).to
       .not.be.reverted;
-    expect(await mainVotingPlugin.editorCount()).to.eq(3);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
     expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(true);
   });
 
@@ -512,39 +544,148 @@ describe("Main Voting Plugin", function () {
     await proposeNewEditor(charlie.address); // Alice votes yes as the creator
     await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true)).to
       .not.be.reverted;
-    expect(await mainVotingPlugin.editorCount()).to.eq(3);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
     // Propose removing Charlie
     await proposeRemoveEditor(charlie.address); // Alice votes yes as the creator
-    expect(await mainVotingPlugin.editorCount()).to.eq(3);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
     await expect(mainVotingPlugin.connect(bob).vote(2, VoteOption.Yes, true)).to
       .not.be.reverted;
-    expect(await mainVotingPlugin.editorCount()).to.eq(2);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
 
     // Propose removing Bob
     await proposeRemoveEditor(bob.address);
     expect(await mainVotingPlugin.connect(bob).vote(3, VoteOption.Yes, true)).to
       .not.be.reverted;
-    expect(await mainVotingPlugin.editorCount()).to.eq(1);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+  });
+
+  it("Adding more than one editor at once reverts", async () => {
+    // 2
+    let actions: IDAO.ActionStruct[] = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("addAddresses", [
+            [bob.address, charlie.address],
+          ]),
+      },
+    ];
+
+    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+      .revertedWithCustomError(dao, "ActionFailed");
+    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+
+    // 3
+    actions = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("addAddresses", [
+            [bob.address, charlie.address, debbie.address],
+          ]),
+      },
+    ];
+    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+      .revertedWithCustomError(dao, "ActionFailed");
+    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+
+    // 1 works
+    actions = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("addAddresses", [
+            [bob.address],
+          ]),
+      },
+    ];
+
+    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.not.be.reverted;
+  });
+
+  it("Removing more than one editor at once reverts", async () => {
+    await makeEditor(bob.address);
+    await makeEditor(charlie.address);
+
+    // 2
+    let actions: IDAO.ActionStruct[] = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("removeAddresses", [
+            [bob.address, charlie.address],
+          ]),
+      },
+    ];
+    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+      .revertedWithCustomError(dao, "ActionFailed");
+
+    // 3
+    actions = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("removeAddresses", [
+            [bob.address, charlie.address],
+          ]),
+      },
+    ];
+    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+      .revertedWithCustomError(dao, "ActionFailed");
+
+    // 1 works
+    actions = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("removeAddresses", [
+            [bob.address],
+          ]),
+      },
+    ];
+
+    await expect(
+      dao.execute(
+        ZERO_BYTES32,
+        actions,
+        0,
+      ),
+    ).to.not.be.reverted;
   });
 
   it("Attempting to remove the last editor reverts", async () => {
     // Try to remove Alice
-    await expect(proposeRemoveEditor(alice.address)).to.be.reverted;
-    expect(await mainVotingPlugin.editorCount()).to.eq(1);
+    await expect(pullEditor(alice.address)).to.be
+      .revertedWithCustomError(
+        mainVotingPlugin,
+        "NoEditorsLeft",
+      );
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
     // Add Bob
     await proposeNewEditor(bob.address);
-    expect(await mainVotingPlugin.editorCount()).to.eq(2);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.true;
+    await mineBlock();
 
-    // Propose removing Bob
-    await proposeRemoveEditor(bob.address);
-    expect(await mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
+    // Remove Bob
+    await expect(proposeRemoveEditor(bob.address)).to.not.be.reverted;
+    await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
       .to.not.be.reverted;
-    expect(await mainVotingPlugin.editorCount()).to.eq(1);
+    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
     // Try to remove Alice
-    await expect(proposeRemoveEditor(alice.address)).to.be.reverted;
+    await expect(pullEditor(alice.address)).to.be
+      .revertedWithCustomError(mainVotingPlugin, "NoEditorsLeft");
   });
 
   it("Attempting to vote twice fails (replacement disabled)", async () => {
@@ -660,19 +801,19 @@ describe("Main Voting Plugin", function () {
     ).withArgs(0, 12345, 23456, 60 * 60 * 3, 0);
   });
 
-  it("The DAO can report added/removed editors", async () => {
+  it("The DAO can add editors", async () => {
     // Nobody else can
     await expect(
-      mainVotingPlugin.connect(alice).editorAdded(alice.address),
+      mainVotingPlugin.connect(alice).addAddresses([bob.address]),
     ).to.be.reverted;
     await expect(
-      mainVotingPlugin.connect(bob).editorRemoved(bob.address),
+      mainVotingPlugin.connect(bob).addAddresses([bob.address]),
     ).to.be.reverted;
     await expect(
-      mainVotingPlugin.connect(charlie).editorAdded(debbie.address),
+      mainVotingPlugin.connect(charlie).addAddresses([debbie.address]),
     ).to.be.reverted;
     await expect(
-      mainVotingPlugin.connect(debbie).editorRemoved(alice.address),
+      mainVotingPlugin.connect(debbie).addAddresses([debbie.address]),
     ).to.be.reverted;
 
     // The DAO can
@@ -681,8 +822,46 @@ describe("Main Voting Plugin", function () {
         to: mainVotingPlugin.address,
         value: 0,
         data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("editorAdded", [
-            alice.address,
+          .encodeFunctionData("addAddresses", [
+            [debbie.address],
+          ]),
+      },
+    ];
+
+    await expect(
+      dao.execute(
+        ZERO_BYTES32,
+        actions,
+        0,
+      ),
+    ).to.not.be.reverted;
+  });
+
+  it("The DAO can remove editors", async () => {
+    await makeEditor(bob.address);
+
+    // Nobody else can
+    await expect(
+      mainVotingPlugin.connect(alice).removeAddresses([bob.address]),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(bob).removeAddresses([bob.address]),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(charlie).removeAddresses([bob.address]),
+    ).to.be.reverted;
+    await expect(
+      mainVotingPlugin.connect(debbie).removeAddresses([bob.address]),
+    ).to.be.reverted;
+
+    // The DAO can
+    const actions: IDAO.ActionStruct[] = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: MainVotingPlugin__factory.createInterface()
+          .encodeFunctionData("removeAddresses", [
+            [bob.address],
           ]),
       },
     ];
@@ -769,23 +948,12 @@ describe("Main Voting Plugin", function () {
 
   const proposeNewEditor = (_editor: string, proposer = alice) => {
     const actions: IDAO.ActionStruct[] = [
-      // Grant the permission
-      {
-        to: dao.address,
-        value: 0,
-        data: PermissionManager__factory.createInterface().encodeFunctionData(
-          "grant",
-          [mainVotingPlugin.address, _editor, EDITOR_PERMISSION_ID],
-        ),
-      },
-
-      // Notify the new editor
       {
         to: mainVotingPlugin.address,
         value: 0,
         data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
-          "editorAdded",
-          [_editor],
+          "addAddresses",
+          [[_editor]],
         ),
       },
     ];
@@ -803,23 +971,12 @@ describe("Main Voting Plugin", function () {
 
   const proposeRemoveEditor = (_editor: string, proposer = alice) => {
     const actions: IDAO.ActionStruct[] = [
-      // Grant the permission
-      {
-        to: dao.address,
-        value: 0,
-        data: PermissionManager__factory.createInterface().encodeFunctionData(
-          "revoke",
-          [mainVotingPlugin.address, _editor, EDITOR_PERMISSION_ID],
-        ),
-      },
-
-      // Notify the removed editor
       {
         to: mainVotingPlugin.address,
         value: 0,
         data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
-          "editorRemoved",
-          [_editor],
+          "removeAddresses",
+          [[_editor]],
         ),
       },
     ];
@@ -834,6 +991,42 @@ describe("Main Voting Plugin", function () {
       true, // auto execute
     ).then((tx) => tx.wait());
   };
+
+  function makeEditor(targetAddress: string) {
+    return dao.grant(
+      mainVotingPlugin.address,
+      alice.address,
+      UPDATE_ADDRESSES_PERMISSION_ID,
+    )
+      .then((tx) => tx.wait())
+      .then(() => mainVotingPlugin.addAddresses([targetAddress]))
+      .then((tx) => tx.wait())
+      .then(() =>
+        dao.revoke(
+          mainVotingPlugin.address,
+          alice.address,
+          UPDATE_ADDRESSES_PERMISSION_ID,
+        )
+      );
+  }
+
+  function pullEditor(targetAddress: string) {
+    return dao.grant(
+      mainVotingPlugin.address,
+      alice.address,
+      UPDATE_ADDRESSES_PERMISSION_ID,
+    )
+      .then((tx) => tx.wait())
+      .then(() => mainVotingPlugin.removeAddresses([targetAddress]))
+      .then((tx) => tx.wait())
+      .then(() =>
+        dao.revoke(
+          mainVotingPlugin.address,
+          alice.address,
+          UPDATE_ADDRESSES_PERMISSION_ID,
+        )
+      );
+  }
 });
 
 // TESTS REPLIACTED FROM THE ORIGINAL ADDRESS LIST PLUGIN
@@ -861,12 +1054,12 @@ describe("Tests replicated from the original AddressList plugin", async () => {
       new MainVotingPlugin__factory(signers[0]),
     );
 
-    // 10 editors
+    // 10 members
     await Promise.all(signers.map((signer) => {
       return dao.grant(
         mainVotingPlugin.address,
         signer.address,
-        EDITOR_PERMISSION_ID,
+        MEMBER_PERMISSION_ID,
       );
     }));
     // The plugin can execute on the DAO
@@ -916,8 +1109,10 @@ describe("Tests replicated from the original AddressList plugin", async () => {
       await mainVotingPlugin.initialize(
         dao.address,
         votingSettings,
-        signers[0].address,
+        [signers[0].address],
       );
+      expect(await mainVotingPlugin.isMember(signers[0].address)).to.be.true;
+      expect(await mainVotingPlugin.isEditor(signers[0].address)).to.be.true;
 
       const currentDate = await getTime();
       const startDateInThePast = currentDate - 1;
@@ -945,8 +1140,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
       await mainVotingPlugin.initialize(
         dao.address,
         votingSettings,
-        signers[0].address,
+        [signers[0].address],
       );
+      await makeEditors(signers.slice(1));
 
       const latestStartDate = MAX_UINT64.sub(votingSettings.minDuration);
       const tooLateStartDate = latestStartDate.add(1);
@@ -969,8 +1165,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
       await mainVotingPlugin.initialize(
         dao.address,
         votingSettings,
-        signers[0].address,
+        [signers[0].address],
       );
+      await makeEditors(signers.slice(1));
 
       const startDate = (await getTime()) + 1;
       const earliestEndDate = startDate + votingSettings.minDuration;
@@ -995,8 +1192,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
       await mainVotingPlugin.initialize(
         dao.address,
         votingSettings,
-        signers[0].address,
+        [signers[0].address],
       );
+      await makeEditors(signers.slice(1));
 
       // Create a proposal with zero as an input for `_startDate` and `_endDate`
       const startDate = 0; // now
@@ -1043,7 +1241,7 @@ describe("Tests replicated from the original AddressList plugin", async () => {
       await mainVotingPlugin.initialize(
         dao.address,
         votingSettings,
-        signers[0].address,
+        [signers[0].address],
       );
       startDate = (await getTime()) + startOffset;
       endDate = startDate + votingSettings.minDuration;
@@ -1090,9 +1288,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         await mainVotingPlugin.initialize(
           dao.address,
           votingSettings,
-          signers[0].address,
+          [signers[0].address],
         );
-        await notifyEditors(signers.slice(1)); // editors 2-10
+        await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
         endDate = startDate + votingSettings.minDuration;
@@ -1258,9 +1456,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         await mainVotingPlugin.initialize(
           dao.address,
           votingSettings,
-          signers[0].address,
+          [signers[0].address],
         );
-        await notifyEditors(signers.slice(1)); // editors 2-10
+        await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
         endDate = startDate + votingSettings.minDuration;
@@ -1520,9 +1718,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         await mainVotingPlugin.initialize(
           dao.address,
           votingSettings,
-          signers[0].address,
+          [signers[0].address],
         );
-        await notifyEditors(signers.slice(1)); // editors 2-10
+        await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
         endDate = startDate + votingSettings.minDuration;
@@ -1694,9 +1892,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         await mainVotingPlugin.initialize(
           dao.address,
           votingSettings,
-          signers[0].address,
+          [signers[0].address],
         );
-        await notifyEditors(signers.slice(1)); // editors 2-10
+        await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
         endDate = startDate + votingSettings.minDuration;
@@ -1832,9 +2030,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         await mainVotingPlugin.initialize(
           dao.address,
           votingSettings,
-          signers[0].address,
+          [signers[0].address],
         );
-        await notifyEditors(signers.slice(1)); // editors 2-10
+        await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
         endDate = startDate + votingSettings.minDuration;
@@ -2010,9 +2208,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         await mainVotingPlugin.initialize(
           dao.address,
           votingSettings,
-          signers[0].address,
+          [signers[0].address],
         );
-        await notifyEditors(signers.slice(1)); // editors 2-10
+        await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
         endDate = startDate + votingSettings.minDuration;
@@ -2083,9 +2281,9 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         await mainVotingPlugin.initialize(
           dao.address,
           votingSettings,
-          signers[0].address,
+          [signers[0].address],
         );
-        await notifyEditors(signers.slice(1)); // editors 2-10
+        await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
         endDate = startDate + votingSettings.minDuration;
@@ -2157,23 +2355,6 @@ describe("Tests replicated from the original AddressList plugin", async () => {
 
   // Helpers
 
-  function notifyEditors(signers: SignerWithAddress[]) {
-    return Promise.all(signers.map((signer) => {
-      return dao.execute(
-        ZERO_BYTES32,
-        [{
-          to: mainVotingPlugin.address,
-          value: 0,
-          data: MainVotingPlugin__factory.createInterface()
-            .encodeFunctionData("editorAdded", [
-              signer.address,
-            ]),
-        }],
-        0,
-      );
-    }));
-  }
-
   function voteWithSigners(
     votingContract: MainVotingPlugin,
     proposalId: number,
@@ -2206,5 +2387,30 @@ describe("Tests replicated from the original AddressList plugin", async () => {
     );
 
     return Promise.all(promises);
+  }
+
+  function makeEditors(targetAddress: SignerWithAddress[]) {
+    return dao.grant(
+      mainVotingPlugin.address,
+      signers[0].address,
+      UPDATE_ADDRESSES_PERMISSION_ID,
+    )
+      .then((tx) => tx.wait())
+      .then(() =>
+        Promise.all(
+          targetAddress.map((targetAddress) =>
+            mainVotingPlugin.addAddresses([targetAddress.address]).then((tx) =>
+              tx.wait()
+            )
+          ),
+        )
+      )
+      .then(() =>
+        dao.revoke(
+          mainVotingPlugin.address,
+          signers[0].address,
+          UPDATE_ADDRESSES_PERMISSION_ID,
+        )
+      );
   }
 });

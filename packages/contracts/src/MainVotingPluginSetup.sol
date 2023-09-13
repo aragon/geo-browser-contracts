@@ -25,9 +25,9 @@ contract MainVotingPluginSetup is PluginSetup {
         // Decode incoming params
         (
             MajorityVotingBase.VotingSettings memory _votingSettings,
-            address _initialEditor,
+            address[] memory _initialEditors,
             address _pluginUpgrader
-        ) = abi.decode(_data, (MajorityVotingBase.VotingSettings, address, address));
+        ) = abi.decode(_data, (MajorityVotingBase.VotingSettings, address[], address));
 
         // Deploy new plugin instance
         plugin = createERC1967Proxy(
@@ -36,7 +36,7 @@ contract MainVotingPluginSetup is PluginSetup {
                 MainVotingPlugin.initialize.selector,
                 _dao,
                 _votingSettings,
-                _initialEditor
+                _initialEditors
             )
         );
 

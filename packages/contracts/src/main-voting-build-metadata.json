@@ -38,9 +38,9 @@
           "type": "tuple"
         },
         {
-          "internalType": "address",
-          "name": "initialEditor",
-          "type": "address"
+          "internalType": "address[]",
+          "name": "initialEditors",
+          "type": "address[]"
         },
         {
           "internalType": "address",

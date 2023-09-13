@@ -9,7 +9,6 @@ import {
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
 import { osxContracts } from "../../utils/helpers";
 import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
-import { initializeFork } from "../helpers/fixture";
 import { installPLugin, uninstallPLugin } from "../helpers/setup";
 import { deployTestDao } from "../helpers/test-dao";
 import { getNamedTypesFromMetadata } from "../helpers/types";

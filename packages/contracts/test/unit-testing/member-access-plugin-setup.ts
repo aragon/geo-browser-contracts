@@ -48,7 +48,7 @@ describe("Member Access Plugin Setup", function () {
       minProposerVotingPower: 0,
       supportThreshold: 300000,
       votingMode: 0,
-    }, alice.address).then((tx) => tx.wait());
+    }, [alice.address]).then((tx) => tx.wait());
 
     memberAccessPluginSetup = await new MemberAccessPluginSetup__factory(alice)
       .deploy();

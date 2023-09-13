@@ -220,7 +220,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         }
 
         if (isEditor(_msgSender())) {
-            if (multisigSettings.mainVotingPlugin.editorCount() < 2) {
+            if (multisigSettings.mainVotingPlugin.addresslistLength() < 2) {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_SINGLE;
             } else {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_MANY;
@@ -388,24 +388,19 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     function isMember(address _account) public view returns (bool) {
         // Does the address hold the member or editor permission on the main voting plugin?
         return
+            isEditor(_account) ||
             dao().hasPermission(
                 address(multisigSettings.mainVotingPlugin),
                 _account,
                 MEMBER_PERMISSION_ID,
                 bytes("")
-            ) || isEditor(_account);
+            );
     }
 
     /// @notice Returns whether the given address holds editor permission on the main voting plugin
     function isEditor(address _account) public view returns (bool) {
         // Does the address hold the permission on the main voting plugin?
-        return
-            dao().hasPermission(
-                address(multisigSettings.mainVotingPlugin),
-                _account,
-                EDITOR_PERMISSION_ID,
-                bytes("")
-            );
+        return multisigSettings.mainVotingPlugin.isEditor(_account);
     }
 
     /// @notice Internal function to execute a vote. It assumes the queried proposal exists.

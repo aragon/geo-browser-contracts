@@ -4,14 +4,17 @@ pragma solidity ^0.8.8;
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
+import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
+import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 import {MEMBER_PERMISSION_ID, EDITOR_PERMISSION_ID} from "./constants.sol";
 
+// The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
-    MainVotingPlugin.editorAdded.selector ^
-    MainVotingPlugin.editorRemoved.selector ^
+    MainVotingPlugin.addAddresses.selector ^
+    MainVotingPlugin.removeAddresses.selector ^
     MainVotingPlugin.isMember.selector ^
     MainVotingPlugin.isEditor.selector;
 
@@ -19,34 +22,25 @@ bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.sel
 /// @author Aragon Association - 2021-2023.
 /// @notice The majority voting implementation using a list of member addresses.
 /// @dev This contract inherits from `MajorityVotingBase` and implements the `IMajorityVoting` interface.
-contract MainVotingPlugin is MajorityVotingBase {
+contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
     bytes32 public constant UPDATE_ADDRESSES_PERMISSION_ID =
         keccak256("UPDATE_ADDRESSES_PERMISSION");
 
-    /// @notice The amount of editors added by this plugin
-    uint256 public editorCount;
+    /// @notice Raised when more than one editor is attempted to be added or removed
+    error OnlyOneEditorPerCall(uint256 length);
 
-    /// @notice Emitted when an editor has been reported as added
-    event EditorAdded(address editor);
-
-    /// @notice Emitted when an editor has been reported as removed
-    event EditorRemoved(address editor);
-
-    /// @notice Thrown when reporting a new editor who doesn't hold EDITOR_PERMISSION_ID.
-    error NotAnEditorYet();
-
-    /// @notice Thrown when reporting a removed editor who still holds EDITOR_PERMISSION_ID.
-    error StillAnEditor();
-
-    /// @notice Thrown if reporting a removed editor, when there would be no editors left.
+    /// @notice Raised when attempting to remove the last editor
     error NoEditorsLeft();
+
+    /// @notice Raised when a wallet who is not an editor or a member attempts to do something
+    error NotAMember(address caller);
 
     modifier onlyMembers() {
         if (!isMember(_msgSender())) {
-            revert ProposalCreationForbidden(_msgSender());
+            revert NotAMember(_msgSender());
         }
         _;
     }
@@ -58,11 +52,12 @@ contract MainVotingPlugin is MajorityVotingBase {
     function initialize(
         IDAO _dao,
         VotingSettings calldata _votingSettings,
-        address _initialEditor
+        address[] calldata _initialEditors
     ) external initializer {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
-        _editorAdded(_initialEditor);
+        _addAddresses(_initialEditors);
+        emit MembersAdded({members: _initialEditors});
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -70,38 +65,51 @@ contract MainVotingPlugin is MajorityVotingBase {
     /// @return Returns `true` if the interface is supported.
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
         return
-            _interfaceId == MAIN_SPACE_VOTING_INTERFACE_ID || super.supportsInterface(_interfaceId);
+            _interfaceId == MAIN_SPACE_VOTING_INTERFACE_ID ||
+            _interfaceId == type(Addresslist).interfaceId ||
+            _interfaceId == type(IMembership).interfaceId ||
+            super.supportsInterface(_interfaceId);
     }
 
-    /// @notice The function proposeNewEditor creates an action to call this function after an editor is added.
-    /// @param _editor The address of the new editor
-    /// @dev This function is also used during the plugin initialization.
-    function editorAdded(address _editor) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        _editorAdded(_editor);
+    /// @notice Adds new members to the address list.
+    /// @param _members The addresses of members to be added. NOTE: Only one member can be added at a time.
+    /// @dev This function is used during the plugin initialization.
+    function addAddresses(
+        address[] calldata _members
+    ) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+        if (_members.length > 1) revert OnlyOneEditorPerCall(_members.length);
+
+        _addAddresses(_members);
+        emit MembersAdded({members: _members});
     }
 
-    /// @notice The function proposeRemoveEditor creates an action to call this function after an editor is removed.
-    /// @param _editor The addresses of the members to be removed.
-    function editorRemoved(address _editor) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        _editorRemoved(_editor);
+    /// @notice Removes existing members from the address list.
+    /// @param _members The addresses of the members to be removed. NOTE: Only one member can be removed at a time.
+    function removeAddresses(
+        address[] calldata _members
+    ) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+        if (_members.length > 1) revert OnlyOneEditorPerCall(_members.length);
+        else if (addresslistLength() <= 1) revert NoEditorsLeft();
+
+        _removeAddresses(_members);
+        emit MembersRemoved({members: _members});
     }
 
     /// @inheritdoc MajorityVotingBase
-    /// @notice Warning: the snapshot block feature is not available here, since the condition of being an editor depends on permissions, which don't support snapshotting.
-    function totalVotingPower(uint256) public view override returns (uint256) {
-        return editorCount;
+    function totalVotingPower(uint256 _blockNumber) public view override returns (uint256) {
+        return addresslistLengthAtBlock(_blockNumber);
     }
 
     /// @notice Returns whether the given address holds membership/editor permission on the main voting plugin
     function isMember(address _account) public view returns (bool) {
         return
-            dao().hasPermission(address(this), _account, MEMBER_PERMISSION_ID, bytes("")) ||
-            isEditor(_account);
+            isEditor(_account) ||
+            dao().hasPermission(address(this), _account, MEMBER_PERMISSION_ID, bytes(""));
     }
 
-    /// @notice Returns whether the given address holds editor permission on the main voting plugin
+    /// @notice Returns whether the given address is currently listed as an editor
     function isEditor(address _account) public view returns (bool) {
-        return dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""));
+        return isListed(_account);
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -114,6 +122,11 @@ contract MainVotingPlugin is MajorityVotingBase {
         VoteOption _voteOption,
         bool _tryEarlyExecution
     ) external override onlyMembers returns (uint256 proposalId) {
+        uint64 snapshotBlock;
+        unchecked {
+            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+        }
+
         (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
 
         proposalId = _createProposal({
@@ -130,11 +143,11 @@ contract MainVotingPlugin is MajorityVotingBase {
 
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
-        // proposal_.parameters.snapshotBlock = 0;
+        proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
         proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower(0),
+            totalVotingPower(snapshotBlock),
             minParticipation()
         );
 
@@ -217,7 +230,7 @@ contract MainVotingPlugin is MajorityVotingBase {
         }
 
         // The voter has no voting power.
-        if (!isEditor(_account)) {
+        if (!isListedAtBlock(_account, proposal_.parameters.snapshotBlock)) {
             return false;
         }
 
@@ -230,26 +243,6 @@ contract MainVotingPlugin is MajorityVotingBase {
         }
 
         return true;
-    }
-
-    function _editorAdded(address _editor) internal {
-        if (!isEditor(_editor)) {
-            revert NotAnEditorYet();
-        }
-
-        editorCount++;
-        emit EditorAdded({editor: _editor});
-    }
-
-    function _editorRemoved(address _editor) internal {
-        if (isEditor(_editor)) {
-            revert StillAnEditor();
-        } else if (editorCount <= 1) {
-            revert NoEditorsLeft();
-        }
-
-        editorCount--;
-        emit EditorRemoved({editor: _editor});
     }
 
     /// @dev This empty reserved space is put in place to allow future versions to add new

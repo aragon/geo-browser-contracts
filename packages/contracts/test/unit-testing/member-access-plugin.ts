@@ -6,7 +6,6 @@ import {
   MainVotingPlugin__factory,
   MemberAccessPlugin,
   MemberAccessPlugin__factory,
-  PermissionManager__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from "../../typechain";
@@ -16,7 +15,6 @@ import {
   ADDRESS_ONE,
   ADDRESS_TWO,
   ADDRESS_ZERO,
-  EDITOR_PERMISSION_ID,
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   MEMBER_PERMISSION_ID,
@@ -33,7 +31,6 @@ import { ethers } from "hardhat";
 import { ProposalCreatedEvent } from "../../typechain/src/MemberAccessPlugin";
 import { DAO__factory } from "@aragon/osx-ethers";
 import { defaultMainVotingSettings } from "./common";
-import { BigNumber } from "ethers";
 
 export type InitData = { contentUri: string };
 export const defaultInitData: InitData = {
@@ -69,12 +66,20 @@ describe("Member Access Plugin", function () {
       new SpacePlugin__factory(alice),
     );
 
-    // Alice is an editor
-    await dao.grant(
-      mainVotingPlugin.address,
-      alice.address,
-      EDITOR_PERMISSION_ID,
+    // inits
+    await memberAccessPlugin.initialize(dao.address, {
+      proposalDuration: 60 * 60 * 24 * 5,
+      mainVotingPlugin: mainVotingPlugin.address,
+    });
+    await mainVotingPlugin.initialize(
+      dao.address,
+      defaultMainVotingSettings,
+      [alice.address],
     );
+    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
+
+    // Alice is an editor (see mainVotingPlugin initialize)
+
     // Bob is a member
     await dao.grant(
       mainVotingPlugin.address,
@@ -115,18 +120,6 @@ describe("Member Access Plugin", function () {
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
     // Alice can make the DAO execute arbitrary stuff (test)
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
-
-    // inits
-    await memberAccessPlugin.initialize(dao.address, {
-      proposalDuration: 60 * 60 * 24 * 5,
-      mainVotingPlugin: mainVotingPlugin.address,
-    });
-    await mainVotingPlugin.initialize(
-      dao.address,
-      defaultMainVotingSettings,
-      alice.address,
-    );
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
   });
 
   describe("initialize", async () => {
@@ -141,7 +134,7 @@ describe("Member Access Plugin", function () {
         mainVotingPlugin.initialize(
           dao.address,
           defaultMainVotingSettings,
-          alice.address,
+          [alice.address],
         ),
       ).to.be.revertedWith("Initializable: contract is already initialized");
       await expect(
@@ -239,7 +232,7 @@ describe("Member Access Plugin", function () {
     expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(true);
   });
 
-  it("Editors should members too", async () => {
+  it("Editors should be members too", async () => {
     expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
     expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
   });
@@ -303,11 +296,7 @@ describe("Member Access Plugin", function () {
 
     expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
 
-    await dao.grant(
-      mainVotingPlugin.address,
-      charlie.address,
-      EDITOR_PERMISSION_ID,
-    );
+    await proposeNewEditor(charlie.address);
 
     expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
   });
@@ -321,20 +310,14 @@ describe("Member Access Plugin", function () {
     expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
     expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
 
-    await dao.grant(
-      mainVotingPlugin.address,
-      charlie.address,
-      EDITOR_PERMISSION_ID,
-    );
+    await proposeNewEditor(charlie.address);
 
     expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
   });
 
   describe("One editor", () => {
     it("Only the editor can approve memberships", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
-
-      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
       await expect(
         memberAccessPlugin.connect(charlie).proposeNewMember(
@@ -363,7 +346,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Only the editor can reject memberships", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
       expect(
         await dao.hasPermission(
@@ -427,7 +410,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Membership approvals are immediate", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
       await expect(
         memberAccessPlugin.connect(charlie).proposeNewMember(
@@ -451,7 +434,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Membership rejections are immediate", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
       await expect(
         memberAccessPlugin.connect(charlie).proposeNewMember(
@@ -475,7 +458,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Proposal execution is immediate when created by the only editor", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
       expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
 
@@ -503,7 +486,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Proposals created by a non-editor need an editor's approval", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(1);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
       expect(await memberAccessPlugin.isMember(debbie.address)).to.eq(false);
 
       await expect(
@@ -552,7 +535,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Only editors can approve new memberships", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Requesting membership for Debbie
       let pid = 0;
@@ -637,7 +620,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Only editors can approve removing memberships", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
       await dao.grant(
         mainVotingPlugin.address,
         debbie.address,
@@ -737,7 +720,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Proposals should be unsettled after created", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Proposed by a random wallet
       await expect(
@@ -791,7 +774,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Only editors can reject new membership proposals", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       expect(await memberAccessPlugin.isMember(debbie.address)).to.eq(false);
 
@@ -825,7 +808,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Only editors can reject membership removal proposals", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
       await dao.grant(
         mainVotingPlugin.address,
         debbie.address,
@@ -864,7 +847,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Proposals created by a non-editor need an editor's approval", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
       expect(await memberAccessPlugin.isMember(debbie.address)).to.eq(false);
 
       await expect(
@@ -895,7 +878,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Proposals created by an editor need another editor's approval", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       await expect(
         memberAccessPlugin.connect(alice).proposeNewMember(
@@ -912,7 +895,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Memberships are approved when the first non-proposer editor approves", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Alice proposes a mew member
       await expect(
@@ -986,7 +969,7 @@ describe("Member Access Plugin", function () {
     });
 
     it("Memberships are rejected when the first non-proposer editor rejects", async () => {
-      expect(await mainVotingPlugin.editorCount()).to.eq(3);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Alice proposes a mew member
       await expect(
@@ -1387,23 +1370,12 @@ describe("Member Access Plugin", function () {
 
   const proposeNewEditor = (_editor: string, proposer = alice) => {
     const actions: IDAO.ActionStruct[] = [
-      // Grant the permission
-      {
-        to: dao.address,
-        value: 0,
-        data: PermissionManager__factory.createInterface().encodeFunctionData(
-          "grant",
-          [mainVotingPlugin.address, _editor, EDITOR_PERMISSION_ID],
-        ),
-      },
-
-      // Notify the new editor
       {
         to: mainVotingPlugin.address,
         value: 0,
         data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
-          "editorAdded",
-          [_editor],
+          "addAddresses",
+          [[_editor]],
         ),
       },
     ];
@@ -1421,23 +1393,12 @@ describe("Member Access Plugin", function () {
 
   const proposeRemoveEditor = (_editor: string, proposer = alice) => {
     const actions: IDAO.ActionStruct[] = [
-      // Grant the permission
-      {
-        to: dao.address,
-        value: 0,
-        data: PermissionManager__factory.createInterface().encodeFunctionData(
-          "revoke",
-          [mainVotingPlugin.address, _editor, EDITOR_PERMISSION_ID],
-        ),
-      },
-
-      // Notify the removed editor
       {
         to: mainVotingPlugin.address,
         value: 0,
         data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
-          "editorRemoved",
-          [_editor],
+          "removeAddresses",
+          [[_editor]],
         ),
       },
     ];

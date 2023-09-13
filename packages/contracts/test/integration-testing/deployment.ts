@@ -135,7 +135,7 @@ describe("PluginRepo Deployment", function () {
 
             case MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
               expect(receivedStriMetadata).to.equal(
-                "ipfs://QmXpSTcaw8FmC75Kbrdt6Uw8tV1bTyAix4LU6NC7RhQk9r",
+                "ipfs://QmNxhDLP2FL8vUJwUq8pKrLg1AGSKdgwopS6tQb5Gy7VSg",
               );
               break;
 
