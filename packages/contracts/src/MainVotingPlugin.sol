@@ -117,8 +117,8 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         bytes calldata _metadata,
         IDAO.Action[] calldata _actions,
         uint256 _allowFailureMap,
-        uint64 _startDate,
-        uint64 _endDate,
+        uint64,
+        uint64,
         VoteOption _voteOption,
         bool _tryEarlyExecution
     ) external override onlyMembers returns (uint256 proposalId) {
@@ -126,14 +126,13 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         unchecked {
             snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
         }
-
-        (_startDate, _endDate) = _validateProposalDates(_startDate, _endDate);
+        uint64 _startDate = block.timestamp.toUint64();
 
         proposalId = _createProposal({
             _creator: _msgSender(),
             _metadata: _metadata,
             _startDate: _startDate,
-            _endDate: _endDate,
+            _endDate: _startDate + minDuration(),
             _actions: _actions,
             _allowFailureMap: _allowFailureMap
         });
@@ -142,7 +141,7 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         Proposal storage proposal_ = proposals[proposalId];
 
         proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _endDate;
+        proposal_.parameters.endDate = _startDate + minDuration();
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();

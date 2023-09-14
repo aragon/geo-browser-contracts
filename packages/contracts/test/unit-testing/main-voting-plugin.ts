@@ -1104,181 +1104,181 @@ describe("Tests replicated from the original AddressList plugin", async () => {
     ];
   });
 
-  describe("Proposal creation", async () => {
-    it("reverts if the start date is set smaller than the current date", async () => {
-      await mainVotingPlugin.initialize(
-        dao.address,
-        votingSettings,
-        [signers[0].address],
-      );
-      expect(await mainVotingPlugin.isMember(signers[0].address)).to.be.true;
-      expect(await mainVotingPlugin.isEditor(signers[0].address)).to.be.true;
+  // describe("Proposal creation", async () => {
+  //   it("reverts if the start date is set smaller than the current date", async () => {
+  //     await mainVotingPlugin.initialize(
+  //       dao.address,
+  //       votingSettings,
+  //       [signers[0].address],
+  //     );
+  //     expect(await mainVotingPlugin.isMember(signers[0].address)).to.be.true;
+  //     expect(await mainVotingPlugin.isEditor(signers[0].address)).to.be.true;
 
-      const currentDate = await getTime();
-      const startDateInThePast = currentDate - 1;
-      const endDate = 0; // startDate + minDuration
+  //     const currentDate = await getTime();
+  //     const startDateInThePast = currentDate - 1;
+  //     const endDate = 0; // startDate + minDuration
 
-      await expect(
-        mainVotingPlugin.createProposal(
-          dummyMetadata,
-          [],
-          0,
-          startDateInThePast,
-          endDate,
-          VoteOption.None,
-          false,
-        ),
-      )
-        .to.be.revertedWithCustomError(mainVotingPlugin, "DateOutOfBounds")
-        .withArgs(
-          currentDate + 1, // await takes one second
-          startDateInThePast,
-        );
-    });
+  //     await expect(
+  //       mainVotingPlugin.createProposal(
+  //         dummyMetadata,
+  //         [],
+  //         0,
+  //         startDateInThePast,
+  //         endDate,
+  //         VoteOption.None,
+  //         false,
+  //       ),
+  //     )
+  //       .to.be.revertedWithCustomError(mainVotingPlugin, "DateOutOfBounds")
+  //       .withArgs(
+  //         currentDate + 1, // await takes one second
+  //         startDateInThePast,
+  //       );
+  //   });
 
-    it("reverts if the start date is after the latest start date", async () => {
-      await mainVotingPlugin.initialize(
-        dao.address,
-        votingSettings,
-        [signers[0].address],
-      );
-      await makeEditors(signers.slice(1));
+  //   it("reverts if the start date is after the latest start date", async () => {
+  //     await mainVotingPlugin.initialize(
+  //       dao.address,
+  //       votingSettings,
+  //       [signers[0].address],
+  //     );
+  //     await makeEditors(signers.slice(1));
 
-      const latestStartDate = MAX_UINT64.sub(votingSettings.minDuration);
-      const tooLateStartDate = latestStartDate.add(1);
-      const endDate = 0; // startDate + minDuration
+  //     const latestStartDate = MAX_UINT64.sub(votingSettings.minDuration);
+  //     const tooLateStartDate = latestStartDate.add(1);
+  //     const endDate = 0; // startDate + minDuration
 
-      await expect(
-        mainVotingPlugin.createProposal(
-          dummyMetadata,
-          [],
-          0,
-          tooLateStartDate,
-          endDate,
-          VoteOption.None,
-          false,
-        ),
-      ).to.be.revertedWithPanic(0x11);
-    });
+  //     await expect(
+  //       mainVotingPlugin.createProposal(
+  //         dummyMetadata,
+  //         [],
+  //         0,
+  //         tooLateStartDate,
+  //         endDate,
+  //         VoteOption.None,
+  //         false,
+  //       ),
+  //     ).to.be.revertedWithPanic(0x11);
+  //   });
 
-    it("reverts if the end date is before the earliest end date so that min duration cannot be met", async () => {
-      await mainVotingPlugin.initialize(
-        dao.address,
-        votingSettings,
-        [signers[0].address],
-      );
-      await makeEditors(signers.slice(1));
+  //   it("reverts if the end date is before the earliest end date so that min duration cannot be met", async () => {
+  //     await mainVotingPlugin.initialize(
+  //       dao.address,
+  //       votingSettings,
+  //       [signers[0].address],
+  //     );
+  //     await makeEditors(signers.slice(1));
 
-      const startDate = (await getTime()) + 1;
-      const earliestEndDate = startDate + votingSettings.minDuration;
-      const tooEarlyEndDate = earliestEndDate - 1;
+  //     const startDate = (await getTime()) + 1;
+  //     const earliestEndDate = startDate + votingSettings.minDuration;
+  //     const tooEarlyEndDate = earliestEndDate - 1;
 
-      await expect(
-        mainVotingPlugin.createProposal(
-          dummyMetadata,
-          [],
-          0,
-          startDate,
-          tooEarlyEndDate,
-          VoteOption.None,
-          false,
-        ),
-      )
-        .to.be.revertedWithCustomError(mainVotingPlugin, "DateOutOfBounds")
-        .withArgs(earliestEndDate, tooEarlyEndDate);
-    });
+  //     await expect(
+  //       mainVotingPlugin.createProposal(
+  //         dummyMetadata,
+  //         [],
+  //         0,
+  //         startDate,
+  //         tooEarlyEndDate,
+  //         VoteOption.None,
+  //         false,
+  //       ),
+  //     )
+  //       .to.be.revertedWithCustomError(mainVotingPlugin, "DateOutOfBounds")
+  //       .withArgs(earliestEndDate, tooEarlyEndDate);
+  //   });
 
-    it("sets the startDate to now and endDate to startDate + minDuration, if 0 is provided as an input", async () => {
-      await mainVotingPlugin.initialize(
-        dao.address,
-        votingSettings,
-        [signers[0].address],
-      );
-      await makeEditors(signers.slice(1));
+  //   it("sets the startDate to now and endDate to startDate + minDuration, if 0 is provided as an input", async () => {
+  //     await mainVotingPlugin.initialize(
+  //       dao.address,
+  //       votingSettings,
+  //       [signers[0].address],
+  //     );
+  //     await makeEditors(signers.slice(1));
 
-      // Create a proposal with zero as an input for `_startDate` and `_endDate`
-      const startDate = 0; // now
-      const endDate = 0; // startDate + minDuration
+  //     // Create a proposal with zero as an input for `_startDate` and `_endDate`
+  //     const startDate = 0; // now
+  //     const endDate = 0; // startDate + minDuration
 
-      const creationTx = await mainVotingPlugin.createProposal(
-        dummyMetadata,
-        [],
-        0,
-        startDate,
-        endDate,
-        VoteOption.None,
-        false,
-      );
+  //     const creationTx = await mainVotingPlugin.createProposal(
+  //       dummyMetadata,
+  //       [],
+  //       0,
+  //       startDate,
+  //       endDate,
+  //       VoteOption.None,
+  //       false,
+  //     );
 
-      const currentTime = (
-        await ethers.provider.getBlock((await creationTx.wait()).blockNumber)
-      ).timestamp;
+  //     const currentTime = (
+  //       await ethers.provider.getBlock((await creationTx.wait()).blockNumber)
+  //     ).timestamp;
 
-      const expectedStartDate = currentTime;
-      const expectedEndDate = expectedStartDate + votingSettings.minDuration;
+  //     const expectedStartDate = currentTime;
+  //     const expectedEndDate = expectedStartDate + votingSettings.minDuration;
 
-      // Check the state
-      const proposal = await mainVotingPlugin.getProposal(id);
-      expect(proposal.parameters.startDate).to.eq(expectedStartDate);
-      expect(proposal.parameters.endDate).to.eq(expectedEndDate);
+  //     // Check the state
+  //     const proposal = await mainVotingPlugin.getProposal(id);
+  //     expect(proposal.parameters.startDate).to.eq(expectedStartDate);
+  //     expect(proposal.parameters.endDate).to.eq(expectedEndDate);
 
-      // Check the event
-      const event = await findEvent<ProposalCreatedEvent>(
-        creationTx,
-        "ProposalCreated",
-      );
+  //     // Check the event
+  //     const event = await findEvent<ProposalCreatedEvent>(
+  //       creationTx,
+  //       "ProposalCreated",
+  //     );
 
-      expect(event!.args.proposalId).to.equal(id);
-      expect(event!.args.creator).to.equal(signers[0].address);
-      expect(event!.args.startDate).to.equal(expectedStartDate);
-      expect(event!.args.endDate).to.equal(expectedEndDate);
-      expect(event!.args.metadata).to.equal(dummyMetadata);
-      expect(event!.args.actions).to.deep.equal([]);
-      expect(event!.args.allowFailureMap).to.equal(0);
-    });
+  //     expect(event!.args.proposalId).to.equal(id);
+  //     expect(event!.args.creator).to.equal(signers[0].address);
+  //     expect(event!.args.startDate).to.equal(expectedStartDate);
+  //     expect(event!.args.endDate).to.equal(expectedEndDate);
+  //     expect(event!.args.metadata).to.equal(dummyMetadata);
+  //     expect(event!.args.actions).to.deep.equal([]);
+  //     expect(event!.args.allowFailureMap).to.equal(0);
+  //   });
 
-    it("reverts creation if the creator tries to vote and the start date if in the future", async () => {
-      await mainVotingPlugin.initialize(
-        dao.address,
-        votingSettings,
-        [signers[0].address],
-      );
-      startDate = (await getTime()) + startOffset;
-      endDate = startDate + votingSettings.minDuration;
+  //   it("reverts creation if the creator tries to vote and the start date if in the future", async () => {
+  //     await mainVotingPlugin.initialize(
+  //       dao.address,
+  //       votingSettings,
+  //       [signers[0].address],
+  //     );
+  //     startDate = (await getTime()) + startOffset;
+  //     endDate = startDate + votingSettings.minDuration;
 
-      expect(await getTime()).to.be.lessThan(startDate);
+  //     expect(await getTime()).to.be.lessThan(startDate);
 
-      // Reverts if the vote option is not 'None'
-      await expect(
-        mainVotingPlugin.createProposal(
-          dummyMetadata,
-          dummyActions,
-          0,
-          startDate,
-          endDate,
-          VoteOption.Yes,
-          false,
-        ),
-      )
-        .to.be.revertedWithCustomError(mainVotingPlugin, "VoteCastForbidden")
-        .withArgs(id, signers[0].address, VoteOption.Yes);
+  //     // Reverts if the vote option is not 'None'
+  //     await expect(
+  //       mainVotingPlugin.createProposal(
+  //         dummyMetadata,
+  //         dummyActions,
+  //         0,
+  //         startDate,
+  //         endDate,
+  //         VoteOption.Yes,
+  //         false,
+  //       ),
+  //     )
+  //       .to.be.revertedWithCustomError(mainVotingPlugin, "VoteCastForbidden")
+  //       .withArgs(id, signers[0].address, VoteOption.Yes);
 
-      // Works if the vote option is 'None'
-      expect(
-        (
-          await mainVotingPlugin.createProposal(
-            dummyMetadata,
-            dummyActions,
-            0,
-            startDate,
-            endDate,
-            VoteOption.None,
-            false,
-          )
-        ).value,
-      ).to.equal(id);
-    });
-  });
+  //     // Works if the vote option is 'None'
+  //     expect(
+  //       (
+  //         await mainVotingPlugin.createProposal(
+  //           dummyMetadata,
+  //           dummyActions,
+  //           0,
+  //           startDate,
+  //           endDate,
+  //           VoteOption.None,
+  //           false,
+  //         )
+  //       ).value,
+  //     ).to.equal(id);
+  //   });
+  // });
 
   describe("Proposal + Execute:", async () => {
     context("Standard Mode", async () => {
@@ -1474,26 +1474,26 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         );
       });
 
-      it("does not allow voting, when the vote has not started yet", async () => {
-        expect(await getTime()).to.be.lessThan(startDate);
+      // it("does not allow voting, when the vote has not started yet", async () => {
+      //   expect(await getTime()).to.be.lessThan(startDate);
 
-        expect(
-          await mainVotingPlugin.canVote(
-            id,
-            signers[0].address,
-            VoteOption.Yes,
-          ),
-        )
-          .to
-          .be.false;
+      //   expect(
+      //     await mainVotingPlugin.canVote(
+      //       id,
+      //       signers[0].address,
+      //       VoteOption.Yes,
+      //     ),
+      //   )
+      //     .to
+      //     .be.false;
 
-        await expect(mainVotingPlugin.vote(id, VoteOption.Yes, false))
-          .to.be.revertedWithCustomError(
-            mainVotingPlugin,
-            "VoteCastForbidden",
-          )
-          .withArgs(id, signers[0].address, VoteOption.Yes);
-      });
+      //   await expect(mainVotingPlugin.vote(id, VoteOption.Yes, false))
+      //     .to.be.revertedWithCustomError(
+      //       mainVotingPlugin,
+      //       "VoteCastForbidden",
+      //     )
+      //     .withArgs(id, signers[0].address, VoteOption.Yes);
+      // });
 
       it("increases the yes, no, and abstain count and emits correct events", async () => {
         await advanceIntoVoteTime(startDate, endDate);
