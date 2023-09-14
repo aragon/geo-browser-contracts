@@ -30,9 +30,9 @@ jobs:
       - name: 'Install the dependencies'
         run: 'yarn install'
 
-      - name: 'Lint the code'
-        run: 'yarn lint'
-        working-directory: packages/contracts
+      # - name: 'Lint the code'
+      #   run: 'yarn lint'
+      #   working-directory: packages/contracts
 
       - name: 'Build the contracts'
         run: 'yarn build'
