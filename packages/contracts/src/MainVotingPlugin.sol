@@ -9,7 +9,7 @@ import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
-import {MEMBER_PERMISSION_ID, EDITOR_PERMISSION_ID} from "./constants.sol";
+import {MEMBER_PERMISSION_ID} from "./constants.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^

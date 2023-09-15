@@ -10,7 +10,7 @@ import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeab
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
 import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
-import {MEMBER_PERMISSION_ID, EDITOR_PERMISSION_ID} from "./constants.sol";
+import {MEMBER_PERMISSION_ID} from "./constants.sol";
 
 bytes4 constant MULTISIG_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
     MemberAccessPlugin.updateMultisigSettings.selector ^
