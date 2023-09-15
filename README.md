@@ -29,36 +29,40 @@ The current repository provides the plugins necessary to cover two use cases:
 
 1. A standard space where members propose changes and editors vote on them
    - Space plugin
-   - Personal Space Admin plugin
-2. A personal space, where editors apply changes immediately
-   - Space plugin
    - Member Access plugin
    - Main Voting plugin
+2. A personal space, where editors apply changes immediately
+   - Space plugin
+   - Personal Space Admin plugin
 
-## General notes
+## General notice
 
 The implementation of the four plugins is built on top of existing and thoroughly autited plugins from Aragon OSx. The base contracts used highly align with the requirements of Geo. However, there is some cases in which certain parameters may not be relevant or may need to be kept for compatibility.
 
 The alternative would be to fork these base contracts and include them as part of this repository. Given the pro's of getting OSx updates from Aragon for free vs the con's of keeping a few redundant parameters, we have decided to avoid forking any base contract.
 
-[Learn more about Aragon OSx](https://devs.aragon.org/docs/osx/how-it-works/framework/).
+[Learn more about Aragon OSx](https://devs.aragon.org/docs/osx/how-it-works/framework/)
 
 ### Quirks
 
-- The `minProposerVotingPower` setting is ignored. Being a member is the requirement.
+- The `minProposerVotingPower` setting is ignored. The requirement is just being a member.
   - Leave it to just `0`
-- The second parameter of `approve()` is ignored on `MemberAccessPlugin`. It is assumed that an approval will trigger an early execution whenever possible.
+- The second parameter of `approve()` is ignored on [MemberAccessPlugin](#member-access-plugin). It is assumed that an approval will trigger an early execution whenever possible.
   - Leave it to just `false`
 - The 4th and 5th parameters on `createProposal()` (startDate and endDate) are ignored
   - Leave them to just `0`
 - `minDuration` in `MainVotingSettings` defines the proposal duration, not the minimum duration.
-- The methods `addAddresses()` and `removeAddresses()` on the `MemberAccessPlugin` are disabled
+- The methods `addAddresses()` and `removeAddresses()` on the [MemberAccessPlugin](#member-access-plugin) are disabled
 
 ## How permissions work
 
 For each Space, an Aragon DAO is going to be created to act as the entry point. It will hold any assets and most importantly, manage the permission database which will govern all plugin interactions.
 
-A newly deployed DAO only has a `ROOT_PERMISSION` assigned to its creator, but the DAO will typically deployed by the DAO factory, which will install all the requested plugins and drop the permission after the set up is done.
+A permission looks like:
+
+- An address `who` holds `MY_PERMISSION_ID` on a target contract `where`
+
+New DAO's are deployed with a `ROOT_PERMISSION` assigned to its creator, but the DAO will typically deployed by the DAO factory, which will install all the requested plugins and drop the ROOT permission after the set up is done.
 
 Managing permissions is made via two functions that are called on the DAO:
 
@@ -68,9 +72,15 @@ function grant(address _where, address _who, bytes32 _permissionId);
 function revoke(address _where, address _who, bytes32 _permissionId);
 ```
 
-### Permission Conditios
+### Permission Conditions
 
-For the cases where an unrestricted permission is not derisable, a [Permission Condition](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/conditions) can be used. Conditional permissions are granted like this:
+For the cases where an unrestricted permission is not derisable, a [Permission Condition](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/conditions) can be used.
+
+Conditional permissions look like this:
+
+- An address `who` holds `MY_PERMISSION_ID` on a target contract `where`, only `when` the condition contract approves it
+
+Conditional permissions are granted like this:
 
 ```solidity
 function grantWithCondition(
@@ -81,14 +91,16 @@ function grantWithCondition(
 );
 ```
 
-See the `MemberAccessExecuteCondition` contract. It limits what the `MemberAccessPlugin` can do the DAO.
+See the `MemberAccessExecuteCondition` contract. It restricts what the [MemberAccessPlugin](#member-access-plugin) can execute on the DAO.
 
 [Learn more about OSx permissions](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/)
 
 ### Permissions being used
 
-- `MEMBER_PERMISSION` is required to create proposals on the `MainVotingPlugin`
-- `EDITOR_PERMISSION` is required to execute proposals on the `PersonalSpaceAdminPlugin`
+Below are all the permissions that a [PluginSetup](#plugin-setup-contracts) contract may want to request:
+
+- `MEMBER_PERMISSION` is required to create proposals on the [MainVotingPlugin](#main-voting-plugin)
+- `EDITOR_PERMISSION` is required to execute proposals on the [PersonalSpaceAdminPlugin](#personal-space-admin-plugin)
 - `EXECUTE_PERMISSION` is required to make the DAO `execute` a set of actions
   - Only plugins should have this permission
   - Some plugins should restrict it with a condition
@@ -98,13 +110,13 @@ See the `MemberAccessExecuteCondition` contract. It limits what the `MemberAcces
 - `UPGRADE_PLUGIN_PERMISSION` is required for an address to be able to upgrade a plugin to a newer version published by the developer
   - Typically called by the DAO via proposal
   - Optionally granted to an additional address for convenience
-- `CONTENT_PERMISSION_ID` is required to call the function that emits new events for content
+- `CONTENT_PERMISSION_ID` is required to call the function that emits new content events on the [SpacePlugin](#space-plugin)
   - Typically called by the DAO via proposal
-- `SUBSPACE_PERMISSION_ID` is required to call the functions that accept or reject a subspace and emit the event for it
+- `SUBSPACE_PERMISSION_ID` is required to call the functions that emit new subspace accept/reject events on the [SpacePlugin](#space-plugin)
   - Typically called by the DAO via proposal
-- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the MemberAccessPlugin
+- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [MemberAccessPlugin](#member-access-plugin)
   - Typically called by the DAO via proposal
-- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove editors on the `MainVotingPlugin`
+- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove editors on the [MainVotingPlugin](#main-voting-plugin)
   - Typically called by the DAO via proposal
 
 Other DAO permissions:
@@ -128,34 +140,38 @@ See `packages/contracts/typechain` for all the generated JS/TS wrappers to inter
 
 Making calls to the DAO is straightforward, however making execute arbitrary actions requires them to be encoded, stored on chain and be approved before they can be executed.
 
-To this end, the DAO has a struct called `Action { to, value, data }`, which will make the DAO call the `to` address, with `value` ether and call the given calldata (if any). To encode these functions, you can make use of the provided JS client template.
+To this end, the DAO has a struct called `Action { to, value, data }`, which will make the DAO call the `to` address, with `value` ether and call the given calldata (if any). To encode these functions, you can make use of the provided [JS client template](packages/js-client/src).
 
 It uses the generated typechain artifacts, which contain the interfaces for the available contract methods and allow to easily encode function calls into hex strings.
 
-See `packages/js-client/src/internal/modules/encoding.ts` and `decoding.ts` for a JS boilerplate.
+See [packages/js-client/src/internal/modules/encoding.ts](packages/js-client/src/internal/modules/encoding.ts) and [decoding.ts](packages/js-client/src/internal/modules/decoding.ts) for a JS boilerplate.
 
 ## Adding members and editors
 
-On Spaces with the standard governance, a `MemberAccessPlugin` and a `MainVotingPlugin` will be installed.
+On Spaces with the standard governance, a [MemberAccessPlugin](#member-access-plugin) and a [MainVotingPlugin](#main-voting-plugin) will be installed.
 
 ### Members
 
 - Send a transaction to call `proposeNewMember()`
 - Have an editor (different to the proposer) calling `approve()` for this proposal
-- This will grant a `MEMBER_PERMISSION` to the requested address
+- This will grant `MEMBER_PERMISSION` to the requested address on the main voting contract
 
 ### Editors
 
-- Have a member or editor creating a proposal
-- The proposal should have an action so that the DAO `execute()`'s `addAddresses()` on the plugin
-- Have a majority of editors calling `vote()` for it
-- Executing `plugin.execute()` so that the DAO executes the requested action on the plugin
-- The editor will be able to vote on proposals created from then on
+- A member or editor creates a proposal
+- The proposal should have an action to make the DAO `execute()` a call to `addAddresses()` on the plugin
+- A majority of editors call `vote()` and approve it
+- Someone calls `plugin.execute()` so that the DAO executes the requested action on the plugin
+- The new editor will be able to vote on proposals created from then on
+
+The same procedure applies to removing members and editors.
 
 ## Adding editors (personal spaces)
 
-- Execute a proposal with an action to call `grant(address(this), targetAddress, EDITOR_PERMISSION_ID)`
+- Execute a proposal with an action to call `grant(address(mainVotingPlugin), targetAddress, EDITOR_PERMISSION_ID)`
 - With the permission granted, `targetAddress` can immediately start executing proposals
+
+The same applies for removing a member.
 
 ## The DAO's plugins
 
@@ -163,7 +179,7 @@ On Spaces with the standard governance, a `MemberAccessPlugin` and a `MainVoting
 
 Acts as the source of truth regarding the Space associated to the DAO. It is in charge of emitting the events that notify new content being approved and it also emits events accepting a certain DAO as a Subpspace.
 
-The same plugin is used for both use cases. The difference lies on the governance model, not here.
+The same plugin is used for both governance cases. The difference lies on the governance model.
 
 This plugin is upgradeable.
 
@@ -200,7 +216,7 @@ Inherited:
 
 ### Member Access plugin
 
-Provides a simple way for any address to request membership on a space. It creates a proposal to grant `MEMBERSHIP_PERMISSION` to an address on the main voting plugin and Editors can approve or reject it. Once approved, the permission allows to create proposals on the other plugin.
+Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to grant `MEMBERSHIP_PERMISSION` to an address on the main voting plugin and Editors can approve or reject it. Once approved, the permission allows to create proposals on the other plugin.
 
 #### Methods
 
@@ -240,9 +256,9 @@ Inherited:
 
 #### Events
 
-- `event Approved(uint256 indexed proposalId, address indexed editor);`
-- `event Rejected(uint256 indexed proposalId, address indexed editor);`
-- `event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);`
+- `event Approved(uint256 indexed proposalId, address indexed editor)`
+- `event Rejected(uint256 indexed proposalId, address indexed editor)`
+- `event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin)`
 
 Inherited:
 
@@ -260,7 +276,9 @@ Inherited:
 
 ### Main Voting plugin
 
-It's the main governance plugin for standard spaces, where all proposals are voted by editors. Only members (or editors) can create proposals and they can only be executed after a qualified majority has voted for it.
+It's the main governance plugin for standard spaces, where all proposals are voted by editors. It is a adapted version of Aragon's [AddresslistVoting plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/majority-voting/addresslist/AddresslistVoting.sol). Only members (or editors) can create proposals and they can only be executed after a qualified majority has voted for it.
+
+It acts as the source of truth about who is an editor, on Spaces with standard governance.
 
 The governance settings need to be defined when the plugin is deployed but the DAO can change them at any time.
 
@@ -304,9 +322,8 @@ Inherited:
 
 #### Events
 
-- `event Approved(uint256 indexed proposalId, address indexed editor);`
-- `event Rejected(uint256 indexed proposalId, address indexed editor);`
-- `event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);`
+- `event VoteCast(uint256 indexed proposalId, address indexed voter, VoteOption voteOption, uint256 votingPower)`
+- `event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin)`
 
 Inherited:
 
@@ -323,9 +340,9 @@ Inherited:
 - The DAO can upgrade the plugin
 - Optionally, a given pluginUpgrader can upgrade the plugin
 
-### PersonalSpaceAdminPlugin
+### Personal Space Admin Plugin
 
-Governance plugin providing the default implementation for personal spaces, where addresses with editor permissioin can apply proposals right away.
+Governance plugin providing the default implementation for personal spaces, where addresses with editor permissioin can apply proposals right away. It is a adapted version of Aragon's [Admin plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/admin/Admin.sol).
 
 Since this plugin has the power to unilaterally perform actions, it is not upgradeable. Adding many editors is possible via proposals with a grant/revoke action.
 
@@ -358,10 +375,10 @@ Inherited:
 
 ## Plugin Setup contracts
 
-So far, we have been talking about the plugin contracts. However, they need to be prepared and installed to a DAO, and a DAO needs to approve for it. To this end, PluginSetup contracts act as an install script in charge of preparing installations, updates and uninstallations. They always have two steps:
+So far, we have been talking about the plugin contracts. However, they need to be prepared and installed on a DAO and for this, a DAO needs to approve for it. To this end, PluginSetup contracts act as an install script in charge of preparing installations, updates and uninstallations. They always have two steps:
 
-1. An unprivileged step to prepare the plugin and request permissions
-2. An approval step in which editors eventually execute an action that applies the requested installation, upgrade or uninstallation
+1. An unprivileged step to prepare the plugin and request any privileged changes
+2. An approval step after which, editors execute an action that applies the requested installation, upgrade or uninstallation
 
 [Learn more](https://devs.aragon.org/docs/osx/how-to-guides/plugin-development/upgradeable-plugin/setup)
 
@@ -376,7 +393,7 @@ This is taken care by the `DAOFactory`. The DAO creator calls `daoFactory.create
 - It will then call `prepareInstallation()` on all plugins and `applyInstallation()` right away
 - It will finally drop `ROOT_PERMISSION` on itself
 
-[See a JS example of the flow](https://devs.aragon.org/docs/sdk/examples/client/create-dao#create-a-dao).
+[See a JS example of installing plugins during a DAO's deployment](https://devs.aragon.org/docs/sdk/examples/client/create-dao#create-a-dao)
 
 ### Installing plugins afterwards
 
@@ -390,7 +407,7 @@ Plugin changes need a proposal to be passed when the DAO already exists.
 
 See `SpacePluginSetup`, `PersonalSpaceAdminPluginSetup`, `MemberAccessPluginSetup` and `MainVotingPluginSetup`.
 
-[Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/).
+[Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
 
 ## Deploying a DAO
 
@@ -419,10 +436,10 @@ The format of these settings is defined in the `packages/contracts/src/*-build.m
 
 ## DO's and DONT's
 
-- Always grant `EDITOR_PERMISSION` without any condition attached to it
-- Never grant `ROOT_PERMISSION` unless you are trying things out
+- Never grant `ROOT_PERMISSION` unless you are just trying things out
 - Never uninstall all plugins, as this would brick your DAO
 - Ensure that there is at least always one plugin with `EXECUTE_PERMISSION` on the DAO
+- Ensure that the DAO is ROOT on itself
 - Use the `_gap[]` variable for upgradeable plugins, as a way to reserve storage slots for future plugin implementations
   - Decrement the `_gap` number for every new variable you add in the future
 
