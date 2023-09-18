@@ -9,7 +9,7 @@ import {
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
 import { osxContracts } from "../../utils/helpers";
 import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
-import { installPLugin, uninstallPLugin } from "../helpers/setup";
+import { installPlugin, uninstallPlugin } from "../helpers/setup";
 import { deployTestDao } from "../helpers/test-dao";
 import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
@@ -106,7 +106,7 @@ describe("SpacePluginSetup Processing", function () {
       const pluginUpgrader = ADDRESS_ZERO;
 
       // Install build 1.
-      const results = await installPLugin(
+      const results = await installPlugin(
         psp,
         dao,
         pluginSetupRef,
@@ -135,7 +135,7 @@ describe("SpacePluginSetup Processing", function () {
       );
 
       // Uninstall build 1.
-      await uninstallPLugin(
+      await uninstallPlugin(
         psp,
         dao,
         plugin,
