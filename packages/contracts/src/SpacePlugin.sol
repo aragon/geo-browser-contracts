@@ -19,12 +19,12 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     event ContentChanged(uint32 blockIndex, uint32 itemIndex, string contentUri);
 
     /// @notice Emitted when the DAO accepts another DAO as a subspace.
-    /// @param dao The address of the DAO to be accepted as a subspace.
-    event SubspaceAccepted(address dao);
+    /// @param subspaceDao The address of the DAO to be accepted as a subspace.
+    event SubspaceAccepted(address subspaceDao);
 
     /// @notice Emitted when the DAO stops recognizing another DAO as a subspace.
-    /// @param dao The address of the DAO to be removed as a subspace.
-    event SubspaceRemoved(address dao);
+    /// @param subspaceDao The address of the DAO to be removed as a subspace.
+    event SubspaceRemoved(address subspaceDao);
 
     /// @notice Initializes the plugin when build 1 is installed.
     /// @param _dao The address of the DAO to read the permissions from.
