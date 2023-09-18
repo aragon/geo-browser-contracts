@@ -69,9 +69,19 @@ function storePluginRepoInfo(
 ) {
   const pluginReposFilePath = getFilePathFromNetwork(networkName);
 
-  const pluginRepos: PluginRepos = JSON.parse(
-    readFileSync(pluginReposFilePath, "utf-8"),
-  );
+  let pluginRepos: PluginRepos;
+
+  if (
+    existsSync(pluginReposFilePath) &&
+    statSync(pluginReposFilePath).size > 1
+  ) {
+    pluginRepos = JSON.parse(
+      readFileSync(pluginReposFilePath, "utf-8"),
+    );
+  } else {
+    pluginRepos = {};
+  }
+
   if (!pluginRepos[networkName]?.length) {
     pluginRepos[networkName] = [];
   }
