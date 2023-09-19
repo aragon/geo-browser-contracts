@@ -204,208 +204,210 @@ describe("Main Voting Plugin", function () {
     });
   });
 
-  it("Only members can create proposals", async () => {
-    await expect(
-      mainVotingPlugin.connect(alice).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.Yes,
-        true, // auto execute
-      ),
-    ).to.not.be.reverted;
+  context("Before proposals", () => {
+    it("Only members can create proposals", async () => {
+      await expect(
+        mainVotingPlugin.connect(alice).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.Yes,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
 
-    await expect(
-      mainVotingPlugin.connect(bob).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.None,
-        true, // auto execute
-      ),
-    ).to.not.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
 
-    await expect(
-      mainVotingPlugin.connect(charlie).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.None,
-        true, // auto execute
-      ),
-    ).to.be.revertedWithCustomError(
-      mainVotingPlugin,
-      "NotAMember",
-    )
-      .withArgs(charlie.address);
+      await expect(
+        mainVotingPlugin.connect(charlie).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.be.revertedWithCustomError(
+        mainVotingPlugin,
+        "NotAMember",
+      )
+        .withArgs(charlie.address);
 
-    await expect(
-      mainVotingPlugin.connect(debbie).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.None,
-        true, // auto execute
-      ),
-    ).to.be.revertedWithCustomError(
-      mainVotingPlugin,
-      "NotAMember",
-    )
-      .withArgs(debbie.address);
+      await expect(
+        mainVotingPlugin.connect(debbie).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.be.revertedWithCustomError(
+        mainVotingPlugin,
+        "NotAMember",
+      )
+        .withArgs(debbie.address);
+    });
+
+    it("Only editors can vote on proposals", async () => {
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      let proposal = await mainVotingPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(false);
+
+      // Bob can't vote
+      await expect(mainVotingPlugin.connect(bob).vote(0, VoteOption.Yes, false))
+        .to.be.reverted;
+
+      // Charlie can't vote
+      await expect(
+        mainVotingPlugin.connect(charlie).vote(0, VoteOption.Yes, false),
+      ).to.be.reverted;
+
+      // Debbie can't vote
+      await expect(
+        mainVotingPlugin.connect(debbie).vote(0, VoteOption.Yes, false),
+      )
+        .to.be.reverted;
+
+      proposal = await mainVotingPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(false);
+
+      // Alice can vote
+      await expect(mainVotingPlugin.vote(0, VoteOption.Yes, true)).to.not.be
+        .reverted;
+
+      proposal = await mainVotingPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(true);
+    });
+
+    it("Only editors can vote when creating proposals", async () => {
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(false);
+
+      // Bob can't create and vote
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.Yes,
+          true, // auto execute
+        ),
+      ).to.be.reverted;
+
+      // Bob can create without mainVotingPlugin
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      // Alice can create and vote
+      await expect(
+        mainVotingPlugin.connect(alice).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.Yes,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      // Alice can create without a vote
+      await expect(
+        mainVotingPlugin.connect(alice).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+    });
+
+    it("isMember() returns true when appropriate", async () => {
+      expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
+      expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+      expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
+
+      expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
+      expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
+
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+
+      await dao.grant(
+        mainVotingPlugin.address,
+        charlie.address,
+        MEMBER_PERMISSION_ID,
+      );
+
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+
+      await dao.revoke(
+        mainVotingPlugin.address,
+        charlie.address,
+        MEMBER_PERMISSION_ID,
+      );
+
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+
+      await makeEditor(charlie.address);
+
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+    });
+
+    it("isEditor() returns true when appropriate", async () => {
+      expect(await memberAccessPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
+      expect(await memberAccessPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
+      expect(await memberAccessPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
+
+      expect(await memberAccessPlugin.isEditor(alice.address)).to.eq(true);
+      expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
+      expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
+
+      await makeEditor(charlie.address);
+
+      expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
+    });
   });
 
-  it("Only editors can vote on proposals", async () => {
-    await expect(
-      mainVotingPlugin.connect(bob).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.None,
-        true, // auto execute
-      ),
-    ).to.not.be.reverted;
-
-    let proposal = await mainVotingPlugin.getProposal(0);
-    expect(proposal.executed).to.eq(false);
-
-    // Bob can't vote
-    await expect(mainVotingPlugin.connect(bob).vote(0, VoteOption.Yes, false))
-      .to.be.reverted;
-
-    // Charlie can't vote
-    await expect(
-      mainVotingPlugin.connect(charlie).vote(0, VoteOption.Yes, false),
-    ).to.be.reverted;
-
-    // Debbie can't vote
-    await expect(
-      mainVotingPlugin.connect(debbie).vote(0, VoteOption.Yes, false),
-    )
-      .to.be.reverted;
-
-    proposal = await mainVotingPlugin.getProposal(0);
-    expect(proposal.executed).to.eq(false);
-
-    // Alice can vote
-    await expect(mainVotingPlugin.vote(0, VoteOption.Yes, true)).to.not.be
-      .reverted;
-
-    proposal = await mainVotingPlugin.getProposal(0);
-    expect(proposal.executed).to.eq(true);
-  });
-
-  it("Only editors can vote when creating proposals", async () => {
-    expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(false);
-
-    // Bob can't create and vote
-    await expect(
-      mainVotingPlugin.connect(bob).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.Yes,
-        true, // auto execute
-      ),
-    ).to.be.reverted;
-
-    // Bob can create without mainVotingPlugin
-    await expect(
-      mainVotingPlugin.connect(bob).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.None,
-        true, // auto execute
-      ),
-    ).to.not.be.reverted;
-
-    // Alice can create and vote
-    await expect(
-      mainVotingPlugin.connect(alice).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.Yes,
-        true, // auto execute
-      ),
-    ).to.not.be.reverted;
-
-    // Alice can create without a vote
-    await expect(
-      mainVotingPlugin.connect(alice).createProposal(
-        toUtf8Bytes("ipfs://"),
-        [],
-        0, // fail safe
-        0, // start date
-        0, // end date
-        VoteOption.None,
-        true, // auto execute
-      ),
-    ).to.not.be.reverted;
-  });
-
-  it("isMember() returns true when appropriate", async () => {
-    expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
-    expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
-    expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
-
-    expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
-    expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
-
-    await dao.grant(
-      mainVotingPlugin.address,
-      charlie.address,
-      MEMBER_PERMISSION_ID,
-    );
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
-
-    await dao.revoke(
-      mainVotingPlugin.address,
-      charlie.address,
-      MEMBER_PERMISSION_ID,
-    );
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
-
-    await makeEditor(charlie.address);
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
-  });
-
-  it("isEditor() returns true when appropriate", async () => {
-    expect(await memberAccessPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
-    expect(await memberAccessPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
-    expect(await memberAccessPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
-
-    expect(await memberAccessPlugin.isEditor(alice.address)).to.eq(true);
-    expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
-    expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
-
-    await makeEditor(charlie.address);
-
-    expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
-  });
-
-  describe("One editor", () => {
+  context("One editor", () => {
     it("Proposals take immediate effect when created by the only editor", async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
@@ -445,7 +447,7 @@ describe("Main Voting Plugin", function () {
     });
   });
 
-  describe("Multiple editors", () => {
+  context("Multiple editors", () => {
     it("Proposals created by a member require editor votes", async () => {
       let pid = 0;
       // Bob editor
@@ -518,411 +520,420 @@ describe("Main Voting Plugin", function () {
     });
   });
 
-  it("Adding an editor increases the editorCount", async () => {
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+  context("After proposals", () => {
+    it("Adding an editor increases the editorCount", async () => {
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
-    // Add Bob
-    await proposeNewEditor(bob.address);
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
-    expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(true);
+      // Add Bob
+      await proposeNewEditor(bob.address);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(true);
 
-    // Propose Charlie
-    await proposeNewEditor(charlie.address);
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
-    expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(false);
+      // Propose Charlie
+      await proposeNewEditor(charlie.address);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+      expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(false);
 
-    // Confirm Charlie
-    await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true)).to
-      .not.be.reverted;
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
-    expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(true);
-  });
+      // Confirm Charlie
+      await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
+        .to
+        .not.be.reverted;
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
+      expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(true);
+    });
 
-  it("Removing an editor decreases the editorCount", async () => {
-    // Add Bob and Charlie
-    await proposeNewEditor(bob.address); // Alice votes yes as the creator
-    await proposeNewEditor(charlie.address); // Alice votes yes as the creator
-    await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true)).to
-      .not.be.reverted;
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
+    it("Removing an editor decreases the editorCount", async () => {
+      // Add Bob and Charlie
+      await proposeNewEditor(bob.address); // Alice votes yes as the creator
+      await proposeNewEditor(charlie.address); // Alice votes yes as the creator
+      await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
+        .to
+        .not.be.reverted;
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
-    // Propose removing Charlie
-    await proposeRemoveEditor(charlie.address); // Alice votes yes as the creator
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
-    await expect(mainVotingPlugin.connect(bob).vote(2, VoteOption.Yes, true)).to
-      .not.be.reverted;
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+      // Propose removing Charlie
+      await proposeRemoveEditor(charlie.address); // Alice votes yes as the creator
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
+      await expect(mainVotingPlugin.connect(bob).vote(2, VoteOption.Yes, true))
+        .to
+        .not.be.reverted;
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
 
-    // Propose removing Bob
-    await proposeRemoveEditor(bob.address);
-    expect(await mainVotingPlugin.connect(bob).vote(3, VoteOption.Yes, true)).to
-      .not.be.reverted;
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
-  });
+      // Propose removing Bob
+      await proposeRemoveEditor(bob.address);
+      expect(await mainVotingPlugin.connect(bob).vote(3, VoteOption.Yes, true))
+        .to
+        .not.be.reverted;
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+    });
 
-  it("Adding more than one editor at once reverts", async () => {
-    // 2
-    let actions: IDAO.ActionStruct[] = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("addAddresses", [
-            [bob.address, charlie.address],
-          ]),
-      },
-    ];
-
-    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
-    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
-      .revertedWithCustomError(dao, "ActionFailed");
-    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
-
-    // 3
-    actions = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("addAddresses", [
-            [bob.address, charlie.address, debbie.address],
-          ]),
-      },
-    ];
-    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
-    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
-      .revertedWithCustomError(dao, "ActionFailed");
-    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
-
-    // 1 works
-    actions = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("addAddresses", [
-            [bob.address],
-          ]),
-      },
-    ];
-
-    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.not.be.reverted;
-  });
-
-  it("Removing more than one editor at once reverts", async () => {
-    await makeEditor(bob.address);
-    await makeEditor(charlie.address);
-
-    // 2
-    let actions: IDAO.ActionStruct[] = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("removeAddresses", [
-            [bob.address, charlie.address],
-          ]),
-      },
-    ];
-    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
-      .revertedWithCustomError(dao, "ActionFailed");
-
-    // 3
-    actions = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("removeAddresses", [
-            [bob.address, charlie.address],
-          ]),
-      },
-    ];
-    await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
-      .revertedWithCustomError(dao, "ActionFailed");
-
-    // 1 works
-    actions = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("removeAddresses", [
-            [bob.address],
-          ]),
-      },
-    ];
-
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actions,
-        0,
-      ),
-    ).to.not.be.reverted;
-  });
-
-  it("Attempting to remove the last editor reverts", async () => {
-    // Try to remove Alice
-    await expect(pullEditor(alice.address)).to.be
-      .revertedWithCustomError(
-        mainVotingPlugin,
-        "NoEditorsLeft",
-      );
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
-
-    // Add Bob
-    await proposeNewEditor(bob.address);
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
-    expect(await mainVotingPlugin.isEditor(bob.address)).to.be.true;
-    await mineBlock();
-
-    // Remove Bob
-    await expect(proposeRemoveEditor(bob.address)).to.not.be.reverted;
-    await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
-      .to.not.be.reverted;
-    expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
-
-    // Try to remove Alice
-    await expect(pullEditor(alice.address)).to.be
-      .revertedWithCustomError(mainVotingPlugin, "NoEditorsLeft");
-  });
-
-  it("Attempting to vote twice fails (replacement disabled)", async () => {
-    // Add Bob
-    await proposeNewEditor(bob.address); // Alice votes yes as the creator
-
-    // Propose Charlie
-    await proposeNewEditor(charlie.address); // Alice votes yes as the creator
-
-    // Vote again
-    await expect(mainVotingPlugin.connect(alice).vote(1, VoteOption.Yes, true))
-      .to.be.reverted;
-  });
-
-  it("Approved proposals can be executed by anyone after passed", async () => {
-    let pid = 0;
-    await expect(createDummyProposal(bob, false)).to.not.be.reverted;
-    expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
-
-    // Charlie cannot execute
-    await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
-      .reverted;
-
-    // Alice approves
-    await expect(
-      mainVotingPlugin.vote(pid, VoteOption.Yes, false),
-    ).to.not.be.reverted;
-    expect(await mainVotingPlugin.canExecute(pid)).to.eq(true);
-
-    // Charlie executes
-    await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.not.be
-      .reverted;
-  });
-
-  it("Rejected proposals cannot be executed", async () => {
-    let pid = 0;
-    await expect(createDummyProposal(bob, false)).to.not.be.reverted;
-    expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
-
-    // Charlie cannot execute
-    await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
-      .reverted;
-
-    // Alice rejects
-    await expect(
-      mainVotingPlugin.vote(pid, VoteOption.No, false),
-    ).to.not.be.reverted;
-    expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
-
-    // Charlie cannot execute
-    await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
-      .reverted;
-
-    //
-
-    // Now with Bob as editor
-    await proposeNewEditor(bob.address); // Alice auto approves
-    pid++;
-    await expect(createDummyProposal(bob, false)).to.not.be.reverted;
-    pid++;
-    expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
-
-    // Charlie cannot execute
-    await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
-      .reverted;
-
-    // Alice rejects
-    await expect(
-      mainVotingPlugin.vote(pid, VoteOption.No, false),
-    ).to.not.be.reverted;
-    expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
-
-    // Bob rejects
-    await expect(
-      mainVotingPlugin.connect(bob).vote(pid, VoteOption.No, false),
-    ).to.not.be.reverted;
-    expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
-
-    // Charlie cannot execute
-    await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
-      .reverted;
-  });
-
-  it("The DAO can update the settings", async () => {
-    await expect(mainVotingPlugin.createProposal(
-      toUtf8Bytes("ipfs://"),
-      [
+    it("Adding more than one editor at once reverts", async () => {
+      // 2
+      let actions: IDAO.ActionStruct[] = [
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
-            "updateVotingSettings",
-            [
-              {
-                votingMode: 0,
-                supportThreshold: 12345,
-                minParticipation: 23456,
-                minDuration: 60 * 60 * 3,
-                minProposerVotingPower: 0,
-              },
-            ],
-          ),
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("addAddresses", [
+              [bob.address, charlie.address],
+            ]),
         },
-      ],
-      0, // fail safe
-      0, // start date
-      0, // end date
-      VoteOption.Yes,
-      true, // auto execute
-    )).to.emit(
-      mainVotingPlugin,
-      "VotingSettingsUpdated",
-    ).withArgs(0, 12345, 23456, 60 * 60 * 3, 0);
-  });
+      ];
 
-  it("The DAO can add editors", async () => {
-    // Nobody else can
-    await expect(
-      mainVotingPlugin.connect(alice).addAddresses([bob.address]),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(bob).addAddresses([bob.address]),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(charlie).addAddresses([debbie.address]),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(debbie).addAddresses([debbie.address]),
-    ).to.be.reverted;
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+      await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+        .revertedWithCustomError(dao, "ActionFailed");
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
 
-    // The DAO can
-    const actions: IDAO.ActionStruct[] = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("addAddresses", [
-            [debbie.address],
-          ]),
-      },
-    ];
+      // 3
+      actions = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("addAddresses", [
+              [bob.address, charlie.address, debbie.address],
+            ]),
+        },
+      ];
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+      await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+        .revertedWithCustomError(dao, "ActionFailed");
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actions,
-        0,
-      ),
-    ).to.not.be.reverted;
-  });
+      // 1 works
+      actions = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("addAddresses", [
+              [bob.address],
+            ]),
+        },
+      ];
 
-  it("The DAO can remove editors", async () => {
-    await makeEditor(bob.address);
+      await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.not.be.reverted;
+    });
 
-    // Nobody else can
-    await expect(
-      mainVotingPlugin.connect(alice).removeAddresses([bob.address]),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(bob).removeAddresses([bob.address]),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(charlie).removeAddresses([bob.address]),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(debbie).removeAddresses([bob.address]),
-    ).to.be.reverted;
+    it("Removing more than one editor at once reverts", async () => {
+      await makeEditor(bob.address);
+      await makeEditor(charlie.address);
 
-    // The DAO can
-    const actions: IDAO.ActionStruct[] = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("removeAddresses", [
-            [bob.address],
-          ]),
-      },
-    ];
+      // 2
+      let actions: IDAO.ActionStruct[] = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("removeAddresses", [
+              [bob.address, charlie.address],
+            ]),
+        },
+      ];
+      await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+        .revertedWithCustomError(dao, "ActionFailed");
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actions,
-        0,
-      ),
-    ).to.not.be.reverted;
-  });
+      // 3
+      actions = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("removeAddresses", [
+              [bob.address, charlie.address],
+            ]),
+        },
+      ];
+      await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.be
+        .revertedWithCustomError(dao, "ActionFailed");
 
-  it("The DAO can upgrade the plugin", async () => {
-    // Nobody else can
-    await expect(
-      mainVotingPlugin.connect(alice).upgradeTo(ADDRESS_ONE),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(bob).upgradeTo(ADDRESS_ONE),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(charlie).upgradeToAndCall(
-        mainVotingPlugin.implementation(), // upgrade to itself
-        EMPTY_DATA,
-      ),
-    ).to.be.reverted;
-    await expect(
-      mainVotingPlugin.connect(debbie).upgradeToAndCall(
-        mainVotingPlugin.implementation(), // upgrade to itself
-        EMPTY_DATA,
-      ),
-    ).to.be.reverted;
+      // 1 works
+      actions = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("removeAddresses", [
+              [bob.address],
+            ]),
+        },
+      ];
 
-    // The DAO can
-    const actions: IDAO.ActionStruct[] = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("upgradeTo", [
-            await mainVotingPlugin.implementation(),
-          ]),
-      },
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface()
-          .encodeFunctionData("supportsInterface", [
-            "0x12345678",
-          ]),
-      },
-    ];
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actions,
+          0,
+        ),
+      ).to.not.be.reverted;
+    });
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actions,
-        0,
-      ),
-    ).to.not.be.reverted;
+    it("Attempting to remove the last editor reverts", async () => {
+      // Try to remove Alice
+      await expect(pullEditor(alice.address)).to.be
+        .revertedWithCustomError(
+          mainVotingPlugin,
+          "NoEditorsLeft",
+        );
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+
+      // Add Bob
+      await proposeNewEditor(bob.address);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.true;
+      await mineBlock();
+
+      // Remove Bob
+      await expect(proposeRemoveEditor(bob.address)).to.not.be.reverted;
+      await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
+        .to.not.be.reverted;
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+
+      // Try to remove Alice
+      await expect(pullEditor(alice.address)).to.be
+        .revertedWithCustomError(mainVotingPlugin, "NoEditorsLeft");
+    });
+
+    it("Attempting to vote twice fails (replacement disabled)", async () => {
+      // Add Bob
+      await proposeNewEditor(bob.address); // Alice votes yes as the creator
+
+      // Propose Charlie
+      await proposeNewEditor(charlie.address); // Alice votes yes as the creator
+
+      // Vote again
+      await expect(
+        mainVotingPlugin.connect(alice).vote(1, VoteOption.Yes, true),
+      )
+        .to.be.reverted;
+    });
+
+    it("Approved proposals can be executed by anyone after passed", async () => {
+      let pid = 0;
+      await expect(createDummyProposal(bob, false)).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Charlie cannot execute
+      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+        .reverted;
+
+      // Alice approves
+      await expect(
+        mainVotingPlugin.vote(pid, VoteOption.Yes, false),
+      ).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(true);
+
+      // Charlie executes
+      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.not.be
+        .reverted;
+    });
+
+    it("Rejected proposals cannot be executed", async () => {
+      let pid = 0;
+      await expect(createDummyProposal(bob, false)).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Charlie cannot execute
+      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+        .reverted;
+
+      // Alice rejects
+      await expect(
+        mainVotingPlugin.vote(pid, VoteOption.No, false),
+      ).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Charlie cannot execute
+      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+        .reverted;
+
+      //
+
+      // Now with Bob as editor
+      await proposeNewEditor(bob.address); // Alice auto approves
+      pid++;
+      await expect(createDummyProposal(bob, false)).to.not.be.reverted;
+      pid++;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Charlie cannot execute
+      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+        .reverted;
+
+      // Alice rejects
+      await expect(
+        mainVotingPlugin.vote(pid, VoteOption.No, false),
+      ).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Bob rejects
+      await expect(
+        mainVotingPlugin.connect(bob).vote(pid, VoteOption.No, false),
+      ).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Charlie cannot execute
+      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+        .reverted;
+    });
+
+    it("The DAO can update the settings", async () => {
+      await expect(mainVotingPlugin.createProposal(
+        toUtf8Bytes("ipfs://"),
+        [
+          {
+            to: mainVotingPlugin.address,
+            value: 0,
+            data: MainVotingPlugin__factory.createInterface()
+              .encodeFunctionData(
+                "updateVotingSettings",
+                [
+                  {
+                    votingMode: 0,
+                    supportThreshold: 12345,
+                    minParticipation: 23456,
+                    minDuration: 60 * 60 * 3,
+                    minProposerVotingPower: 0,
+                  },
+                ],
+              ),
+          },
+        ],
+        0, // fail safe
+        0, // start date
+        0, // end date
+        VoteOption.Yes,
+        true, // auto execute
+      )).to.emit(
+        mainVotingPlugin,
+        "VotingSettingsUpdated",
+      ).withArgs(0, 12345, 23456, 60 * 60 * 3, 0);
+    });
+
+    it("The DAO can add editors", async () => {
+      // Nobody else can
+      await expect(
+        mainVotingPlugin.connect(alice).addAddresses([bob.address]),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(bob).addAddresses([bob.address]),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(charlie).addAddresses([debbie.address]),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(debbie).addAddresses([debbie.address]),
+      ).to.be.reverted;
+
+      // The DAO can
+      const actions: IDAO.ActionStruct[] = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("addAddresses", [
+              [debbie.address],
+            ]),
+        },
+      ];
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actions,
+          0,
+        ),
+      ).to.not.be.reverted;
+    });
+
+    it("The DAO can remove editors", async () => {
+      await makeEditor(bob.address);
+
+      // Nobody else can
+      await expect(
+        mainVotingPlugin.connect(alice).removeAddresses([bob.address]),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(bob).removeAddresses([bob.address]),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(charlie).removeAddresses([bob.address]),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(debbie).removeAddresses([bob.address]),
+      ).to.be.reverted;
+
+      // The DAO can
+      const actions: IDAO.ActionStruct[] = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("removeAddresses", [
+              [bob.address],
+            ]),
+        },
+      ];
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actions,
+          0,
+        ),
+      ).to.not.be.reverted;
+    });
+
+    it("The DAO can upgrade the plugin", async () => {
+      // Nobody else can
+      await expect(
+        mainVotingPlugin.connect(alice).upgradeTo(ADDRESS_ONE),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(bob).upgradeTo(ADDRESS_ONE),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(charlie).upgradeToAndCall(
+          mainVotingPlugin.implementation(), // upgrade to itself
+          EMPTY_DATA,
+        ),
+      ).to.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(debbie).upgradeToAndCall(
+          mainVotingPlugin.implementation(), // upgrade to itself
+          EMPTY_DATA,
+        ),
+      ).to.be.reverted;
+
+      // The DAO can
+      const actions: IDAO.ActionStruct[] = [
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("upgradeTo", [
+              await mainVotingPlugin.implementation(),
+            ]),
+        },
+        {
+          to: mainVotingPlugin.address,
+          value: 0,
+          data: MainVotingPlugin__factory.createInterface()
+            .encodeFunctionData("supportsInterface", [
+              "0x12345678",
+            ]),
+        },
+      ];
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actions,
+          0,
+        ),
+      ).to.not.be.reverted;
+    });
   });
 
   // Helpers
