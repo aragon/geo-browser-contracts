@@ -1,10 +1,12 @@
-import { SpacePluginSetupParams } from "../../plugin-setup-params";
+import { MemberAccessPluginSetupParams } from "../../plugin-setup-params";
 import {
+  MainVotingPlugin__factory,
+  MajorityVotingBase,
+  MemberAccessPlugin,
+  MemberAccessPlugin__factory,
+  MemberAccessPluginSetup,
+  MemberAccessPluginSetup__factory,
   PluginRepo,
-  SpacePlugin,
-  SpacePlugin__factory,
-  SpacePluginSetup,
-  SpacePluginSetup__factory,
 } from "../../typechain";
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
 import { osxContracts } from "../../utils/helpers";
@@ -23,9 +25,8 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { ADDRESS_ZERO } from "../unit-testing/common";
-import { toHex } from "../../utils/ipfs";
 
-describe("SpacePluginSetup processing", function () {
+describe("MemberAccessPluginSetup processing", function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -38,7 +39,7 @@ describe("SpacePluginSetup processing", function () {
     const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
 
     const pluginRepoInfo = getPluginRepoInfo(
-      SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME,
+      MemberAccessPluginSetupParams.PLUGIN_REPO_ENS_NAME,
       "hardhat",
     );
     if (!pluginRepoInfo) {
@@ -82,16 +83,16 @@ describe("SpacePluginSetup processing", function () {
   });
 
   context("Build 1", async () => {
-    let setup: SpacePluginSetup;
+    let setup: MemberAccessPluginSetup;
     let pluginSetupRef: PluginSetupRefStruct;
-    let plugin: SpacePlugin;
+    let plugin: MemberAccessPlugin;
     const pluginUpgrader = ADDRESS_ZERO;
 
     before(async () => {
       const release = 1;
 
       // Deploy setups.
-      setup = SpacePluginSetup__factory.connect(
+      setup = MemberAccessPluginSetup__factory.connect(
         (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
         alice,
       );
@@ -106,18 +107,37 @@ describe("SpacePluginSetup processing", function () {
     });
 
     beforeEach(async () => {
+      // dependencies
+      const mainVotingPlugin = await new MainVotingPlugin__factory(alice)
+        .deploy();
+      // const mvSettings: MajorityVotingBase.VotingSettingsStruct = {
+      //   minDuration: 60 * 60 * 24,
+      //   minParticipation: 1,
+      //   supportThreshold: 1,
+      //   minProposerVotingPower: 0,
+      //   votingMode: 0,
+      // };
+      // await mainVotingPlugin.initialize(dao.address, mvSettings, [
+      //   alice.address,
+      // ]);
+
+      const settings: MemberAccessPlugin.MultisigSettingsStruct = {
+        mainVotingPlugin: mainVotingPlugin.address,
+        proposalDuration: 60 * 60 * 24,
+      };
+
       // Install build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
+          MemberAccessPluginSetupParams.METADATA.build.pluginSetup
             .prepareInstallation
             .inputs,
         ),
-        [toHex("ipfs://1234"), pluginUpgrader],
+        [settings, pluginUpgrader],
       );
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
-      plugin = SpacePlugin__factory.connect(
+      plugin = MemberAccessPlugin__factory.connect(
         results.preparedEvent.args.plugin,
         alice,
       );
@@ -132,7 +152,7 @@ describe("SpacePluginSetup processing", function () {
       // Uninstall build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
+          MemberAccessPluginSetupParams.METADATA.build.pluginSetup
             .prepareUninstallation
             .inputs,
         ),

@@ -42,9 +42,7 @@ export function getPluginRepoFactoryAddress(networkName: string) {
     networkName === "hardhat" ||
     networkName === "coverage"
   ) {
-    const hardhatForkNetwork = process.env.NETWORK_NAME
-      ? process.env.NETWORK_NAME
-      : "mainnet";
+    const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
 
     pluginRepoFactoryAddr = osxContracts[hardhatForkNetwork].PluginRepoFactory;
     console.log(

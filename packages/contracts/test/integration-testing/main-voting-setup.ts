@@ -1,10 +1,11 @@
-import { SpacePluginSetupParams } from "../../plugin-setup-params";
+import { MainVotingPluginSetupParams } from "../../plugin-setup-params";
 import {
+  MainVotingPlugin,
+  MainVotingPlugin__factory,
+  MainVotingPluginSetup,
+  MainVotingPluginSetup__factory,
+  MajorityVotingBase,
   PluginRepo,
-  SpacePlugin,
-  SpacePlugin__factory,
-  SpacePluginSetup,
-  SpacePluginSetup__factory,
 } from "../../typechain";
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
 import { osxContracts } from "../../utils/helpers";
@@ -23,9 +24,8 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { ADDRESS_ZERO } from "../unit-testing/common";
-import { toHex } from "../../utils/ipfs";
 
-describe("SpacePluginSetup processing", function () {
+describe("MainVotingPluginSetup processing", function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -38,7 +38,7 @@ describe("SpacePluginSetup processing", function () {
     const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
 
     const pluginRepoInfo = getPluginRepoInfo(
-      SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME,
+      MainVotingPluginSetupParams.PLUGIN_REPO_ENS_NAME,
       "hardhat",
     );
     if (!pluginRepoInfo) {
@@ -82,16 +82,16 @@ describe("SpacePluginSetup processing", function () {
   });
 
   context("Build 1", async () => {
-    let setup: SpacePluginSetup;
+    let setup: MainVotingPluginSetup;
     let pluginSetupRef: PluginSetupRefStruct;
-    let plugin: SpacePlugin;
+    let plugin: MainVotingPlugin;
     const pluginUpgrader = ADDRESS_ZERO;
 
     before(async () => {
       const release = 1;
 
       // Deploy setups.
-      setup = SpacePluginSetup__factory.connect(
+      setup = MainVotingPluginSetup__factory.connect(
         (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
         alice,
       );
@@ -106,18 +106,26 @@ describe("SpacePluginSetup processing", function () {
     });
 
     beforeEach(async () => {
+      const settings: MajorityVotingBase.VotingSettingsStruct = {
+        minDuration: 60 * 60 * 24,
+        minParticipation: 1,
+        supportThreshold: 1,
+        minProposerVotingPower: 0,
+        votingMode: 0,
+      };
+
       // Install build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
+          MainVotingPluginSetupParams.METADATA.build.pluginSetup
             .prepareInstallation
             .inputs,
         ),
-        [toHex("ipfs://1234"), pluginUpgrader],
+        [settings, [alice.address], pluginUpgrader],
       );
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
-      plugin = SpacePlugin__factory.connect(
+      plugin = MainVotingPlugin__factory.connect(
         results.preparedEvent.args.plugin,
         alice,
       );
@@ -132,7 +140,7 @@ describe("SpacePluginSetup processing", function () {
       // Uninstall build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
+          MainVotingPluginSetupParams.METADATA.build.pluginSetup
             .prepareUninstallation
             .inputs,
         ),

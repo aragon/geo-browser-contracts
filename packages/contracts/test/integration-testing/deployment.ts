@@ -48,9 +48,7 @@ describe("PluginRepo Deployment", function () {
   setups.forEach((pluginSetupParams) => {
     context(pluginSetupParams.PLUGIN_CONTRACT_NAME, () => {
       before(() => {
-        const hardhatForkNetwork = process.env.NETWORK_NAME
-          ? process.env.NETWORK_NAME
-          : "mainnet";
+        const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
 
         // plugin repo registry
         repoRegistry = PluginRepoRegistry__factory.connect(

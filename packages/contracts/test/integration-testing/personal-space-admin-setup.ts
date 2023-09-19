@@ -1,10 +1,10 @@
-import { SpacePluginSetupParams } from "../../plugin-setup-params";
+import { PersonalSpaceAdminPluginSetupParams } from "../../plugin-setup-params";
 import {
+  PersonalSpaceAdminPlugin,
+  PersonalSpaceAdminPlugin__factory,
+  PersonalSpaceAdminPluginSetup,
+  PersonalSpaceAdminPluginSetup__factory,
   PluginRepo,
-  SpacePlugin,
-  SpacePlugin__factory,
-  SpacePluginSetup,
-  SpacePluginSetup__factory,
 } from "../../typechain";
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
 import { osxContracts } from "../../utils/helpers";
@@ -22,10 +22,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
-import { ADDRESS_ZERO } from "../unit-testing/common";
 import { toHex } from "../../utils/ipfs";
 
-describe("SpacePluginSetup processing", function () {
+describe("PersonalSpaceAdmin processing", function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -38,7 +37,7 @@ describe("SpacePluginSetup processing", function () {
     const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
 
     const pluginRepoInfo = getPluginRepoInfo(
-      SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME,
+      PersonalSpaceAdminPluginSetupParams.PLUGIN_REPO_ENS_NAME,
       "hardhat",
     );
     if (!pluginRepoInfo) {
@@ -82,19 +81,12 @@ describe("SpacePluginSetup processing", function () {
   });
 
   context("Build 1", async () => {
-    let setup: SpacePluginSetup;
+    let setup: PersonalSpaceAdminPluginSetup;
     let pluginSetupRef: PluginSetupRefStruct;
-    let plugin: SpacePlugin;
-    const pluginUpgrader = ADDRESS_ZERO;
+    let plugin: PersonalSpaceAdminPlugin;
 
     before(async () => {
       const release = 1;
-
-      // Deploy setups.
-      setup = SpacePluginSetup__factory.connect(
-        (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
-        alice,
-      );
 
       pluginSetupRef = {
         versionTag: {
@@ -106,37 +98,36 @@ describe("SpacePluginSetup processing", function () {
     });
 
     beforeEach(async () => {
+      const initialEditor = alice.address;
+
       // Install build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
+          PersonalSpaceAdminPluginSetupParams.METADATA.build.pluginSetup
             .prepareInstallation
             .inputs,
         ),
-        [toHex("ipfs://1234"), pluginUpgrader],
+        [initialEditor],
       );
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
-      plugin = SpacePlugin__factory.connect(
+      plugin = PersonalSpaceAdminPlugin__factory.connect(
         results.preparedEvent.args.plugin,
         alice,
       );
     });
 
     it("installs & uninstalls", async () => {
-      expect(await plugin.implementation()).to.be.eq(
-        await setup.implementation(),
-      );
       expect(await plugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
+          PersonalSpaceAdminPluginSetupParams.METADATA.build.pluginSetup
             .prepareUninstallation
             .inputs,
         ),
-        [pluginUpgrader],
+        [],
       );
       await uninstallPlugin(psp, dao, plugin, pluginSetupRef, data, []);
     });
