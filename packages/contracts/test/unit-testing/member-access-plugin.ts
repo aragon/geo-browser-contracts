@@ -2,6 +2,10 @@ import { hexlify, toUtf8Bytes } from "ethers/lib/utils";
 import {
   DAO,
   IDAO,
+  IERC165Upgradeable__factory,
+  IMultisig__factory,
+  IPlugin__factory,
+  IProposal__factory,
   MainVotingPlugin,
   MainVotingPlugin__factory,
   MemberAccessPlugin,
@@ -28,16 +32,29 @@ import {
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { ProposalCreatedEvent } from "../../typechain/src/MemberAccessPlugin";
+import {
+  ApprovedEvent,
+  ProposalCreatedEvent,
+} from "../../typechain/src/MemberAccessPlugin";
 import { DAO__factory } from "@aragon/osx-ethers";
 import { defaultMainVotingSettings } from "./common";
+import { getInterfaceID } from "../../utils/interfaces";
 
 export type InitData = { contentUri: string };
 export const defaultInitData: InitData = {
   contentUri: "ipfs://",
 };
 
+export const multisigInterface = new ethers.utils.Interface([
+  "function initialize(address,address[],tuple(bool,uint16))",
+  "function updateMultisigSettings(tuple(bool,uint16))",
+  "function proposeNewMember(bytes,address)",
+  "function proposeRemoveMember(bytes,address)",
+  "function getProposal(uint256)",
+]);
+
 describe("Member Access Plugin", function () {
+  let signers: SignerWithAddress[];
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let charlie: SignerWithAddress;
@@ -49,7 +66,8 @@ describe("Member Access Plugin", function () {
   let defaultInput: InitData;
 
   before(async () => {
-    [alice, bob, charlie, debbie] = await ethers.getSigners();
+    signers = await ethers.getSigners();
+    [alice, bob, charlie, debbie] = signers;
     dao = await deployTestDao(alice);
 
     defaultInput = { contentUri: "ipfs://" };
@@ -122,26 +140,7 @@ describe("Member Access Plugin", function () {
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
   });
 
-  describe("initialize", async () => {
-    it("reverts if trying to re-initialize", async () => {
-      await expect(
-        memberAccessPlugin.initialize(dao.address, {
-          proposalDuration: 60 * 60 * 24 * 5,
-          mainVotingPlugin: mainVotingPlugin.address,
-        }),
-      ).to.be.revertedWith("Initializable: contract is already initialized");
-      await expect(
-        mainVotingPlugin.initialize(
-          dao.address,
-          defaultMainVotingSettings,
-          [alice.address],
-        ),
-      ).to.be.revertedWith("Initializable: contract is already initialized");
-      await expect(
-        spacePlugin.initialize(dao.address, defaultInput.contentUri),
-      ).to.be.revertedWith("Initializable: contract is already initialized");
-    });
-
+  describe("initialize", () => {
     it("Fails to initialize with an incompatible main voting plugin", async () => {
       // ok
       memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
@@ -178,144 +177,148 @@ describe("Member Access Plugin", function () {
     });
   });
 
-  it("Allows any address to request membership", async () => {
-    // Random
-    await expect(
-      memberAccessPlugin.connect(charlie).proposeNewMember(
-        toUtf8Bytes("ipfs://1234"),
+  describe("Before approving", () => {
+    it("Allows any address to request membership", async () => {
+      // Random
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
+
+      let proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(false);
+      expect(proposal.approvals).to.eq(0);
+      expect(proposal.parameters.minApprovals).to.eq(1);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.failsafeActionMap).to.eq(0);
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+      expect(await mainVotingPlugin.isMember(charlie.address)).to.eq(false);
+
+      // Member
+      await expect(
+        memberAccessPlugin.connect(bob).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          ADDRESS_ONE,
+        ),
+      ).to.not.be.reverted;
+
+      proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.executed).to.eq(false);
+      expect(proposal.approvals).to.eq(0);
+      expect(proposal.parameters.minApprovals).to.eq(1);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.failsafeActionMap).to.eq(0);
+      expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+      expect(await mainVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+
+      // Editor
+      await expect(
+        memberAccessPlugin.connect(alice).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          ADDRESS_TWO,
+        ),
+      ).to.not.be.reverted;
+
+      proposal = await memberAccessPlugin.getProposal(1);
+      expect(proposal.executed).to.eq(false);
+      expect(proposal.approvals).to.eq(0);
+      expect(proposal.parameters.minApprovals).to.eq(1);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.failsafeActionMap).to.eq(0);
+      // Auto executed
+      expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(true);
+      expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(true);
+    });
+
+    it("Editors should be members too", async () => {
+      expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
+      expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
+    });
+
+    it("Emits an event when membership is requested", async () => {
+      const tx = await memberAccessPlugin.connect(charlie).proposeNewMember(
+        toUtf8Bytes("ipfs://2345"),
         charlie.address,
-      ),
-    ).to.not.be.reverted;
+      );
 
-    let proposal = await memberAccessPlugin.getProposal(0);
-    expect(proposal.executed).to.eq(false);
-    expect(proposal.approvals).to.eq(0);
-    expect(proposal.parameters.minApprovals).to.eq(1);
-    expect(proposal.actions.length).to.eq(1);
-    expect(proposal.failsafeActionMap).to.eq(0);
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
-    expect(await mainVotingPlugin.isMember(charlie.address)).to.eq(false);
+      await expect(tx).to.emit(
+        memberAccessPlugin,
+        "ProposalCreated",
+      );
 
-    // Member
-    await expect(
-      memberAccessPlugin.connect(bob).proposeNewMember(
-        toUtf8Bytes("ipfs://1234"),
-        ADDRESS_ONE,
-      ),
-    ).to.not.be.reverted;
+      const event = await findEvent<ProposalCreatedEvent>(
+        tx,
+        "ProposalCreated",
+      );
 
-    proposal = await memberAccessPlugin.getProposal(0);
-    expect(proposal.executed).to.eq(false);
-    expect(proposal.approvals).to.eq(0);
-    expect(proposal.parameters.minApprovals).to.eq(1);
-    expect(proposal.actions.length).to.eq(1);
-    expect(proposal.failsafeActionMap).to.eq(0);
-    expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
-    expect(await mainVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+      expect(!!event).to.eq(true);
+      expect(event!.args.proposalId).to.equal(0);
+      expect(event!.args.creator).to.equal(charlie.address);
+      expect(event!.args.metadata).to.equal(
+        hexlify(toUtf8Bytes("ipfs://2345")),
+      );
+      expect(event!.args.actions.length).to.equal(1);
+      expect(event!.args.actions[0].to).to.equal(dao.address);
+      expect(event!.args.actions[0].value).to.equal(0);
+      expect(event!.args.actions[0].data).to.equal(
+        DAO__factory.createInterface().encodeFunctionData("grant", [
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+        ]),
+      );
+      expect(event!.args.allowFailureMap).to.equal(0);
+    });
 
-    // Editor
-    await expect(
-      memberAccessPlugin.connect(alice).proposeNewMember(
-        toUtf8Bytes("ipfs://1234"),
-        ADDRESS_TWO,
-      ),
-    ).to.not.be.reverted;
+    it("isMember() returns true when appropriate", async () => {
+      expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
+      expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+      expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
 
-    proposal = await memberAccessPlugin.getProposal(1);
-    expect(proposal.executed).to.eq(false);
-    expect(proposal.approvals).to.eq(0);
-    expect(proposal.parameters.minApprovals).to.eq(1);
-    expect(proposal.actions.length).to.eq(1);
-    expect(proposal.failsafeActionMap).to.eq(0);
-    // Auto executed
-    expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(true);
-    expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(true);
-  });
+      expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
+      expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
 
-  it("Editors should be members too", async () => {
-    expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
-    expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
-  });
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
 
-  it("Emits an event when membership is requested", async () => {
-    const tx = await memberAccessPlugin.connect(charlie).proposeNewMember(
-      toUtf8Bytes("ipfs://2345"),
-      charlie.address,
-    );
-
-    await expect(tx).to.emit(
-      memberAccessPlugin,
-      "ProposalCreated",
-    );
-
-    const event = await findEvent<ProposalCreatedEvent>(
-      tx,
-      "ProposalCreated",
-    );
-
-    expect(!!event).to.eq(true);
-    expect(event!.args.proposalId).to.equal(0);
-    expect(event!.args.creator).to.equal(charlie.address);
-    expect(event!.args.metadata).to.equal(hexlify(toUtf8Bytes("ipfs://2345")));
-    expect(event!.args.actions.length).to.equal(1);
-    expect(event!.args.actions[0].to).to.equal(dao.address);
-    expect(event!.args.actions[0].value).to.equal(0);
-    expect(event!.args.actions[0].data).to.equal(
-      DAO__factory.createInterface().encodeFunctionData("grant", [
+      await dao.grant(
         mainVotingPlugin.address,
         charlie.address,
         MEMBER_PERMISSION_ID,
-      ]),
-    );
-    expect(event!.args.allowFailureMap).to.equal(0);
+      );
+
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+
+      await dao.revoke(
+        mainVotingPlugin.address,
+        charlie.address,
+        MEMBER_PERMISSION_ID,
+      );
+
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+
+      await proposeNewEditor(charlie.address);
+
+      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+    });
+
+    it("isEditor() returns true when appropriate", async () => {
+      expect(await memberAccessPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
+      expect(await memberAccessPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
+      expect(await memberAccessPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
+
+      expect(await memberAccessPlugin.isEditor(alice.address)).to.eq(true);
+      expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
+      expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
+
+      await proposeNewEditor(charlie.address);
+
+      expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
+    });
   });
 
-  it("isMember() returns true when appropriate", async () => {
-    expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
-    expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
-    expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
-
-    expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
-    expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
-
-    await dao.grant(
-      mainVotingPlugin.address,
-      charlie.address,
-      MEMBER_PERMISSION_ID,
-    );
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
-
-    await dao.revoke(
-      mainVotingPlugin.address,
-      charlie.address,
-      MEMBER_PERMISSION_ID,
-    );
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
-
-    await proposeNewEditor(charlie.address);
-
-    expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
-  });
-
-  it("isEditor() returns true when appropriate", async () => {
-    expect(await memberAccessPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
-    expect(await memberAccessPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
-    expect(await memberAccessPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
-
-    expect(await memberAccessPlugin.isEditor(alice.address)).to.eq(true);
-    expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
-    expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
-
-    await proposeNewEditor(charlie.address);
-
-    expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
-  });
-
-  describe("One editor", () => {
+  describe("One editor case", () => {
     it("Only the editor can approve memberships", async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
@@ -517,7 +520,7 @@ describe("Member Access Plugin", function () {
     });
   });
 
-  describe("Multiple editors", () => {
+  describe("Multiple editors case", () => {
     // Alice: editor
     // Bob: editor
     // Charlie: editor
@@ -1060,302 +1063,675 @@ describe("Member Access Plugin", function () {
     });
   });
 
-  // Alice: editor
-  // Bob: member
+  describe("Approving", () => {
+    // Alice: editor
+    // Bob: member
 
-  it("proposeNewMember should generate the right action list", async () => {
-    await expect(
-      memberAccessPlugin.connect(charlie).proposeNewMember(
-        toUtf8Bytes("ipfs://1234"),
-        charlie.address,
-      ),
-    ).to.not.be.reverted;
+    it("proposeNewMember should generate the right action list", async () => {
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.not.be.reverted;
 
-    const proposal = await memberAccessPlugin.getProposal(0);
-    expect(proposal.actions.length).to.eq(1);
-    expect(proposal.actions[0].to).to.eq(dao.address);
-    expect(proposal.actions[0].value).to.eq(0);
-    expect(proposal.actions[0].data).to.eq(
-      DAO__factory.createInterface().encodeFunctionData("grant", [
-        mainVotingPlugin.address,
-        charlie.address,
-        MEMBER_PERMISSION_ID,
-      ]),
-    );
-  });
+      const proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(dao.address);
+      expect(proposal.actions[0].value).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        DAO__factory.createInterface().encodeFunctionData("grant", [
+          mainVotingPlugin.address,
+          charlie.address,
+          MEMBER_PERMISSION_ID,
+        ]),
+      );
+    });
 
-  it("proposeRemoveMember should generate the right action list", async () => {
-    await expect(
-      memberAccessPlugin.connect(bob).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        bob.address,
-      ),
-    ).to.not.be.reverted;
+    it("proposeRemoveMember should generate the right action list", async () => {
+      await expect(
+        memberAccessPlugin.connect(bob).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          bob.address,
+        ),
+      ).to.not.be.reverted;
 
-    const proposal = await memberAccessPlugin.getProposal(0);
-    expect(proposal.actions.length).to.eq(1);
-    expect(proposal.actions[0].to).to.eq(dao.address);
-    expect(proposal.actions[0].value).to.eq(0);
-    expect(proposal.actions[0].data).to.eq(
-      DAO__factory.createInterface().encodeFunctionData("revoke", [
-        mainVotingPlugin.address,
-        bob.address,
-        MEMBER_PERMISSION_ID,
-      ]),
-    );
-  });
+      const proposal = await memberAccessPlugin.getProposal(0);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(dao.address);
+      expect(proposal.actions[0].value).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        DAO__factory.createInterface().encodeFunctionData("revoke", [
+          mainVotingPlugin.address,
+          bob.address,
+          MEMBER_PERMISSION_ID,
+        ]),
+      );
+    });
 
-  it("Attempting to approve twice fails", async () => {
-    await expect(
-      memberAccessPlugin.connect(debbie).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        bob.address,
-      ),
-    ).to.not.be.reverted;
+    it("Attempting to approve twice fails", async () => {
+      await expect(
+        memberAccessPlugin.connect(debbie).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          bob.address,
+        ),
+      ).to.not.be.reverted;
 
-    let pid = 0;
-    await expect(memberAccessPlugin.approve(pid, false)).to.not.be.reverted;
-    await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
-  });
+      let pid = 0;
+      await expect(memberAccessPlugin.approve(pid, false)).to.not.be.reverted;
+      await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
+    });
 
-  it("Attempting to reject twice fails", async () => {
-    await expect(
-      memberAccessPlugin.connect(debbie).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        bob.address,
-      ),
-    ).to.not.be.reverted;
+    it("Attempting to reject twice fails", async () => {
+      await expect(
+        memberAccessPlugin.connect(debbie).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          bob.address,
+        ),
+      ).to.not.be.reverted;
 
-    let pid = 0;
-    await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
-    await expect(memberAccessPlugin.reject(pid)).to.be.reverted;
-  });
+      let pid = 0;
+      await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
+      await expect(memberAccessPlugin.reject(pid)).to.be.reverted;
+    });
 
-  it("Attempting to propose adding an existing member fails", async () => {
-    await expect(
-      memberAccessPlugin.connect(charlie).proposeNewMember(
-        toUtf8Bytes("ipfs://1234"),
-        alice.address,
-      ),
-    ).to.be.reverted;
+    it("Attempting to propose adding an existing member fails", async () => {
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          alice.address,
+        ),
+      ).to.be.reverted;
 
-    await expect(
-      memberAccessPlugin.connect(bob).proposeNewMember(
-        toUtf8Bytes("ipfs://1234"),
-        alice.address,
-      ),
-    ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(bob).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          alice.address,
+        ),
+      ).to.be.reverted;
 
-    await expect(
-      memberAccessPlugin.connect(alice).proposeNewMember(
-        toUtf8Bytes("ipfs://1234"),
-        alice.address,
-      ),
-    ).to.be.reverted;
-  });
+      await expect(
+        memberAccessPlugin.connect(alice).proposeNewMember(
+          toUtf8Bytes("ipfs://1234"),
+          alice.address,
+        ),
+      ).to.be.reverted;
+    });
 
-  it("Attempting to propose removing a non-member fails", async () => {
-    await expect(
-      memberAccessPlugin.connect(charlie).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        charlie.address,
-      ),
-    ).to.be.reverted;
+    it("Attempting to propose removing a non-member fails", async () => {
+      await expect(
+        memberAccessPlugin.connect(charlie).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          charlie.address,
+        ),
+      ).to.be.reverted;
 
-    await expect(
-      memberAccessPlugin.connect(bob).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        ADDRESS_ONE,
-      ),
-    ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(bob).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          ADDRESS_ONE,
+        ),
+      ).to.be.reverted;
 
-    await expect(
-      memberAccessPlugin.connect(alice).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        ADDRESS_TWO,
-      ),
-    ).to.be.reverted;
-  });
+      await expect(
+        memberAccessPlugin.connect(alice).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          ADDRESS_TWO,
+        ),
+      ).to.be.reverted;
+    });
 
-  it("Rejected proposals cannot be approved", async () => {
-    await expect(
-      memberAccessPlugin.connect(debbie).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        bob.address,
-      ),
-    ).to.not.be.reverted;
+    it("Rejected proposals cannot be approved", async () => {
+      await expect(
+        memberAccessPlugin.connect(debbie).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          bob.address,
+        ),
+      ).to.not.be.reverted;
 
-    let pid = 0;
-    await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
-    await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
-  });
+      let pid = 0;
+      await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
+      await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
+    });
 
-  it("Rejected proposals cannot be executed", async () => {
-    await expect(
-      memberAccessPlugin.connect(debbie).proposeRemoveMember(
-        toUtf8Bytes("ipfs://1234"),
-        bob.address,
-      ),
-    ).to.not.be.reverted;
+    it("Rejected proposals cannot be executed", async () => {
+      await expect(
+        memberAccessPlugin.connect(debbie).proposeRemoveMember(
+          toUtf8Bytes("ipfs://1234"),
+          bob.address,
+        ),
+      ).to.not.be.reverted;
 
-    let pid = 0;
-    await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
-    await expect(memberAccessPlugin.execute(pid)).to.be.reverted;
-  });
+      let pid = 0;
+      await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
+      await expect(memberAccessPlugin.execute(pid)).to.be.reverted;
+    });
 
-  it("Fails to update the settings to use an incompatible main voting plugin", async () => {
-    const actionsWith = (targetAddr: string) => {
-      return [
+    it("Fails to update the settings to use an incompatible main voting plugin", async () => {
+      const actionsWith = (targetAddr: string) => {
+        return [
+          {
+            to: memberAccessPlugin.address,
+            value: 0,
+            data: MemberAccessPlugin__factory.createInterface()
+              .encodeFunctionData("updateMultisigSettings", [{
+                proposalDuration: 60 * 60 * 24 * 5,
+                mainVotingPlugin: targetAddr,
+              }]),
+          },
+        ] as IDAO.ActionStruct[];
+      };
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actionsWith(ADDRESS_ZERO),
+          0,
+        ),
+      ).to.be.reverted;
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actionsWith(ADDRESS_ONE),
+          0,
+        ),
+      ).to.be.reverted;
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actionsWith(ADDRESS_TWO),
+          0,
+        ),
+      ).to.be.reverted;
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actionsWith(bob.address),
+          0,
+        ),
+      ).to.be.reverted;
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actionsWith(memberAccessPlugin.address),
+          0,
+        ),
+      ).to.be.reverted;
+
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actionsWith(mainVotingPlugin.address),
+          0,
+        ),
+      ).to.not.be.reverted;
+    });
+
+    it("Only the DAO can call the plugin to update the settings", async () => {
+      // Nobody else can
+      await expect(
+        memberAccessPlugin.connect(alice).updateMultisigSettings({
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        }),
+      ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(bob).updateMultisigSettings({
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        }),
+      ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(charlie).updateMultisigSettings({
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        }),
+      ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(debbie).updateMultisigSettings({
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        }),
+      ).to.be.reverted;
+
+      // The DAO can
+      const actions: IDAO.ActionStruct[] = [
         {
           to: memberAccessPlugin.address,
           value: 0,
           data: MemberAccessPlugin__factory.createInterface()
             .encodeFunctionData("updateMultisigSettings", [{
               proposalDuration: 60 * 60 * 24 * 5,
-              mainVotingPlugin: targetAddr,
+              mainVotingPlugin: mainVotingPlugin.address,
             }]),
         },
-      ] as IDAO.ActionStruct[];
-    };
+      ];
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actionsWith(ADDRESS_ZERO),
-        0,
-      ),
-    ).to.be.reverted;
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actions,
+          0,
+        ),
+      ).to.not.be.reverted;
+    });
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actionsWith(ADDRESS_ONE),
-        0,
-      ),
-    ).to.be.reverted;
+    it("The DAO can upgrade the plugin", async () => {
+      // Nobody else can
+      await expect(
+        memberAccessPlugin.connect(alice).upgradeTo(ADDRESS_ONE),
+      ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(bob).upgradeTo(ADDRESS_ONE),
+      ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(charlie).upgradeToAndCall(
+          memberAccessPlugin.implementation(), // upgrade to itself
+          EMPTY_DATA,
+        ),
+      ).to.be.reverted;
+      await expect(
+        memberAccessPlugin.connect(debbie).upgradeToAndCall(
+          memberAccessPlugin.implementation(), // upgrade to itself
+          EMPTY_DATA,
+        ),
+      ).to.be.reverted;
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actionsWith(ADDRESS_TWO),
-        0,
-      ),
-    ).to.be.reverted;
+      // The DAO can
+      const actions: IDAO.ActionStruct[] = [
+        {
+          to: memberAccessPlugin.address,
+          value: 0,
+          data: MemberAccessPlugin__factory.createInterface()
+            .encodeFunctionData("upgradeTo", [
+              await memberAccessPlugin.implementation(),
+            ]),
+        },
+      ];
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actionsWith(bob.address),
-        0,
-      ),
-    ).to.be.reverted;
-
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actionsWith(memberAccessPlugin.address),
-        0,
-      ),
-    ).to.be.reverted;
-
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actionsWith(mainVotingPlugin.address),
-        0,
-      ),
-    ).to.not.be.reverted;
+      await expect(
+        dao.execute(
+          ZERO_BYTES32,
+          actions,
+          0,
+        ),
+      ).to.not.be.reverted;
+    });
   });
 
-  it("Only the DAO can call the plugin to update the settings", async () => {
-    // Nobody else can
-    await expect(
-      memberAccessPlugin.connect(alice).updateMultisigSettings({
-        proposalDuration: 60 * 60 * 24 * 5,
-        mainVotingPlugin: mainVotingPlugin.address,
-      }),
-    ).to.be.reverted;
-    await expect(
-      memberAccessPlugin.connect(bob).updateMultisigSettings({
-        proposalDuration: 60 * 60 * 24 * 5,
-        mainVotingPlugin: mainVotingPlugin.address,
-      }),
-    ).to.be.reverted;
-    await expect(
-      memberAccessPlugin.connect(charlie).updateMultisigSettings({
-        proposalDuration: 60 * 60 * 24 * 5,
-        mainVotingPlugin: mainVotingPlugin.address,
-      }),
-    ).to.be.reverted;
-    await expect(
-      memberAccessPlugin.connect(debbie).updateMultisigSettings({
-        proposalDuration: 60 * 60 * 24 * 5,
-        mainVotingPlugin: mainVotingPlugin.address,
-      }),
-    ).to.be.reverted;
-
-    // The DAO can
-    const actions: IDAO.ActionStruct[] = [
-      {
-        to: memberAccessPlugin.address,
-        value: 0,
-        data: MemberAccessPlugin__factory.createInterface()
-          .encodeFunctionData("updateMultisigSettings", [{
+  describe("Tests replicated from MultisigPlugin", () => {
+    describe("initialize", () => {
+      it("reverts if trying to re-initialize", async () => {
+        await expect(
+          memberAccessPlugin.initialize(dao.address, {
             proposalDuration: 60 * 60 * 24 * 5,
             mainVotingPlugin: mainVotingPlugin.address,
-          }]),
-      },
-    ];
+          }),
+        ).to.be.revertedWith("Initializable: contract is already initialized");
+        await expect(
+          mainVotingPlugin.initialize(
+            dao.address,
+            defaultMainVotingSettings,
+            [alice.address],
+          ),
+        ).to.be.revertedWith("Initializable: contract is already initialized");
+        await expect(
+          spacePlugin.initialize(dao.address, defaultInput.contentUri),
+        ).to.be.revertedWith("Initializable: contract is already initialized");
+      });
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actions,
-        0,
-      ),
-    ).to.not.be.reverted;
-  });
+      it("should emit `MultisigSettingsUpdated` during initialization", async () => {
+        memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
+          new MemberAccessPlugin__factory(alice),
+        );
+        const multisigSettings: MemberAccessPlugin.MultisigSettingsStruct = {
+          mainVotingPlugin: mainVotingPlugin.address,
+          proposalDuration: 60 * 60 * 24 * 5,
+        };
 
-  it("The DAO can upgrade the plugin", async () => {
-    // Nobody else can
-    await expect(
-      memberAccessPlugin.connect(alice).upgradeTo(ADDRESS_ONE),
-    ).to.be.reverted;
-    await expect(
-      memberAccessPlugin.connect(bob).upgradeTo(ADDRESS_ONE),
-    ).to.be.reverted;
-    await expect(
-      memberAccessPlugin.connect(charlie).upgradeToAndCall(
-        memberAccessPlugin.implementation(), // upgrade to itself
-        EMPTY_DATA,
-      ),
-    ).to.be.reverted;
-    await expect(
-      memberAccessPlugin.connect(debbie).upgradeToAndCall(
-        memberAccessPlugin.implementation(), // upgrade to itself
-        EMPTY_DATA,
-      ),
-    ).to.be.reverted;
+        await expect(
+          memberAccessPlugin.initialize(
+            dao.address,
+            multisigSettings,
+          ),
+        )
+          .to.emit(
+            memberAccessPlugin,
+            "MultisigSettingsUpdated",
+          )
+          .withArgs(60 * 60 * 24 * 5, mainVotingPlugin.address);
+      });
+    });
 
-    // The DAO can
-    const actions: IDAO.ActionStruct[] = [
-      {
-        to: memberAccessPlugin.address,
-        value: 0,
-        data: MemberAccessPlugin__factory.createInterface()
-          .encodeFunctionData("upgradeTo", [
-            await memberAccessPlugin.implementation(),
-          ]),
-      },
-    ];
+    describe("plugin interface: ", () => {
+      it("does not support the empty interface", async () => {
+        expect(await memberAccessPlugin.supportsInterface("0xffffffff")).to.be
+          .false;
+      });
 
-    await expect(
-      dao.execute(
-        ZERO_BYTES32,
-        actions,
-        0,
-      ),
-    ).to.not.be.reverted;
+      it("supports the `IERC165Upgradeable` interface", async () => {
+        const iface = IERC165Upgradeable__factory.createInterface();
+        expect(
+          await memberAccessPlugin.supportsInterface(getInterfaceID(iface)),
+        ).to.be
+          .true;
+      });
+
+      it("supports the `IPlugin` interface", async () => {
+        const iface = IPlugin__factory.createInterface();
+        expect(
+          await memberAccessPlugin.supportsInterface(getInterfaceID(iface)),
+        ).to.be
+          .true;
+      });
+
+      it("supports the `IProposal` interface", async () => {
+        const iface = IProposal__factory.createInterface();
+        expect(
+          await memberAccessPlugin.supportsInterface(getInterfaceID(iface)),
+        ).to.be
+          .true;
+      });
+
+      it("supports the `IMultisig` interface", async () => {
+        const iface = IMultisig__factory.createInterface();
+        expect(
+          await memberAccessPlugin.supportsInterface(getInterfaceID(iface)),
+        ).to.be
+          .true;
+      });
+
+      it("supports the `Multisig` interface", async () => {
+        expect(
+          await memberAccessPlugin.supportsInterface(
+            getInterfaceID(multisigInterface),
+          ),
+        ).to.be.true;
+      });
+    });
+
+    describe("updateMultisigSettings:", () => {
+      it("should emit `MultisigSettingsUpdated` when `updateMutlsigSettings` gets called", async () => {
+        await dao.grant(
+          memberAccessPlugin.address,
+          alice.address,
+          await memberAccessPlugin.UPDATE_MULTISIG_SETTINGS_PERMISSION_ID(),
+        );
+        const multisigSettings = {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        };
+
+        await expect(
+          memberAccessPlugin.updateMultisigSettings(multisigSettings),
+        )
+          .to.emit(
+            memberAccessPlugin,
+            "MultisigSettingsUpdated",
+          )
+          .withArgs(60 * 60 * 24 * 5, mainVotingPlugin.addAddresses);
+      });
+    });
+
+    describe("createProposal:", () => {
+      it("increments the proposal counter", async () => {
+        expect(await memberAccessPlugin.proposalCount()).to.equal(0);
+
+        await expect(
+          memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address),
+        ).not.to.be.reverted;
+
+        expect(await memberAccessPlugin.proposalCount()).to.equal(1);
+      });
+
+      it("creates unique proposal IDs for each proposal", async () => {
+        const proposalId0 = await memberAccessPlugin.callStatic
+          .proposeNewMember(EMPTY_DATA, charlie.address);
+        // create a new proposal for the proposalCounter to be incremented
+        await expect(
+          memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address),
+        ).not.to.be.reverted;
+
+        const proposalId1 = await memberAccessPlugin.callStatic
+          .proposeNewMember(EMPTY_DATA, debbie.address);
+
+        expect(proposalId0).to.equal(0); // To be removed when proposal ID is generated as a hash.
+        expect(proposalId1).to.equal(1); // To be removed when proposal ID is generated as a hash.
+
+        expect(proposalId0).to.not.equal(proposalId1);
+      });
+
+      it("emits the `ProposalCreated` event", async () => {
+        await expect(
+          memberAccessPlugin
+            .proposeNewMember(EMPTY_DATA, charlie.address),
+        ).to.emit(memberAccessPlugin, "ProposalCreated");
+      });
+
+      it("reverts if the multisig settings have been changed in the same block", async () => {
+        await dao.grant(
+          memberAccessPlugin.address,
+          dao.address,
+          await memberAccessPlugin.UPDATE_MULTISIG_SETTINGS_PERMISSION_ID(),
+        );
+
+        await ethers.provider.send("evm_setAutomine", [false]);
+
+        await dao.execute(
+          "0x00",
+          [
+            {
+              to: memberAccessPlugin.address,
+              value: 0,
+              data: memberAccessPlugin.interface.encodeFunctionData(
+                "updateMultisigSettings",
+                [{
+                  mainVotingPlugin: mainVotingPlugin.address,
+                  proposalDuration: 60 * 60 * 24 * 5,
+                }],
+              ),
+            },
+          ],
+          0,
+        );
+        await expect(
+          memberAccessPlugin
+            .proposeNewMember(EMPTY_DATA, charlie.address),
+        )
+          .to.revertedWithCustomError(
+            memberAccessPlugin,
+            "ProposalCreationForbidden",
+          )
+          .withArgs(charlie.address);
+
+        await ethers.provider.send("evm_setAutomine", [true]);
+      });
+    });
+
+    describe("canApprove:", async () => {
+      let id = 1;
+      beforeEach(async () => {
+        await proposeNewEditor(bob.address); // have 2 editors
+
+        // Alice approves
+        await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
+        id = 1;
+      });
+
+      it("returns `false` if the proposal is already executed", async () => {
+        expect((await memberAccessPlugin.getProposal(id)).executed).to.be.true;
+
+        expect(await memberAccessPlugin.canApprove(id, signers[3].address)).to
+          .be.false;
+      });
+
+      it("returns `false` if the approver is not an editor", async () => {
+        expect(await memberAccessPlugin.isEditor(signers[9].address)).to.be
+          .false;
+
+        expect(await memberAccessPlugin.canApprove(id, signers[9].address)).to
+          .be.false;
+      });
+
+      it("returns `false` if the approver has already approved", async () => {
+        expect(await memberAccessPlugin.canApprove(id, bob.address)).to
+          .be.true;
+        await memberAccessPlugin.connect(bob).approve(id, false);
+        expect(await memberAccessPlugin.canApprove(id, bob.address)).to
+          .be.false;
+      });
+
+      it("returns `true` if the approver is listed", async () => {
+        expect(await memberAccessPlugin.canApprove(id, bob.address)).to
+          .be.true;
+      });
+
+      it("returns `false` if the proposal has ended", async () => {
+        await proposeNewEditor(bob.address); // have 2 editors
+        await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
+        id = 2;
+
+        expect(await memberAccessPlugin.canApprove(id, bob.address)).to
+          .be.true;
+
+        await memberAccessPlugin.approve(id, false);
+
+        expect(await memberAccessPlugin.canApprove(id, bob.address)).to
+          .be.false;
+      });
+    });
+
+    describe("hasApproved", async () => {
+      let id = 1;
+      beforeEach(async () => {
+        await proposeNewEditor(bob.address); // have 2 editors
+
+        // Alice approves
+        await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
+        id = 1;
+      });
+
+      it("returns `false` if user hasn't approved yet", async () => {
+        expect(await memberAccessPlugin.hasApproved(id, bob.address)).to
+          .be.false;
+      });
+
+      it("returns `true` if user has approved", async () => {
+        await memberAccessPlugin.connect(bob).approve(id, false);
+        expect(await memberAccessPlugin.hasApproved(id, bob.address)).to
+          .be.true;
+      });
+    });
+
+    describe("approve:", async () => {
+      let id = 1;
+      beforeEach(async () => {
+        await proposeNewEditor(bob.address); // have 2 editors
+
+        // Alice approves
+        await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
+        id = 1;
+      });
+
+      it("reverts when approving multiple times", async () => {
+        await memberAccessPlugin.approve(id, true);
+
+        // Try to vote again
+        await expect(memberAccessPlugin.approve(id, true))
+          .to.be.revertedWithCustomError(
+            memberAccessPlugin,
+            "ApprovalCastForbidden",
+          )
+          .withArgs(id, signers[0].address);
+      });
+
+      it("reverts if minimal approval is not met yet", async () => {
+        const proposal = await memberAccessPlugin.getProposal(id);
+        expect(proposal.approvals).to.eq(0);
+        await expect(memberAccessPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            memberAccessPlugin,
+            "ProposalExecutionForbidden",
+          )
+          .withArgs(id);
+      });
+
+      it("approves with the msg.sender address", async () => {
+        expect((await memberAccessPlugin.getProposal(id)).approvals).to.equal(
+          0,
+        );
+
+        const tx = await memberAccessPlugin.connect(bob).approve(
+          id,
+          false,
+        );
+
+        const event = await findEvent<ApprovedEvent>(tx, "Approved");
+        expect(event!.args.proposalId).to.eq(id);
+        expect(event!.args.editor).to.eq(bob.address);
+
+        expect((await memberAccessPlugin.getProposal(id)).approvals).to.equal(
+          1,
+        );
+      });
+    });
+
+    describe("canExecute:", async () => {
+      let id = 1;
+      beforeEach(async () => {
+        await proposeNewEditor(bob.address); // have 2 editors
+
+        // Alice approves
+        await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
+        id = 1;
+      });
+
+      it("returns `false` if the proposal has not reached the minimum approval yet", async () => {
+        const proposal = await memberAccessPlugin.getProposal(id);
+        expect(proposal.approvals).to.be.lt(proposal.parameters.minApprovals);
+
+        expect(await memberAccessPlugin.canExecute(id)).to.be.false;
+      });
+
+      it("returns `false` if the proposal is already executed", async () => {
+        await memberAccessPlugin.connect(bob).approve(id, false);
+
+        expect((await memberAccessPlugin.getProposal(id)).executed).to.be.true;
+
+        expect(await memberAccessPlugin.canExecute(id)).to.be.false;
+      });
+    });
+
+    describe("execute:", async () => {
+      let id = 1;
+      beforeEach(async () => {
+        await proposeNewEditor(bob.address); // have 2 editors
+
+        // Alice approves
+        await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
+        id = 1;
+      });
+
+      it("reverts if the minimum approval is not met", async () => {
+        await expect(memberAccessPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            memberAccessPlugin,
+            "ProposalExecutionForbidden",
+          )
+          .withArgs(id);
+      });
+
+      it("emits the `Approved`, `ProposalExecuted`, and `Executed` events if execute is called inside the `approve` method", async () => {
+        await expect(memberAccessPlugin.connect(bob).approve(id, false))
+          .to.emit(dao, "Executed")
+          .to.emit(memberAccessPlugin, "ProposalExecuted")
+          .to.emit(memberAccessPlugin, "Approved");
+      });
+    });
   });
 
   // Helpers

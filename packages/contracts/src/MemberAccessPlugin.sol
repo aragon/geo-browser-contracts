@@ -12,8 +12,10 @@ import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
 import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
 import {MEMBER_PERMISSION_ID} from "./constants.sol";
 
-bytes4 constant MULTISIG_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
+bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
     MemberAccessPlugin.updateMultisigSettings.selector ^
+    MemberAccessPlugin.proposeNewMember.selector ^
+    MemberAccessPlugin.proposeRemoveMember.selector ^
     MemberAccessPlugin.getProposal.selector;
 
 /// @title Multisig - Release 1, Build 1
@@ -144,7 +146,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         bytes4 _interfaceId
     ) public view virtual override(PluginUUPSUpgradeable, ProposalUpgradeable) returns (bool) {
         return
-            _interfaceId == MULTISIG_INTERFACE_ID ||
+            _interfaceId == MEMBER_ACCESS_INTERFACE_ID ||
             _interfaceId == type(IMultisig).interfaceId ||
             super.supportsInterface(_interfaceId);
     }
