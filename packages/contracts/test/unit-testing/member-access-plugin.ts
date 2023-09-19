@@ -1,4 +1,4 @@
-import { hexlify, hexZeroPad, toUtf8Bytes } from "ethers/lib/utils";
+import { hexlify, toUtf8Bytes } from "ethers/lib/utils";
 import {
   DAO,
   IDAO,
@@ -1345,14 +1345,6 @@ describe("Member Access Plugin", function () {
         data: MemberAccessPlugin__factory.createInterface()
           .encodeFunctionData("upgradeTo", [
             await memberAccessPlugin.implementation(),
-          ]),
-      },
-      {
-        to: memberAccessPlugin.address,
-        value: 0,
-        data: MemberAccessPlugin__factory.createInterface()
-          .encodeFunctionData("supportsInterface", [
-            "0x12345678",
           ]),
       },
     ];

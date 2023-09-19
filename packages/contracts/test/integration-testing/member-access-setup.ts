@@ -107,19 +107,9 @@ describe("MemberAccessPluginSetup processing", function () {
     });
 
     beforeEach(async () => {
-      // dependencies
+      // dependency
       const mainVotingPlugin = await new MainVotingPlugin__factory(alice)
         .deploy();
-      // const mvSettings: MajorityVotingBase.VotingSettingsStruct = {
-      //   minDuration: 60 * 60 * 24,
-      //   minParticipation: 1,
-      //   supportThreshold: 1,
-      //   minProposerVotingPower: 0,
-      //   votingMode: 0,
-      // };
-      // await mainVotingPlugin.initialize(dao.address, mvSettings, [
-      //   alice.address,
-      // ]);
 
       const settings: MemberAccessPlugin.MultisigSettingsStruct = {
         mainVotingPlugin: mainVotingPlugin.address,
