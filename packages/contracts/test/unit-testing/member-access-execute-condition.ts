@@ -26,12 +26,12 @@ const SOME_CONTRACT_ADDRESS = "0x" + "1234567890".repeat(4);
 describe("Member Access Condition", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let charlie: SignerWithAddress;
+  let carol: SignerWithAddress;
   let dao: DAO;
   let memberAccessExecuteCondition: MemberAccessExecuteCondition;
 
   before(async () => {
-    [alice, bob, charlie] = await ethers.getSigners();
+    [alice, bob, carol] = await ethers.getSigners();
     dao = await deployTestDao(alice);
   });
 
@@ -51,7 +51,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -64,7 +64,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -115,7 +115,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -127,7 +127,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -141,7 +141,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           EDITOR_PERMISSION_ID,
         ]),
       ),
@@ -153,7 +153,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           EDITOR_PERMISSION_ID,
         ]),
       ),
@@ -165,7 +165,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           ROOT_PERMISSION_ID,
         ]),
       ),
@@ -177,7 +177,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           ROOT_PERMISSION_ID,
         ]),
       ),
@@ -189,7 +189,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           DEPLOYER_PERMISSION_ID,
         ]),
       ),
@@ -201,7 +201,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           DEPLOYER_PERMISSION_ID,
         ]),
       ),
@@ -217,7 +217,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -229,7 +229,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -243,7 +243,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           ADDRESS_TWO,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -255,7 +255,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           ADDRESS_TWO,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -268,7 +268,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           dao.address,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -280,7 +280,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           dao.address,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -339,7 +339,7 @@ describe("Member Access Condition", function () {
       ),
     ).to.eq(true);
 
-    // Charlie
+    // Carol
     expect(
       await memberAccessExecuteCondition.isGranted(
         ADDRESS_ONE, // where (used)
@@ -347,7 +347,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("grant", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),
@@ -359,7 +359,7 @@ describe("Member Access Condition", function () {
         EXECUTE_PERMISSION_ID, // permission (used)
         DAO__factory.createInterface().encodeFunctionData("revoke", [ // call
           SOME_CONTRACT_ADDRESS,
-          charlie.address,
+          carol.address,
           MEMBER_PERMISSION_ID,
         ]),
       ),

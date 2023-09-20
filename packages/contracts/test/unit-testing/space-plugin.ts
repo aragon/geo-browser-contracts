@@ -22,13 +22,13 @@ export const defaultInitData: InitData = {
 describe("Space Plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let charlie: SignerWithAddress;
+  let carol: SignerWithAddress;
   let dao: DAO;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
 
   before(async () => {
-    [alice, bob, charlie] = await ethers.getSigners();
+    [alice, bob, carol] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
     defaultInput = { contentUri: "ipfs://" };
@@ -152,7 +152,7 @@ describe("Space Plugin", function () {
         spacePlugin.connect(bob).setContent(1, 2, toHex("ipfs://1234")),
       ).to.be.reverted;
       await expect(
-        spacePlugin.connect(charlie).setContent(1, 2, toHex("ipfs://1234")),
+        spacePlugin.connect(carol).setContent(1, 2, toHex("ipfs://1234")),
       ).to.be.reverted;
 
       // The DAO can
@@ -179,7 +179,7 @@ describe("Space Plugin", function () {
         spacePlugin.connect(bob).acceptSubspace(ADDRESS_ONE),
       ).to.be.reverted;
       await expect(
-        spacePlugin.connect(charlie).acceptSubspace(ADDRESS_ONE),
+        spacePlugin.connect(carol).acceptSubspace(ADDRESS_ONE),
       ).to.be.reverted;
 
       // The DAO can
@@ -206,7 +206,7 @@ describe("Space Plugin", function () {
         spacePlugin.connect(bob).removeSubspace(ADDRESS_ONE),
       ).to.be.reverted;
       await expect(
-        spacePlugin.connect(charlie).removeSubspace(ADDRESS_ONE),
+        spacePlugin.connect(carol).removeSubspace(ADDRESS_ONE),
       ).to.be.reverted;
 
       // The DAO can

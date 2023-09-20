@@ -55,8 +55,8 @@ describe("Main Voting Plugin", function () {
   let signers: SignerWithAddress[];
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let charlie: SignerWithAddress;
-  let debbie: SignerWithAddress;
+  let carol: SignerWithAddress;
+  let dave: SignerWithAddress;
   let dao: DAO;
   let memberAccessPlugin: MemberAccessPlugin;
   let mainVotingPlugin: MainVotingPlugin;
@@ -65,7 +65,7 @@ describe("Main Voting Plugin", function () {
 
   before(async () => {
     signers = await ethers.getSigners();
-    [alice, bob, charlie, debbie] = signers;
+    [alice, bob, carol, dave] = signers;
     dao = await deployTestDao(alice);
 
     defaultInput = { contentUri: "ipfs://" };
@@ -231,7 +231,7 @@ describe("Main Voting Plugin", function () {
       ).to.not.be.reverted;
 
       await expect(
-        mainVotingPlugin.connect(charlie).createProposal(
+        mainVotingPlugin.connect(carol).createProposal(
           toUtf8Bytes("ipfs://"),
           [],
           0, // fail safe
@@ -244,10 +244,10 @@ describe("Main Voting Plugin", function () {
         mainVotingPlugin,
         "NotAMember",
       )
-        .withArgs(charlie.address);
+        .withArgs(carol.address);
 
       await expect(
-        mainVotingPlugin.connect(debbie).createProposal(
+        mainVotingPlugin.connect(dave).createProposal(
           toUtf8Bytes("ipfs://"),
           [],
           0, // fail safe
@@ -260,7 +260,7 @@ describe("Main Voting Plugin", function () {
         mainVotingPlugin,
         "NotAMember",
       )
-        .withArgs(debbie.address);
+        .withArgs(dave.address);
     });
 
     it("Only editors can vote on proposals", async () => {
@@ -283,14 +283,14 @@ describe("Main Voting Plugin", function () {
       await expect(mainVotingPlugin.connect(bob).vote(0, VoteOption.Yes, false))
         .to.be.reverted;
 
-      // Charlie can't vote
+      // Carol can't vote
       await expect(
-        mainVotingPlugin.connect(charlie).vote(0, VoteOption.Yes, false),
+        mainVotingPlugin.connect(carol).vote(0, VoteOption.Yes, false),
       ).to.be.reverted;
 
-      // Debbie can't vote
+      // Dave can't vote
       await expect(
-        mainVotingPlugin.connect(debbie).vote(0, VoteOption.Yes, false),
+        mainVotingPlugin.connect(dave).vote(0, VoteOption.Yes, false),
       )
         .to.be.reverted;
 
@@ -369,27 +369,27 @@ describe("Main Voting Plugin", function () {
       expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
       expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
 
-      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
       await dao.grant(
         mainVotingPlugin.address,
-        charlie.address,
+        carol.address,
         MEMBER_PERMISSION_ID,
       );
 
-      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
 
       await dao.revoke(
         mainVotingPlugin.address,
-        charlie.address,
+        carol.address,
         MEMBER_PERMISSION_ID,
       );
 
-      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(false);
+      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
-      await makeEditor(charlie.address);
+      await makeEditor(carol.address);
 
-      expect(await memberAccessPlugin.isMember(charlie.address)).to.eq(true);
+      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
     });
 
     it("isEditor() returns true when appropriate", async () => {
@@ -399,11 +399,11 @@ describe("Main Voting Plugin", function () {
 
       expect(await memberAccessPlugin.isEditor(alice.address)).to.eq(true);
       expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
-      expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(false);
+      expect(await memberAccessPlugin.isEditor(carol.address)).to.eq(false);
 
-      await makeEditor(charlie.address);
+      await makeEditor(carol.address);
 
-      expect(await memberAccessPlugin.isEditor(charlie.address)).to.eq(true);
+      expect(await memberAccessPlugin.isEditor(carol.address)).to.eq(true);
     });
   });
 
@@ -452,20 +452,20 @@ describe("Main Voting Plugin", function () {
       let pid = 0;
       // Bob editor
       await proposeNewEditor(bob.address);
-      // Charlie member
+      // Carol member
       await dao.grant(
         mainVotingPlugin.address,
-        charlie.address,
+        carol.address,
         MEMBER_PERMISSION_ID,
       );
 
-      await expect(createDummyProposal(charlie, false)).to.not.be.reverted;
+      await expect(createDummyProposal(carol, false)).to.not.be.reverted;
       pid++;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
-      // Charlie tries to vote
+      // Carol tries to vote
       await expect(
-        mainVotingPlugin.connect(charlie).vote(pid, VoteOption.Yes, true),
+        mainVotingPlugin.connect(carol).vote(pid, VoteOption.Yes, true),
       ).to.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
@@ -483,9 +483,9 @@ describe("Main Voting Plugin", function () {
 
     it("Proposals created by an editor require additional votes", async () => {
       let pid = 0;
-      // Bob and Charlie editors
+      // Bob and Carol editors
       await proposeNewEditor(bob.address);
-      await proposeNewEditor(charlie.address);
+      await proposeNewEditor(carol.address);
       pid++;
       await expect(
         mainVotingPlugin.connect(bob).vote(pid, VoteOption.Yes, true),
@@ -529,30 +529,30 @@ describe("Main Voting Plugin", function () {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
       expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(true);
 
-      // Propose Charlie
-      await proposeNewEditor(charlie.address);
+      // Propose Carol
+      await proposeNewEditor(carol.address);
       expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
-      expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(false);
+      expect(await mainVotingPlugin.isEditor(carol.address)).to.eq(false);
 
-      // Confirm Charlie
+      // Confirm Carol
       await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
         .to
         .not.be.reverted;
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
-      expect(await mainVotingPlugin.isEditor(charlie.address)).to.eq(true);
+      expect(await mainVotingPlugin.isEditor(carol.address)).to.eq(true);
     });
 
     it("Removing an editor decreases the editorCount", async () => {
-      // Add Bob and Charlie
+      // Add Bob and Carol
       await proposeNewEditor(bob.address); // Alice votes yes as the creator
-      await proposeNewEditor(charlie.address); // Alice votes yes as the creator
+      await proposeNewEditor(carol.address); // Alice votes yes as the creator
       await expect(mainVotingPlugin.connect(bob).vote(1, VoteOption.Yes, true))
         .to
         .not.be.reverted;
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
-      // Propose removing Charlie
-      await proposeRemoveEditor(charlie.address); // Alice votes yes as the creator
+      // Propose removing Carol
+      await proposeRemoveEditor(carol.address); // Alice votes yes as the creator
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
       await expect(mainVotingPlugin.connect(bob).vote(2, VoteOption.Yes, true))
         .to
@@ -575,7 +575,7 @@ describe("Main Voting Plugin", function () {
           value: 0,
           data: MainVotingPlugin__factory.createInterface()
             .encodeFunctionData("addAddresses", [
-              [bob.address, charlie.address],
+              [bob.address, carol.address],
             ]),
         },
       ];
@@ -592,7 +592,7 @@ describe("Main Voting Plugin", function () {
           value: 0,
           data: MainVotingPlugin__factory.createInterface()
             .encodeFunctionData("addAddresses", [
-              [bob.address, charlie.address, debbie.address],
+              [bob.address, carol.address, dave.address],
             ]),
         },
       ];
@@ -618,7 +618,7 @@ describe("Main Voting Plugin", function () {
 
     it("Removing more than one editor at once reverts", async () => {
       await makeEditor(bob.address);
-      await makeEditor(charlie.address);
+      await makeEditor(carol.address);
 
       // 2
       let actions: IDAO.ActionStruct[] = [
@@ -627,7 +627,7 @@ describe("Main Voting Plugin", function () {
           value: 0,
           data: MainVotingPlugin__factory.createInterface()
             .encodeFunctionData("removeAddresses", [
-              [bob.address, charlie.address],
+              [bob.address, carol.address],
             ]),
         },
       ];
@@ -641,7 +641,7 @@ describe("Main Voting Plugin", function () {
           value: 0,
           data: MainVotingPlugin__factory.createInterface()
             .encodeFunctionData("removeAddresses", [
-              [bob.address, charlie.address],
+              [bob.address, carol.address],
             ]),
         },
       ];
@@ -699,8 +699,8 @@ describe("Main Voting Plugin", function () {
       // Add Bob
       await proposeNewEditor(bob.address); // Alice votes yes as the creator
 
-      // Propose Charlie
-      await proposeNewEditor(charlie.address); // Alice votes yes as the creator
+      // Propose Carol
+      await proposeNewEditor(carol.address); // Alice votes yes as the creator
 
       // Vote again
       await expect(
@@ -714,8 +714,8 @@ describe("Main Voting Plugin", function () {
       await expect(createDummyProposal(bob, false)).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
-      // Charlie cannot execute
-      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+      // Carol cannot execute
+      await expect(mainVotingPlugin.connect(carol).execute(pid)).to.be
         .reverted;
 
       // Alice approves
@@ -724,8 +724,8 @@ describe("Main Voting Plugin", function () {
       ).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(true);
 
-      // Charlie executes
-      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.not.be
+      // Carol executes
+      await expect(mainVotingPlugin.connect(carol).execute(pid)).to.not.be
         .reverted;
     });
 
@@ -734,8 +734,8 @@ describe("Main Voting Plugin", function () {
       await expect(createDummyProposal(bob, false)).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
-      // Charlie cannot execute
-      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+      // Carol cannot execute
+      await expect(mainVotingPlugin.connect(carol).execute(pid)).to.be
         .reverted;
 
       // Alice rejects
@@ -744,8 +744,8 @@ describe("Main Voting Plugin", function () {
       ).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
-      // Charlie cannot execute
-      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+      // Carol cannot execute
+      await expect(mainVotingPlugin.connect(carol).execute(pid)).to.be
         .reverted;
 
       //
@@ -757,8 +757,8 @@ describe("Main Voting Plugin", function () {
       pid++;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
-      // Charlie cannot execute
-      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+      // Carol cannot execute
+      await expect(mainVotingPlugin.connect(carol).execute(pid)).to.be
         .reverted;
 
       // Alice rejects
@@ -773,8 +773,8 @@ describe("Main Voting Plugin", function () {
       ).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
-      // Charlie cannot execute
-      await expect(mainVotingPlugin.connect(charlie).execute(pid)).to.be
+      // Carol cannot execute
+      await expect(mainVotingPlugin.connect(carol).execute(pid)).to.be
         .reverted;
     });
 
@@ -820,10 +820,10 @@ describe("Main Voting Plugin", function () {
         mainVotingPlugin.connect(bob).addAddresses([bob.address]),
       ).to.be.reverted;
       await expect(
-        mainVotingPlugin.connect(charlie).addAddresses([debbie.address]),
+        mainVotingPlugin.connect(carol).addAddresses([dave.address]),
       ).to.be.reverted;
       await expect(
-        mainVotingPlugin.connect(debbie).addAddresses([debbie.address]),
+        mainVotingPlugin.connect(dave).addAddresses([dave.address]),
       ).to.be.reverted;
 
       // The DAO can
@@ -833,7 +833,7 @@ describe("Main Voting Plugin", function () {
           value: 0,
           data: MainVotingPlugin__factory.createInterface()
             .encodeFunctionData("addAddresses", [
-              [debbie.address],
+              [dave.address],
             ]),
         },
       ];
@@ -858,10 +858,10 @@ describe("Main Voting Plugin", function () {
         mainVotingPlugin.connect(bob).removeAddresses([bob.address]),
       ).to.be.reverted;
       await expect(
-        mainVotingPlugin.connect(charlie).removeAddresses([bob.address]),
+        mainVotingPlugin.connect(carol).removeAddresses([bob.address]),
       ).to.be.reverted;
       await expect(
-        mainVotingPlugin.connect(debbie).removeAddresses([bob.address]),
+        mainVotingPlugin.connect(dave).removeAddresses([bob.address]),
       ).to.be.reverted;
 
       // The DAO can
@@ -894,13 +894,13 @@ describe("Main Voting Plugin", function () {
         mainVotingPlugin.connect(bob).upgradeTo(ADDRESS_ONE),
       ).to.be.reverted;
       await expect(
-        mainVotingPlugin.connect(charlie).upgradeToAndCall(
+        mainVotingPlugin.connect(carol).upgradeToAndCall(
           mainVotingPlugin.implementation(), // upgrade to itself
           EMPTY_DATA,
         ),
       ).to.be.reverted;
       await expect(
-        mainVotingPlugin.connect(debbie).upgradeToAndCall(
+        mainVotingPlugin.connect(dave).upgradeToAndCall(
           mainVotingPlugin.implementation(), // upgrade to itself
           EMPTY_DATA,
         ),

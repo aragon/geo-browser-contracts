@@ -50,7 +50,7 @@ export const psvpInterface = new ethers.utils.Interface([
 describe("Personal Space Admin Plugin", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let charlie: SignerWithAddress;
+  let carol: SignerWithAddress;
   let dao: DAO;
   let personalSpaceVotingPlugin: PersonalSpaceAdminPlugin;
   let personalSpaceVotingCloneFactory: PersonalSpaceAdminCloneFactory;
@@ -60,7 +60,7 @@ describe("Personal Space Admin Plugin", function () {
   let dummyMetadata: string;
 
   before(async () => {
-    [alice, bob, charlie] = await ethers.getSigners();
+    [alice, bob, carol] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
     defaultInput = { contentUri: "ipfs://" };
@@ -173,17 +173,17 @@ describe("Personal Space Admin Plugin", function () {
 
     expect(await personalSpaceVotingPlugin.isEditor(alice.address)).to.eq(true);
     expect(await personalSpaceVotingPlugin.isEditor(bob.address)).to.eq(false);
-    expect(await personalSpaceVotingPlugin.isEditor(charlie.address)).to.eq(
+    expect(await personalSpaceVotingPlugin.isEditor(carol.address)).to.eq(
       false,
     );
 
     await dao.grant(
       personalSpaceVotingPlugin.address,
-      charlie.address,
+      carol.address,
       EDITOR_PERMISSION_ID,
     );
 
-    expect(await personalSpaceVotingPlugin.isEditor(charlie.address)).to.eq(
+    expect(await personalSpaceVotingPlugin.isEditor(carol.address)).to.eq(
       true,
     );
   });
@@ -208,7 +208,7 @@ describe("Personal Space Admin Plugin", function () {
           EDITOR_PERMISSION_ID,
         );
       await expect(
-        personalSpaceVotingPlugin.connect(charlie).executeProposal(
+        personalSpaceVotingPlugin.connect(carol).executeProposal(
           "0x",
           dummyActions,
           0,
@@ -221,7 +221,7 @@ describe("Personal Space Admin Plugin", function () {
         .withArgs(
           dao.address,
           personalSpaceVotingPlugin.address,
-          charlie.address,
+          carol.address,
           EDITOR_PERMISSION_ID,
         );
 
