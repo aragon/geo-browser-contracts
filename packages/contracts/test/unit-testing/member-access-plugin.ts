@@ -22,6 +22,7 @@ import {
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   MEMBER_PERMISSION_ID,
+  mineBlock,
   ROOT_PERMISSION_ID,
   UPDATE_ADDRESSES_PERMISSION_ID,
   UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
@@ -46,8 +47,8 @@ export const defaultInitData: InitData = {
 };
 
 export const multisigInterface = new ethers.utils.Interface([
-  "function initialize(address,address[],tuple(bool,uint16))",
-  "function updateMultisigSettings(tuple(bool,uint16))",
+  "function initialize(address,tuple(uint64,address))",
+  "function updateMultisigSettings(tuple(uint64,address))",
   "function proposeNewMember(bytes,address)",
   "function proposeRemoveMember(bytes,address)",
   "function getProposal(uint256)",
@@ -1522,7 +1523,7 @@ describe("Member Access Plugin", function () {
         await ethers.provider.send("evm_setAutomine", [false]);
 
         await dao.execute(
-          "0x00",
+          ZERO_BYTES32,
           [
             {
               to: memberAccessPlugin.address,
@@ -1546,25 +1547,32 @@ describe("Member Access Plugin", function () {
             memberAccessPlugin,
             "ProposalCreationForbidden",
           )
-          .withArgs(charlie.address);
+          .withArgs(alice.address);
 
         await ethers.provider.send("evm_setAutomine", [true]);
       });
     });
 
-    describe("canApprove:", async () => {
-      let id = 1;
+    describe("canApprove:", () => {
+      let id = 0;
       beforeEach(async () => {
         await proposeNewEditor(bob.address); // have 2 editors
+        await mineBlock();
+
+        expect(await memberAccessPlugin.isEditor(alice.address)).to.be.true;
+        expect(await memberAccessPlugin.isEditor(bob.address)).to.be.true;
+        expect(await memberAccessPlugin.isEditor(charlie.address)).to.be.false;
 
         // Alice approves
         await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
-        id = 1;
+        id = 0;
       });
 
       it("returns `false` if the proposal is already executed", async () => {
-        expect((await memberAccessPlugin.getProposal(id)).executed).to.be.true;
+        expect((await memberAccessPlugin.getProposal(id)).executed).to.be.false;
+        await memberAccessPlugin.connect(bob).approve(id, false);
 
+        expect((await memberAccessPlugin.getProposal(id)).executed).to.be.true;
         expect(await memberAccessPlugin.canApprove(id, signers[3].address)).to
           .be.false;
       });
@@ -1591,28 +1599,28 @@ describe("Member Access Plugin", function () {
       });
 
       it("returns `false` if the proposal has ended", async () => {
-        await proposeNewEditor(bob.address); // have 2 editors
         await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
-        id = 2;
+        id++;
 
         expect(await memberAccessPlugin.canApprove(id, bob.address)).to
           .be.true;
 
-        await memberAccessPlugin.approve(id, false);
+        await memberAccessPlugin.connect(bob).approve(id, false);
 
         expect(await memberAccessPlugin.canApprove(id, bob.address)).to
           .be.false;
       });
     });
 
-    describe("hasApproved", async () => {
-      let id = 1;
+    describe("hasApproved", () => {
+      let id = 0;
       beforeEach(async () => {
         await proposeNewEditor(bob.address); // have 2 editors
+        await mineBlock();
 
         // Alice approves
         await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
-        id = 1;
+        id = 0;
       });
 
       it("returns `false` if user hasn't approved yet", async () => {
@@ -1627,31 +1635,32 @@ describe("Member Access Plugin", function () {
       });
     });
 
-    describe("approve:", async () => {
-      let id = 1;
+    describe("approve:", () => {
+      let id = 0;
       beforeEach(async () => {
         await proposeNewEditor(bob.address); // have 2 editors
+        await mineBlock();
 
         // Alice approves
         await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
-        id = 1;
+        id = 0;
       });
 
       it("reverts when approving multiple times", async () => {
-        await memberAccessPlugin.approve(id, true);
+        await memberAccessPlugin.connect(bob).approve(id, true);
 
         // Try to vote again
-        await expect(memberAccessPlugin.approve(id, true))
+        await expect(memberAccessPlugin.connect(bob).approve(id, true))
           .to.be.revertedWithCustomError(
             memberAccessPlugin,
             "ApprovalCastForbidden",
           )
-          .withArgs(id, signers[0].address);
+          .withArgs(id, bob.address);
       });
 
       it("reverts if minimal approval is not met yet", async () => {
         const proposal = await memberAccessPlugin.getProposal(id);
-        expect(proposal.approvals).to.eq(0);
+        expect(proposal.approvals).to.eq(1);
         await expect(memberAccessPlugin.execute(id))
           .to.be.revertedWithCustomError(
             memberAccessPlugin,
@@ -1662,7 +1671,7 @@ describe("Member Access Plugin", function () {
 
       it("approves with the msg.sender address", async () => {
         expect((await memberAccessPlugin.getProposal(id)).approvals).to.equal(
-          0,
+          1,
         );
 
         const tx = await memberAccessPlugin.connect(bob).approve(
@@ -1675,19 +1684,24 @@ describe("Member Access Plugin", function () {
         expect(event!.args.editor).to.eq(bob.address);
 
         expect((await memberAccessPlugin.getProposal(id)).approvals).to.equal(
-          1,
+          2,
         );
       });
     });
 
-    describe("canExecute:", async () => {
-      let id = 1;
+    describe("canExecute:", () => {
+      let id = 0;
       beforeEach(async () => {
         await proposeNewEditor(bob.address); // have 2 editors
+        await mineBlock();
+
+        expect(await memberAccessPlugin.isEditor(alice.address)).to.be.true;
+        expect(await memberAccessPlugin.isEditor(bob.address)).to.be.true;
+        expect(await memberAccessPlugin.isEditor(charlie.address)).to.be.false;
 
         // Alice approves
         await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
-        id = 1;
+        id = 0;
       });
 
       it("returns `false` if the proposal has not reached the minimum approval yet", async () => {
@@ -1698,6 +1712,12 @@ describe("Member Access Plugin", function () {
       });
 
       it("returns `false` if the proposal is already executed", async () => {
+        expect((await memberAccessPlugin.getProposal(id)).executed).to.be.false;
+        expect((await memberAccessPlugin.getProposal(id)).actions.length).to.eq(
+          1,
+        );
+
+        // Approve and execute
         await memberAccessPlugin.connect(bob).approve(id, false);
 
         expect((await memberAccessPlugin.getProposal(id)).executed).to.be.true;
@@ -1706,14 +1726,15 @@ describe("Member Access Plugin", function () {
       });
     });
 
-    describe("execute:", async () => {
-      let id = 1;
+    describe("execute:", () => {
+      let id = 0;
       beforeEach(async () => {
         await proposeNewEditor(bob.address); // have 2 editors
+        await mineBlock();
 
         // Alice approves
         await memberAccessPlugin.proposeNewMember(EMPTY_DATA, charlie.address);
-        id = 1;
+        id = 0;
       });
 
       it("reverts if the minimum approval is not met", async () => {
@@ -1743,29 +1764,6 @@ describe("Member Access Plugin", function () {
         value: 0,
         data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
           "addAddresses",
-          [[_editor]],
-        ),
-      },
-    ];
-
-    return mainVotingPlugin.connect(proposer).createProposal(
-      toUtf8Bytes("ipfs://"),
-      actions,
-      0, // fail safe
-      0, // start date
-      0, // end date
-      VoteOption.Yes,
-      true, // auto execute
-    ).then((tx) => tx.wait());
-  };
-
-  const proposeRemoveEditor = (_editor: string, proposer = alice) => {
-    const actions: IDAO.ActionStruct[] = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
-          "removeAddresses",
           [[_editor]],
         ),
       },
