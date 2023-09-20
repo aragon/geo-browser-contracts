@@ -35,6 +35,36 @@ The current repository provides the plugins necessary to cover two use cases:
    - Space plugin
    - Personal Space Admin plugin
 
+## Global lifecycle
+
+### Space genesis
+
+1. When the `MainVotingPlugin` is installed, an initial editor is defined
+
+### Joining a space
+
+1. An address calls `proposeNewMember()` on the `MemberAccessPlugin`
+   - If the wallet is the only editor, the proposal succeeds immediately
+2. One of the editors calls `approve()` or `reject()`
+   - Calling `approve()` makes the proposal succeed
+   - Calling `reject()` cancels the proposal
+3. A succeeded proposal is executed automatically
+   - This makes the DAO call `grant()` on itself to grant the `MEMBERSHIP_PERMISSION` to the intended address
+
+### Creating proposals for a space
+
+1. An editor or a wallet with the `MEMBERSHIP_PERMISSION` granted, creates a proposal
+2. Editors can vote on it for a predefined amount of time
+3. If the proposal exceeds the required quorum and support, the proposal succeeds
+4. Succeeded proposals can be executed by anyone
+
+### Emitting content and managing subspaces
+
+1. When a proposal regarding the space is passed, the `MainVotingPlugin` will call `execute()` on the DAO
+2. The actions from the proposal will target the `setContent()`, `acceptSubspace()` or `removeSubspace()` functions on the `SpacePlugin`.
+3. The `SpacePlugin` will be called by the DAO and emit the corresponding events
+4. An external indexer will fetch all these events and update the current state of this specific space
+
 ## General notice
 
 The implementation of the four plugins is built on top of existing and thoroughly autited plugins from Aragon OSx. The base contracts used highly align with the requirements of Geo. However, there is some cases in which certain parameters may not be relevant or may need to be kept for compatibility.
