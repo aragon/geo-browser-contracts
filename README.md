@@ -310,14 +310,15 @@ It's the main governance plugin for standard spaces, where all proposals are vot
 
 It acts as the source of truth about who is an editor, on Spaces with standard governance.
 
-The governance settings need to be defined when the plugin is deployed but the DAO can change them at any time.
+The governance settings need to be defined when the plugin is deployed but the DAO can change them at any time. Proposal creators can cancel their own proposals before they end.
 
 #### Methods
 
 - `function initialize(IDAO _dao, VotingSettings calldata _votingSettings, address[] calldata _initialEditors)`
 - `function addAddresses(address[])`
 - `function removeAddresses(address[])`
-- `function createProposal(bytes calldata metadata,IDAO.Action[] calldata actions,uint256 allowFailureMap,uint64,uint64,VoteOption voteOption,bool tryEarlyExecution)`
+- `function createProposal(bytes calldata metadata, IDAO.Action[] calldata actions, uint256 allowFailureMap, uint64, uint64, VoteOption voteOption, bool tryEarlyExecution)`
+- `function cancelProposal(uint256 _proposalId)`
 
 Inherited:
 
@@ -352,13 +353,14 @@ Inherited:
 
 #### Events
 
-- `event VoteCast(uint256 indexed proposalId, address indexed voter, VoteOption voteOption, uint256 votingPower)`
-- `event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin)`
+- `event ProposalCanceled(uint256 proposalId)`
 
 Inherited:
 
 - `event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap)`
+- `event VoteCast(uint256 indexed proposalId, address indexed voter, VoteOption voteOption, uint256 votingPower)`
 - `event ProposalExecuted(uint256 indexed proposalId)`
+- `event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint32 minParticipation, uint64 minDuration, uint256 minProposerVotingPower)`
 
 #### Permissions
 

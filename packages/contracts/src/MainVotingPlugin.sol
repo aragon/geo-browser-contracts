@@ -29,6 +29,11 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
     bytes32 public constant UPDATE_ADDRESSES_PERMISSION_ID =
         keccak256("UPDATE_ADDRESSES_PERMISSION");
 
+    mapping(uint256 => address) internal proposalCreators;
+
+    /// @notice Emitted when the creator cancels a proposal
+    event ProposalCanceled(uint256 proposalId);
+
     /// @notice Raised when more than one editor is attempted to be added or removed
     error OnlyOneEditorPerCall(uint256 length);
 
@@ -37,6 +42,12 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
 
     /// @notice Raised when a wallet who is not an editor or a member attempts to do something
     error NotAMember(address caller);
+
+    /// @notice Raised when someone who didn't create a proposal attempts to cancel it
+    error OnlyCreatorCanCancel();
+
+    /// @notice Raised when attempting to cancel a proposal that already ended
+    error ProposalIsNotOpen();
 
     modifier onlyMembers() {
         if (!isMember(_msgSender())) {
@@ -149,6 +160,7 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
             totalVotingPower(snapshotBlock),
             minParticipation()
         );
+        proposalCreators[proposalId] = _msgSender();
 
         // Reduce costs
         if (_allowFailureMap != 0) {
@@ -208,6 +220,21 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         if (_tryEarlyExecution && _canExecute(_proposalId)) {
             _execute(_proposalId);
         }
+    }
+
+    /// @notice Cancels the given proposal. It can only be called by the creator and the proposal must have not ended.
+    function cancelProposal(uint256 _proposalId) external {
+        if (proposalCreators[_proposalId] != _msgSender()) {
+            revert OnlyCreatorCanCancel();
+        }
+        Proposal storage proposal_ = proposals[_proposalId];
+        if (!_isProposalOpen(proposal_)) {
+            revert ProposalIsNotOpen();
+        }
+
+        // Make it end now
+        proposal_.parameters.endDate = block.timestamp.toUint64();
+        emit ProposalCanceled(_proposalId);
     }
 
     /// @inheritdoc MajorityVotingBase

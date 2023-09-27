@@ -520,6 +520,415 @@ describe("Main Voting Plugin", function () {
     });
   });
 
+  context("Canceling", () => {
+    it("Proposals created by a member can be canceled before they end", async () => {
+      let proposalId = 0;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      // Bob cancels
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .not.be.reverted;
+
+      // No more votes
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+      await expect(
+        mainVotingPlugin.connect(alice).vote(proposalId, VoteOption.Yes, false),
+      ).to.be.reverted;
+    });
+
+    it("Proposals created by an editor can be canceled before they end", async () => {
+      await makeEditor(bob.address);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+
+      let proposalId = 0;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.Yes,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      // Bob cancels
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .not.be
+        .reverted;
+
+      // No more votes
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+      await expect(
+        mainVotingPlugin.connect(alice).vote(proposalId, VoteOption.Yes, false),
+      ).to.be.reverted;
+    });
+
+    it("Canceling a proposal emits an event", async () => {
+      let proposalId = 0;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      // Bob cancels
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .to.emit(mainVotingPlugin, "ProposalCanceled").withArgs(proposalId);
+
+      // New proposal
+      proposalId = 1;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      // Bob cancels
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .to.emit(mainVotingPlugin, "ProposalCanceled").withArgs(proposalId);
+    });
+
+    it("Proposals cannot be canceled after they end (member created)", async () => {
+      let proposalId = 0;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      let proposal = await mainVotingPlugin.getProposal(proposalId);
+      await advanceAfterVoteEnd(proposal.parameters.endDate.toNumber());
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+
+      // Bob cannot cancel
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .be.revertedWithCustomError(mainVotingPlugin, "ProposalIsNotOpen");
+
+      proposal = await mainVotingPlugin.getProposal(proposalId);
+      expect(proposal.executed).to.be.false;
+
+      // New proposal (to be approved)
+
+      proposalId = 1;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      // Alice approves and executes
+      await expect(
+        mainVotingPlugin.connect(alice).vote(proposalId, VoteOption.Yes, true),
+      ).to.not.be.reverted;
+
+      proposal = await mainVotingPlugin.getProposal(proposalId);
+      expect(proposal.executed).to.be.true;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+
+      // Bob cannot cancel
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .be.revertedWithCustomError(mainVotingPlugin, "ProposalIsNotOpen");
+    });
+
+    it("Proposals cannot be canceled after they end (editor created)", async () => {
+      await makeEditor(bob.address);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+
+      let proposalId = 0;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.Yes,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      let proposal = await mainVotingPlugin.getProposal(proposalId);
+      await advanceAfterVoteEnd(proposal.parameters.endDate.toNumber());
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+
+      // Bob cannot cancel
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .be.revertedWithCustomError(mainVotingPlugin, "ProposalIsNotOpen");
+
+      proposal = await mainVotingPlugin.getProposal(proposalId);
+      expect(proposal.executed).to.be.false;
+
+      // New proposal (to be approved)
+
+      proposalId = 1;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.Yes,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      // Alice approves and executes
+      await expect(
+        mainVotingPlugin.connect(alice).vote(proposalId, VoteOption.Yes, true),
+      ).to.not.be.reverted;
+
+      proposal = await mainVotingPlugin.getProposal(proposalId);
+      expect(proposal.executed).to.be.true;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+
+      // Bob cannot cancel
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .be.revertedWithCustomError(mainVotingPlugin, "ProposalIsNotOpen");
+    });
+
+    it("Proposals can only be canceled by the creator (member)", async () => {
+      let proposalId = 0;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.None,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      // They cannot cancel
+      await expect(mainVotingPlugin.connect(alice).cancelProposal(proposalId))
+        .to.be.revertedWithCustomError(
+          mainVotingPlugin,
+          "OnlyCreatorCanCancel",
+        );
+      await expect(mainVotingPlugin.connect(carol).cancelProposal(proposalId))
+        .to.be.revertedWithCustomError(
+          mainVotingPlugin,
+          "OnlyCreatorCanCancel",
+        );
+      await expect(mainVotingPlugin.connect(dave).cancelProposal(proposalId))
+        .to.be.revertedWithCustomError(
+          mainVotingPlugin,
+          "OnlyCreatorCanCancel",
+        );
+
+      // Still open
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      // Bob can cancel
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .not.be.reverted;
+
+      // No more votes
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+      await expect(
+        mainVotingPlugin.connect(alice).vote(proposalId, VoteOption.Yes, false),
+      ).to.be.reverted;
+    });
+
+    it("Proposals can only be canceled by the creator (editor)", async () => {
+      await makeEditor(bob.address);
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
+
+      let proposalId = 0;
+      await expect(
+        mainVotingPlugin.connect(bob).createProposal(
+          toUtf8Bytes("ipfs://"),
+          [],
+          0, // fail safe
+          0, // start date
+          0, // end date
+          VoteOption.Yes,
+          true, // auto execute
+        ),
+      ).to.not.be.reverted;
+
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      // They cannot cancel
+      await expect(mainVotingPlugin.connect(alice).cancelProposal(proposalId))
+        .to.be.revertedWithCustomError(
+          mainVotingPlugin,
+          "OnlyCreatorCanCancel",
+        );
+      await expect(mainVotingPlugin.connect(carol).cancelProposal(proposalId))
+        .to.be.revertedWithCustomError(
+          mainVotingPlugin,
+          "OnlyCreatorCanCancel",
+        );
+      await expect(mainVotingPlugin.connect(dave).cancelProposal(proposalId))
+        .to.be.revertedWithCustomError(
+          mainVotingPlugin,
+          "OnlyCreatorCanCancel",
+        );
+
+      // Still open
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.true;
+
+      // Bob can cancel
+      await expect(mainVotingPlugin.connect(bob).cancelProposal(proposalId)).to
+        .not.be.reverted;
+
+      // No more votes
+      expect(
+        await mainVotingPlugin.canVote(
+          proposalId,
+          alice.address,
+          VoteOption.Yes,
+        ),
+      ).to.be.false;
+      await expect(
+        mainVotingPlugin.connect(alice).vote(proposalId, VoteOption.Yes, false),
+      ).to.be.reverted;
+    });
+  });
+
   context("After proposals", () => {
     it("Adding an editor increases the editorCount", async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
