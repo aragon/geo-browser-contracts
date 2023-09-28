@@ -1,6 +1,6 @@
 import { MyPluginContext } from "../context";
-import { ClientCore } from "@aragon/sdk-client-common";
 import {
+  IMyPluginClient,
   IMyPluginClientDecoding,
   IMyPluginClientEncoding,
   IMyPluginClientEstimation,
@@ -13,15 +13,13 @@ import {
   MyPluginClientMethods,
 } from "./modules";
 
-export class StandardSpaceClientCore extends ClientCore {
+export class StandardSpaceClientCore implements IMyPluginClient {
   public methods: IMyPluginClientMethods;
   public encoding: IMyPluginClientEncoding;
   public decoding: IMyPluginClientDecoding;
   public estimation: IMyPluginClientEstimation;
 
   constructor(pluginContext: MyPluginContext) {
-    super(pluginContext);
-
     this.methods = new MyPluginClientMethods(pluginContext);
     this.encoding = new MyPluginClientEncoding(pluginContext);
     this.decoding = new MyPluginClientDecoding(pluginContext);
