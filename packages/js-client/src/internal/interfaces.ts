@@ -3,11 +3,14 @@ import {
   NumbersQueryParams,
   PrepareInstallationParams,
 } from "../types";
+import { Networkish } from "@ethersproject/providers";
 import {
   DaoAction,
   GasFeeEstimation,
+  PluginInstallItem,
   PrepareInstallationStepValue,
 } from "@aragon/sdk-client-common";
+import { ProposeMemberStepValue } from "./types";
 
 export interface IMyPluginClient {
   methods: IMyPluginClientMethods;
@@ -22,6 +25,11 @@ export interface IMyPluginClientMethods {
     params: PrepareInstallationParams,
   ): AsyncGenerator<PrepareInstallationStepValue>;
   doSomething(): Promise<void>;
+  getNumber(daoAddressOrEns: string): Promise<bigint>;
+  getNumbers(params: NumbersQueryParams): Promise<NumberListItem[]>;
+  proposeMember(
+    memberAddress: string,
+  ): AsyncGenerator<ProposeMemberStepValue>;
 }
 export interface IMyPluginClientEstimation {
   prepareInstallation(
@@ -29,6 +37,10 @@ export interface IMyPluginClientEstimation {
   ): Promise<GasFeeEstimation>;
 }
 export interface IMyPluginClientEncoding {
+  getPluginInstallItem(
+    params: PrepareInstallationParams,
+    network: Networkish,
+  ): PluginInstallItem;
   storeNumberAction(number: bigint): DaoAction;
 }
 export interface IMyPluginClientDecoding {

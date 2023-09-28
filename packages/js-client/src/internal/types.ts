@@ -31,3 +31,14 @@ export type MyPluginOverriddenState =
   & {
     [key in keyof MyPluginContextState]: boolean;
   };
+
+export enum ProposeMemberStep {
+  WAITING = "waiting",
+  DONE = "done",
+}
+export type ProposeMemberStepValue = {
+  status: ProposeMemberStep.WAITING;
+  txHash: string;
+} | {
+  status: ProposeMemberStep.DONE;
+};

@@ -13,7 +13,12 @@ import {
 } from "../../../../contracts/typechain";
 import { QueryNumber, QueryNumbers } from "../graphql-queries";
 import { IMyPluginClientMethods } from "../interfaces";
-import { SubgraphNumber, SubgraphNumberListItem } from "../types";
+import {
+  ProposeMemberStep,
+  ProposeMemberStepValue,
+  SubgraphNumber,
+  SubgraphNumberListItem,
+} from "../types";
 import { toNumber, toNumberListItem } from "../utils";
 import {
   ClientCore,
@@ -131,5 +136,32 @@ export class MyPluginClientMethods extends ClientCore
         return toNumberListItem(number);
       }),
     );
+  }
+
+  // implementation of the methods in the interface
+  public async *proposeMember(
+    memberAddress: string,
+  ): AsyncGenerator<ProposeMemberStepValue> {
+    const signer = this.web3.getSigner();
+    const storageClient = MemberAccessPlugin__factory.connect(
+      this.spacePluginAddress,
+      signer,
+    );
+
+    // TODO: PIN metadata
+    const metadataUri = "ipfs://...";
+
+    const tx = await storageClient.proposeNewMember(metadataUri, memberAddress);
+
+    yield {
+      status: ProposeMemberStep.WAITING,
+      txHash: tx.hash,
+    };
+
+    await tx.wait();
+
+    yield {
+      status: ProposeMemberStep.DONE,
+    };
   }
 }
