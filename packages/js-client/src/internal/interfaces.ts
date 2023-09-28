@@ -2,12 +2,12 @@ import {
   NumberListItem,
   NumbersQueryParams,
   PrepareInstallationParams,
-} from '../types';
+} from "../types";
 import {
   DaoAction,
   GasFeeEstimation,
   PrepareInstallationStepValue,
-} from '@aragon/sdk-client-common';
+} from "@aragon/sdk-client-common";
 
 export interface IMyPluginClient {
   methods: IMyPluginClientMethods;
@@ -19,14 +19,13 @@ export interface IMyPluginClient {
 export interface IMyPluginClientMethods {
   // fill with methods
   prepareInstallation(
-    params: PrepareInstallationParams
+    params: PrepareInstallationParams,
   ): AsyncGenerator<PrepareInstallationStepValue>;
-  getNumber(daoAddressOrEns: string): Promise<bigint>;
-  getNumbers(params: NumbersQueryParams): Promise<NumberListItem[]>;
+  doSomething(): Promise<void>;
 }
 export interface IMyPluginClientEstimation {
   prepareInstallation(
-    params: PrepareInstallationParams
+    params: PrepareInstallationParams,
   ): Promise<GasFeeEstimation>;
 }
 export interface IMyPluginClientEncoding {

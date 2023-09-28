@@ -1,20 +1,40 @@
-import * as BUILD_METADATA from '../../../../contracts/src/build-metadata.json';
-import { PrepareInstallationParams } from '../../types';
-import { MyPluginClientCore } from '../core';
-import { IMyPluginClientEstimation } from '../interfaces';
-import { PluginRepo__factory } from '@aragon/osx-ethers';
+import * as BUILD_METADATA from "../../../../contracts/src/build-metadata.json";
+import { MyPluginContext } from "../../context";
+import { PrepareInstallationParams } from "../../types";
+import { IMyPluginClientEstimation } from "../interfaces";
+import { PluginRepo__factory } from "@aragon/osx-ethers";
 import {
+  ClientCore,
   GasFeeEstimation,
   prepareGenericInstallationEstimation,
-} from '@aragon/sdk-client-common';
-import { MyPlugin__factory } from '@aragon/simple-storage-ethers';
+} from "@aragon/sdk-client-common";
 
-export class SimpleStoragClientEstimation
-  extends MyPluginClientCore
-  implements IMyPluginClientEstimation
-{
+export class MyPluginClientEstimation extends ClientCore
+  implements IMyPluginClientEstimation {
+  private spacePluginAddress: string;
+  private memberAccessPluginAddress: string;
+  private mainVotingPluginAddress: string;
+
+  private spacePluginRepoAddress: string;
+  private memberAccessPluginRepoAddress: string;
+  private mainVotingPluginRepoAddress: string;
+
+  constructor(pluginContext: MyPluginContext) {
+    super(pluginContext);
+
+    this.spacePluginAddress = pluginContext.spacePluginAddress;
+    this.memberAccessPluginAddress = pluginContext.memberAccessPluginAddress;
+    this.mainVotingPluginAddress = pluginContext.mainVotingPluginAddress;
+    // repos
+    this.spacePluginRepoAddress = pluginContext.spacePluginRepoAddress;
+    this.memberAccessPluginRepoAddress =
+      pluginContext.memberAccessPluginRepoAddress;
+    this.mainVotingPluginRepoAddress =
+      pluginContext.mainVotingPluginRepoAddress;
+  }
+
   public async prepareInstallation(
-    params: PrepareInstallationParams
+    params: PrepareInstallationParams,
   ): Promise<GasFeeEstimation> {
     let version = params.version;
     // if not specified use the lates version
@@ -24,13 +44,13 @@ export class SimpleStoragClientEstimation
       // connect to the plugin repo
       const pluginRepo = PluginRepo__factory.connect(
         this.myPluginRepoAddress,
-        signer
+        signer,
       );
       // get latest release
       const currentRelease = await pluginRepo.latestRelease();
       // get latest version
-      const latestVersion = await pluginRepo['getLatestVersion(uint8)'](
-        currentRelease
+      const latestVersion = await pluginRepo["getLatestVersion(uint8)"](
+        currentRelease,
       );
       version = latestVersion.tag;
     }
@@ -44,13 +64,13 @@ export class SimpleStoragClientEstimation
     });
   }
 
-  public async storeNumber(number: bigint): Promise<GasFeeEstimation> {
-    const signer = this.web3.getConnectedSigner();
-    const myPlugin = MyPlugin__factory.connect(
-      this.myPluginPluginAddress,
-      signer
-    );
-    const estimation = await myPlugin.estimateGas.storeNumber(number);
-    return this.web3.getApproximateGasFee(estimation.toBigInt());
-  }
+  // public async storeNumber(number: bigint): Promise<GasFeeEstimation> {
+  //   const signer = this.web3.getConnectedSigner();
+  //   const myPlugin = MyPlugin__factory.connect(
+  //     this.myPluginPluginAddress,
+  //     signer,
+  //   );
+  //   const estimation = await myPlugin.estimateGas.storeNumber(number);
+  //   return this.web3.getApproximateGasFee(estimation.toBigInt());
+  // }
 }

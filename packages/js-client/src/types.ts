@@ -2,12 +2,17 @@ import {
   ContextParams,
   Pagination,
   VersionTag,
-} from '@aragon/sdk-client-common';
+} from "@aragon/sdk-client-common";
 
 export type MyPluginContextParams = ContextParams & {
   // optional so we can set default values for the parameter
-  myPluginPluginAddress?: string;
-  myPluginRepoAddress?: string;
+  spacePluginAddress?: string;
+  memberAccessPluginAddress?: string;
+  mainVotingPluginAddress?: string;
+
+  spacePluginRepoAddress?: string;
+  memberAccessPluginRepoAddress?: string;
+  mainVotingPluginRepoAddress?: string;
   // add custom params
 };
 
@@ -25,8 +30,8 @@ export type NumbersQueryParams = Pagination & {
 };
 
 export enum NumbersSortBy {
-  NUMBER = 'number',
-  CREATED_AT = 'createdAt',
+  NUMBER = "number",
+  CREATED_AT = "createdAt",
 }
 
 export type NumberListItem = {

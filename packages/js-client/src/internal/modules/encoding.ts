@@ -1,19 +1,30 @@
-import { MyPluginClientCore } from '../core';
-import { IMyPluginClientEncoding } from '../interfaces';
-import { DaoAction } from '@aragon/sdk-client-common';
-import { hexToBytes } from '@aragon/sdk-common';
-import { MyPlugin__factory } from '@aragon/simple-storage-ethers';
+import { IMyPluginClientEncoding } from "../interfaces";
+import { ClientCore, DaoAction } from "@aragon/sdk-client-common";
+import { hexToBytes } from "@aragon/sdk-common";
+import { SpacePlugin__factory } from "../../../../contracts/typechain";
+import { MyPluginContext } from "../../context";
 
-export class MyPluginClientEncoding
-  extends MyPluginClientCore
-  implements IMyPluginClientEncoding
-{
+export class MyPluginClientEncoding extends ClientCore
+  implements IMyPluginClientEncoding {
+  private spacePluginAddress: string;
+  private memberAccessPluginAddress: string;
+  private mainVotingPluginAddress: string;
+
+  constructor(pluginContext: MyPluginContext) {
+    super(pluginContext);
+
+    this.spacePluginAddress = pluginContext.spacePluginAddress;
+    this.memberAccessPluginAddress = pluginContext.memberAccessPluginAddress;
+    this.mainVotingPluginAddress = pluginContext.mainVotingPluginAddress;
+  }
+
   // implementation of the methods in the interface
-  public storeNumberAction(number: bigint): DaoAction {
-    const iface = MyPlugin__factory.createInterface();
-    const data = iface.encodeFunctionData('storeNumber', [number]);
+  public storeNumberAction(): DaoAction {
+    const iface = SpacePlugin__factory.createInterface();
+    const data = iface.encodeFunctionData("setContent", [1, 4, "ipfs://...."]);
+
     return {
-      to: this.myPluginPluginAddress,
+      to: this.spacePluginAddress,
       value: BigInt(0),
       data: hexToBytes(data),
     };
