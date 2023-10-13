@@ -215,7 +215,7 @@ This plugin is upgradeable.
 
 #### Methods
 
-- `function initialize(IDAO _dao, string _firstBlockContentUri)`
+- `function initialize(IDAO _dao, string _firstBlockContentUri, address predecessorSpace)`
 - `function processGeoProposal(uint32 _blockIndex, uint32 _itemIndex, string _contentUri)`
 - `function acceptSubspace(address _dao)`
 - `function removeSubspace(address _dao)`
@@ -234,6 +234,7 @@ Inherited:
 #### Events
 
 - `event GeoProposalProcessed(uint32 blockIndex, uint32 itemIndex, string contentUri)`
+- `event SuccessorSpaceCreated(address predecessorSpace)`
 - `event SubspaceAccepted(address dao)`
 - `event SubspaceRemoved(address dao)`
 

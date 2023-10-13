@@ -86,7 +86,11 @@ describe("Personal Space Admin Plugin", function () {
     spacePlugin = await deployWithProxy<SpacePlugin>(
       new SpacePlugin__factory(alice),
     );
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
+    await spacePlugin.initialize(
+      dao.address,
+      defaultInput.contentUri,
+      ADDRESS_ZERO,
+    );
 
     // Personal Space Voting
     const PersonalSpaceVotingFactory = new PersonalSpaceAdminPlugin__factory(

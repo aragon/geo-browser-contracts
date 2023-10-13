@@ -13,6 +13,11 @@
         },
         {
           "internalType": "address",
+          "name": "predecessorAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
           "name": "pluginUpgrader",
           "type": "address"
         }

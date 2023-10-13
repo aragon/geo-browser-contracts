@@ -9,7 +9,7 @@ import { deployTestDao } from "../helpers/test-dao";
 import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
 import {
   abiCoder,
-  ADDRESS_TWO,
+  ADDRESS_ONE,
   ADDRESS_ZERO,
   CONTENT_PERMISSION_ID,
   NO_CONDITION,
@@ -42,7 +42,7 @@ describe("Space Plugin Setup", function () {
         getNamedTypesFromMetadata(
           buildMetadata.pluginSetup.prepareInstallation.inputs,
         ),
-        [defaultInitData.contentUri, ADDRESS_ZERO],
+        [defaultInitData.contentUri, ADDRESS_ZERO, ADDRESS_ZERO],
       );
       const nonce = await ethers.provider.getTransactionCount(
         spacePluginSetup.address,
@@ -100,7 +100,7 @@ describe("Space Plugin Setup", function () {
         getNamedTypesFromMetadata(
           buildMetadata.pluginSetup.prepareInstallation.inputs,
         ),
-        [defaultInitData.contentUri, pluginUpgrader],
+        [defaultInitData.contentUri, ADDRESS_ONE, pluginUpgrader],
       );
       const nonce = await ethers.provider.getTransactionCount(
         spacePluginSetup.address,
