@@ -1,4 +1,4 @@
-import { BytesLike, ethers } from "ethers";
+import { ethers } from "ethers";
 import IPFS from "ipfs-http-client";
 
 export async function uploadToIPFS(
@@ -7,16 +7,16 @@ export async function uploadToIPFS(
 ): Promise<string> {
   const client = IPFS.create({
     url: testing
-      ? "https://testing-ipfs-0.aragon.network/api/v0"
-      : "https://ipfs-0.aragon.network/api/v0",
+      ? "https://test.ipfs.aragon.network/api/v0"
+      : "https://prod.ipfs.aragon.network/api/v0",
     headers: {
       "X-API-KEY": "b477RhECf8s8sdM7XrkLBs2wHc4kCMwpbcFC55Kt",
     },
   });
 
-  const cid = await client.add(content);
-  await client.pin.add(cid.cid);
-  return cid.path;
+  const result = await client.add(content);
+  await client.pin.add(result.cid);
+  return result.path || result.cid.toString();
 }
 
 export function toHex(input: string): string {
