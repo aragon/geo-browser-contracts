@@ -95,7 +95,11 @@ describe("Member Access Plugin", function () {
       defaultMainVotingSettings,
       [alice.address],
     );
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
+    await spacePlugin.initialize(
+      dao.address,
+      defaultInput.contentUri,
+      ADDRESS_ZERO,
+    );
 
     // Alice is an editor (see mainVotingPlugin initialize)
 
@@ -1381,7 +1385,11 @@ describe("Member Access Plugin", function () {
           ),
         ).to.be.revertedWith("Initializable: contract is already initialized");
         await expect(
-          spacePlugin.initialize(dao.address, defaultInput.contentUri),
+          spacePlugin.initialize(
+            dao.address,
+            defaultInput.contentUri,
+            ADDRESS_ZERO,
+          ),
         ).to.be.revertedWith("Initializable: contract is already initialized");
       });
 

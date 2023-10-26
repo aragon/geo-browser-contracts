@@ -61,7 +61,7 @@ The current repository provides the plugins necessary to cover two use cases:
 ### Emitting content and managing subspaces
 
 1. When a proposal regarding the space is passed, the `MainVotingPlugin` will call `execute()` on the DAO
-2. The actions from the proposal will target the `setContent()`, `acceptSubspace()` or `removeSubspace()` functions on the `SpacePlugin`.
+2. The actions from the proposal will target the `processGeoProposal()`, `acceptSubspace()` or `removeSubspace()` functions on the `SpacePlugin`.
 3. The `SpacePlugin` will be called by the DAO and emit the corresponding events
 4. An external indexer will fetch all these events and update the current state of this specific space
 
@@ -215,8 +215,8 @@ This plugin is upgradeable.
 
 #### Methods
 
-- `function initialize(IDAO _dao, string _firstBlockContentUri)`
-- `function setContent(uint32 _blockIndex, uint32 _itemIndex, string _contentUri)`
+- `function initialize(IDAO _dao, string _firstBlockContentUri, address predecessorSpace)`
+- `function processGeoProposal(uint32 _blockIndex, uint32 _itemIndex, string _contentUri)`
 - `function acceptSubspace(address _dao)`
 - `function removeSubspace(address _dao)`
 
@@ -233,13 +233,14 @@ Inherited:
 
 #### Events
 
-- `event ContentChanged(uint32 blockIndex, uint32 itemIndex, string contentUri)`
+- `event GeoProposalProcessed(uint32 blockIndex, uint32 itemIndex, string contentUri)`
+- `event SuccessorSpaceCreated(address predecessorSpace)`
 - `event SubspaceAccepted(address dao)`
 - `event SubspaceRemoved(address dao)`
 
 #### Permissions
 
-- The DAO can call `setContent()` on the plugin
+- The DAO can call `processGeoProposal()` on the plugin
 - The DAO can accept/remove a subspace on the plugin
 - The DAO can upgrade the plugin
 - Optionally, a given pluginUpgrader can upgrade the plugin

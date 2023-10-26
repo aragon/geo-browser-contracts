@@ -92,7 +92,11 @@ describe("Main Voting Plugin", function () {
       defaultMainVotingSettings,
       [alice.address],
     );
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
+    await spacePlugin.initialize(
+      dao.address,
+      defaultInput.contentUri,
+      ADDRESS_ZERO,
+    );
 
     // Alice is already an editor (see initialize)
 
@@ -153,7 +157,11 @@ describe("Main Voting Plugin", function () {
         ),
       ).to.be.revertedWith("Initializable: contract is already initialized");
       await expect(
-        spacePlugin.initialize(dao.address, defaultInput.contentUri),
+        spacePlugin.initialize(
+          dao.address,
+          defaultInput.contentUri,
+          ADDRESS_ZERO,
+        ),
       ).to.be.revertedWith("Initializable: contract is already initialized");
     });
 

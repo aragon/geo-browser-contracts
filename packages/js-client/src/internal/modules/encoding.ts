@@ -21,7 +21,11 @@ export class MyPluginClientEncoding extends ClientCore
   // implementation of the methods in the interface
   public storeNumberAction(): DaoAction {
     const iface = SpacePlugin__factory.createInterface();
-    const data = iface.encodeFunctionData("setContent", [1, 4, "ipfs://...."]);
+    const data = iface.encodeFunctionData("processGeoProposal", [
+      1,
+      4,
+      "ipfs://....",
+    ]);
 
     return {
       to: this.spacePluginAddress,

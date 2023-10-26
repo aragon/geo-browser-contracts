@@ -5,6 +5,7 @@ import { deployTestDao } from "../helpers/test-dao";
 import {
   ADDRESS_ONE,
   ADDRESS_TWO,
+  ADDRESS_ZERO,
   CONTENT_PERMISSION_ID,
   EXECUTE_PERMISSION_ID,
   SUBSPACE_PERMISSION_ID,
@@ -39,20 +40,67 @@ describe("Space Plugin", function () {
       new SpacePlugin__factory(alice),
     );
 
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
+    await spacePlugin.initialize(
+      dao.address,
+      defaultInput.contentUri,
+      ADDRESS_ZERO,
+    );
   });
 
   describe("initialize", async () => {
     it("The Space plugin reverts if trying to re-initialize", async () => {
       await expect(
-        spacePlugin.initialize(dao.address, defaultInput.contentUri),
+        spacePlugin.initialize(
+          dao.address,
+          defaultInput.contentUri,
+          ADDRESS_ZERO,
+        ),
       ).to.be.revertedWith("Initializable: contract is already initialized");
+    });
+
+    it("Should emit a new content event", async () => {
+      spacePlugin = await deployWithProxy<SpacePlugin>(
+        new SpacePlugin__factory(alice),
+      );
+
+      await expect(spacePlugin.initialize(
+        dao.address,
+        defaultInput.contentUri,
+        ADDRESS_ZERO,
+      )).to.emit(spacePlugin, "GeoProposalProcessed")
+        .withArgs(0, 0, defaultInput.contentUri);
+    });
+
+    it("Should emit a successor space event", async () => {
+      // 1
+      spacePlugin = await deployWithProxy<SpacePlugin>(
+        new SpacePlugin__factory(alice),
+      );
+
+      await expect(spacePlugin.initialize(
+        dao.address,
+        defaultInput.contentUri,
+        ADDRESS_ONE,
+      )).to.emit(spacePlugin, "SuccessorSpaceCreated")
+        .withArgs(ADDRESS_ONE);
+
+      // 2
+      spacePlugin = await deployWithProxy<SpacePlugin>(
+        new SpacePlugin__factory(alice),
+      );
+
+      await expect(spacePlugin.initialize(
+        dao.address,
+        defaultInput.contentUri,
+        ADDRESS_TWO,
+      )).to.emit(spacePlugin, "SuccessorSpaceCreated")
+        .withArgs(ADDRESS_TWO);
     });
   });
 
   it("The Space plugin emits an event when new content is published", async () => {
     // Fails by default
-    await expect(spacePlugin.connect(alice).setContent(1, 2, "hello"))
+    await expect(spacePlugin.connect(alice).processGeoProposal(1, 2, "hello"))
       .to.be.revertedWithCustomError(spacePlugin, "DaoUnauthorized")
       .withArgs(
         dao.address,
@@ -69,8 +117,8 @@ describe("Space Plugin", function () {
     );
 
     // Set content
-    await expect(spacePlugin.connect(alice).setContent(1, 2, "hello"))
-      .to.emit(spacePlugin, "ContentChanged")
+    await expect(spacePlugin.connect(alice).processGeoProposal(1, 2, "hello"))
+      .to.emit(spacePlugin, "GeoProposalProcessed")
       .withArgs(1, 2, "hello");
   });
 
@@ -146,13 +194,21 @@ describe("Space Plugin", function () {
     it("Only the DAO can emit content on the space plugin", async () => {
       // They cannot
       await expect(
-        spacePlugin.connect(alice).setContent(1, 2, toHex("ipfs://1234")),
+        spacePlugin.connect(alice).processGeoProposal(
+          1,
+          2,
+          toHex("ipfs://1234"),
+        ),
       ).to.be.reverted;
       await expect(
-        spacePlugin.connect(bob).setContent(1, 2, toHex("ipfs://1234")),
+        spacePlugin.connect(bob).processGeoProposal(1, 2, toHex("ipfs://1234")),
       ).to.be.reverted;
       await expect(
-        spacePlugin.connect(carol).setContent(1, 2, toHex("ipfs://1234")),
+        spacePlugin.connect(carol).processGeoProposal(
+          1,
+          2,
+          toHex("ipfs://1234"),
+        ),
       ).to.be.reverted;
 
       // The DAO can
@@ -161,12 +217,16 @@ describe("Space Plugin", function () {
           to: spacePlugin.address,
           value: 0,
           data: SpacePlugin__factory.createInterface()
-            .encodeFunctionData("setContent", [1, 2, toHex("ipfs://1234")]),
+            .encodeFunctionData("processGeoProposal", [
+              1,
+              2,
+              toHex("ipfs://1234"),
+            ]),
         },
       ];
 
       await expect(dao.execute(ZERO_BYTES32, actions, 0)).to
-        .emit(spacePlugin, "ContentChanged")
+        .emit(spacePlugin, "GeoProposalProcessed")
         .withArgs(1, 2, toHex("ipfs://1234"));
     });
 

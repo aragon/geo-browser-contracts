@@ -5,7 +5,7 @@ import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpg
 import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "./constants.sol";
 
 bytes4 constant SPACE_INTERFACE_ID = SpacePlugin.initialize.selector ^
-    SpacePlugin.setContent.selector ^
+    SpacePlugin.processGeoProposal.selector ^
     SpacePlugin.acceptSubspace.selector ^
     SpacePlugin.removeSubspace.selector;
 
@@ -16,7 +16,11 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     /// @param blockIndex The index of the block whose items have new contents.
     /// @param itemIndex The index of the item that has new contents.
     /// @param contentUri An IPFS URI pointing to the new contents behind the block's item.
-    event ContentChanged(uint32 blockIndex, uint32 itemIndex, string contentUri);
+    event GeoProposalProcessed(uint32 blockIndex, uint32 itemIndex, string contentUri);
+
+    /// @notice Announces that the current space plugin is the successor of an already existing Space
+    /// @param predecessorSpace The address of the space contract that the plugin will replace
+    event SuccessorSpaceCreated(address predecessorSpace);
 
     /// @notice Emitted when the DAO accepts another DAO as a subspace.
     /// @param subspaceDao The address of the DAO to be accepted as a subspace.
@@ -29,10 +33,18 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     /// @notice Initializes the plugin when build 1 is installed.
     /// @param _dao The address of the DAO to read the permissions from.
     /// @param _firstBlockContentUri A IPFS URI pointing to the contents of the first block's item (title).
-    function initialize(IDAO _dao, string memory _firstBlockContentUri) external initializer {
+    /// @param _predecessorSpace Optionally, the address of the space contract preceding this one
+    function initialize(
+        IDAO _dao,
+        string memory _firstBlockContentUri,
+        address _predecessorSpace
+    ) external initializer {
         __PluginUUPSUpgradeable_init(_dao);
 
-        emit ContentChanged({blockIndex: 0, itemIndex: 0, contentUri: _firstBlockContentUri});
+        if (_predecessorSpace != address(0)) {
+            emit SuccessorSpaceCreated(_predecessorSpace);
+        }
+        emit GeoProposalProcessed({blockIndex: 0, itemIndex: 0, contentUri: _firstBlockContentUri});
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -48,12 +60,12 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     /// @param _blockIndex The index of the block whose items have new contents.
     /// @param _itemIndex The index of the item that has new contents.
     /// @param _contentUri An IPFS URI pointing to the new contents behind the block's item.
-    function setContent(
+    function processGeoProposal(
         uint32 _blockIndex,
         uint32 _itemIndex,
         string memory _contentUri
     ) external auth(CONTENT_PERMISSION_ID) {
-        emit ContentChanged({
+        emit GeoProposalProcessed({
             blockIndex: _blockIndex,
             itemIndex: _itemIndex,
             contentUri: _contentUri

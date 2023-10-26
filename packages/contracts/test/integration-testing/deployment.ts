@@ -115,7 +115,7 @@ describe("PluginRepo Deployment", function () {
           switch (pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME) {
             case SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
               expect(receivedStriMetadata).to.equal(
-                "ipfs://QmdEAfaFb6iYW4UKE7cnkY3DD3uXdSe2ZnRExjJRbJSfNN",
+                "ipfs://QmcAUbh4UmhwZp4b7aQf9nkpemhCfTVms2eSVng1bZUmmo",
               );
               break;
 

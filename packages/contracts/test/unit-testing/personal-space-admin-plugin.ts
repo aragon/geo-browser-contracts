@@ -86,7 +86,11 @@ describe("Personal Space Admin Plugin", function () {
     spacePlugin = await deployWithProxy<SpacePlugin>(
       new SpacePlugin__factory(alice),
     );
-    await spacePlugin.initialize(dao.address, defaultInput.contentUri);
+    await spacePlugin.initialize(
+      dao.address,
+      defaultInput.contentUri,
+      ADDRESS_ZERO,
+    );
 
     // Personal Space Voting
     const PersonalSpaceVotingFactory = new PersonalSpaceAdminPlugin__factory(
@@ -249,7 +253,7 @@ describe("Personal Space Admin Plugin", function () {
     it("Executed content proposals emit an event", async () => {
       // Encode an action to change some content
       const data = SpacePlugin__factory.createInterface().encodeFunctionData(
-        "setContent",
+        "processGeoProposal",
         [1, 2, "0x"],
       );
       const actions = [
@@ -283,7 +287,7 @@ describe("Personal Space Admin Plugin", function () {
           actions,
           0,
         ),
-      ).to.emit(spacePlugin, "ContentChanged")
+      ).to.emit(spacePlugin, "GeoProposalProcessed")
         .withArgs(1, 2, "0x");
     });
 

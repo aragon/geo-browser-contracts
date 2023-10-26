@@ -22,15 +22,21 @@ contract SpacePluginSetup is PluginSetup {
         bytes memory _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
         // Decode incoming params
-        (string memory firstBlockContentUri, address _pluginUpgrader) = abi.decode(
-            _data,
-            (string, address)
-        );
+        (
+            string memory _firstBlockContentUri,
+            address _predecessorAddress,
+            address _pluginUpgrader
+        ) = abi.decode(_data, (string, address, address));
 
         // Deploy new plugin instance
         plugin = createERC1967Proxy(
             pluginImplementation,
-            abi.encodeWithSelector(SpacePlugin.initialize.selector, _dao, firstBlockContentUri)
+            abi.encodeWithSelector(
+                SpacePlugin.initialize.selector,
+                _dao,
+                _firstBlockContentUri,
+                _predecessorAddress
+            )
         );
 
         PermissionLib.MultiTargetPermission[]

@@ -113,7 +113,7 @@ describe("SpacePluginSetup processing", function () {
             .prepareInstallation
             .inputs,
         ),
-        [toHex("ipfs://1234"), pluginUpgrader],
+        [toHex("ipfs://1234"), ADDRESS_ZERO, pluginUpgrader],
       );
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
