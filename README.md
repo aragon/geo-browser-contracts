@@ -422,9 +422,11 @@ This is taken care by the `DAOFactory`. The DAO creator calls `daoFactory.create
 - The call contains:
   - The DAO settings
   - An array with the details and the settings of the desired plugins
-- The method will deploy a new DAO and set itself as ROOT
-- It will then call `prepareInstallation()` on all plugins and `applyInstallation()` right away
-- It will finally drop `ROOT_PERMISSION` on itself
+- The method will deploy a new DAO and grant `ROOT_PERMISSION` to the `DaoFactory`, temporarily
+  - Given the settings of the desired plugins, it will call the `PluginSetupProcessor`
+- The PSP will then call `prepareInstallation()` on the given plugin set up contract
+- Immedially after, `applyInstallation()` will be called by the `DaoFactory`
+- The DaoFactory drops `ROOT_PERMISSION` on itself
 
 [See a JS example of installing plugins during a DAO's deployment](https://devs.aragon.org/docs/sdk/examples/client/create-dao#create-a-dao)
 
@@ -432,15 +434,97 @@ This is taken care by the `DAOFactory`. The DAO creator calls `daoFactory.create
 
 Plugin changes need a proposal to be passed when the DAO already exists.
 
-1. Calling `pluginSetup.prepareInstallation()`
+1. Calling `pluginSetupProcessor.prepareInstallation()` which will call `prepareInstallation()` on the plugin's setup contract
    - A new plugin instance is deployed with the desired settings
-   - The call requests a set of permissions to be applied by the DAO
+   - The call returns a set of requested permissions to be applied by the DAO
 2. Editors pass a proposal to make the DAO call `applyInstallation()` on the [PluginSetupProcessor](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/)
    - This applies the requested permissions and the plugin becomes installed
 
 See `SpacePluginSetup`, `PersonalSpaceAdminPluginSetup`, `MemberAccessPluginSetup` and `MainVotingPluginSetup`.
 
 [Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
+
+### Passing install parameters
+
+In both of the cases described above, a call to `prepareInstallation()` will be made by the `PluginSetupProcessor` from OSx.
+
+```solidity
+function prepareInstallation(
+  address _dao,
+  bytes memory _data
+) external returns (address plugin, PreparedSetupData memory preparedSetupData)
+```
+
+- The first parameter (dao address) will be provided by the PSP.
+- The second parameter allows to pass an arbitrary array of bytes, encoding any set of custom settings that the plugin needs to receive.
+
+The first step for `prepareInstallation()` is to decode them and use them on the deployment script as needed:
+
+```solidity
+// Decode incoming params
+(
+  string memory _firstBlockContentUri,
+  address _predecessorAddress,
+  address _pluginUpgrader
+) = abi.decode(_data, (string, address, address));
+```
+
+The JSON encoded ABI definition can be found at the corresponding `<name>-build-metadata.json` file:
+
+```json
+{
+  // ...
+  "pluginSetup": {
+    "prepareInstallation": {
+      // ...
+      "inputs": [
+        {
+          "name": "firstBlockContentUri",
+          "type": "string",
+          "internalType": "string",
+          "description": "The inital contents of the first block item."
+        },
+        {
+          "internalType": "address",
+          "name": "predecessorAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "pluginUpgrader",
+          "type": "address"
+        }
+      ]
+    },
+```
+
+The same also applies to `prepareUpdate` (if present) and to `prepareUninstallation`.
+
+### Available setup contracts
+
+#### GovernancePluginsSetup
+
+This contracts implements the deployment script for:
+
+- `MainVotingPlugin`
+- `MemberAccessPlugin`
+
+The second plugin needs to know the address of the first one, therefore the contract deploys them together.
+
+##### Note
+
+When preparing the installation, an `InstallationPrepared` event is emitted. Using Typechain with Ethers:
+
+- `event.args.preparedSetupData.plugin` contains the address of the Main Voting plugin
+- `event.args.preparedSetupData.helpers` contains an array with the address of the Member Access plugin
+
+#### SpacePluginSetup
+
+This contract implements the deployment script for the `SpacePlugin` contract.
+
+#### PersonalSpaceAdminPluginSetup
+
+This contract implements the deployment script for the `PersonalSpaceAdminPlugin` contract.
 
 ## Deploying a DAO
 

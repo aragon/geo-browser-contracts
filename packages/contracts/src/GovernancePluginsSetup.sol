@@ -13,12 +13,15 @@ import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting
 /// @title GovernancePluginsSetup
 /// @dev Release 1, Build 1
 contract GovernancePluginsSetup is PluginSetup {
-    address private immutable memberAccessPluginImplementation;
     address private immutable mainVotingPluginImplementation;
+    address public immutable memberAccessPluginImplementation;
+
+    /// @notice Thrown when the array of helpers does not have the correct size
+    error InvalidHelpers(uint256 actualLength);
 
     constructor() {
-        memberAccessPluginImplementation = address(new MemberAccessPlugin());
         mainVotingPluginImplementation = address(new MainVotingPlugin());
+        memberAccessPluginImplementation = address(new MemberAccessPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -69,14 +72,14 @@ contract GovernancePluginsSetup is PluginSetup {
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _dao,
-            who: mainVotingPluginImplementation,
+            who: mainVotingPlugin,
             condition: PermissionLib.NO_CONDITION,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO can update the main voting plugin settings
         permissions[1] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: mainVotingPluginImplementation,
+            where: mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(mainVotingPluginImplementation)
@@ -85,7 +88,7 @@ contract GovernancePluginsSetup is PluginSetup {
         // The DAO can manage the list of addresses
         permissions[2] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: mainVotingPluginImplementation,
+            where: mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(mainVotingPluginImplementation)
@@ -94,7 +97,7 @@ contract GovernancePluginsSetup is PluginSetup {
         // The DAO can upgrade the main voting plugin
         permissions[3] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: mainVotingPluginImplementation,
+            where: mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(mainVotingPluginImplementation)
@@ -134,7 +137,7 @@ contract GovernancePluginsSetup is PluginSetup {
         if (_pluginUpgrader != address(0x0)) {
             permissions[7] = PermissionLib.MultiTargetPermission({
                 operation: PermissionLib.Operation.Grant,
-                where: mainVotingPluginImplementation,
+                where: mainVotingPlugin,
                 who: _pluginUpgrader,
                 condition: PermissionLib.NO_CONDITION,
                 permissionId: MainVotingPlugin(mainVotingPluginImplementation)
@@ -160,8 +163,13 @@ contract GovernancePluginsSetup is PluginSetup {
         address _dao,
         SetupPayload calldata _payload
     ) external view returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
+        if (_payload.currentHelpers.length != 1) {
+            revert InvalidHelpers(_payload.currentHelpers.length);
+        }
+
         // Decode incoming params
         address _pluginUpgrader = abi.decode(_payload.data, (address));
+        address _memberAccessPlugin = _payload.currentHelpers[0];
 
         permissionChanges = new PermissionLib.MultiTargetPermission[](
             _pluginUpgrader == address(0x0) ? 7 : 9
@@ -211,14 +219,14 @@ contract GovernancePluginsSetup is PluginSetup {
         permissionChanges[4] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _dao,
-            who: _payload.plugin,
+            who: _memberAccessPlugin,
             condition: PermissionLib.NO_CONDITION,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO can no longer update the plugin settings
         permissionChanges[5] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
-            where: _payload.plugin,
+            where: _memberAccessPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
@@ -227,7 +235,7 @@ contract GovernancePluginsSetup is PluginSetup {
         // The DAO can no longer upgrade the plugin
         permissionChanges[6] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
-            where: _payload.plugin,
+            where: _memberAccessPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
@@ -246,7 +254,7 @@ contract GovernancePluginsSetup is PluginSetup {
             });
             permissionChanges[8] = PermissionLib.MultiTargetPermission({
                 operation: PermissionLib.Operation.Revoke,
-                where: _payload.plugin,
+                where: _memberAccessPlugin,
                 who: _pluginUpgrader,
                 condition: PermissionLib.NO_CONDITION,
                 permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
@@ -257,6 +265,6 @@ contract GovernancePluginsSetup is PluginSetup {
 
     /// @inheritdoc IPluginSetup
     function implementation() external view returns (address) {
-        return memberAccessPluginImplementation;
+        return mainVotingPluginImplementation;
     }
 }

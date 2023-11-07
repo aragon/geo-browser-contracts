@@ -1,9 +1,9 @@
-import { MainVotingPluginSetupParams } from "../../plugin-setup-params";
+import { GovernancePluginsSetupParams } from "../../plugin-setup-params";
 import {
+  GovernancePluginsSetup,
+  GovernancePluginsSetup__factory,
   MainVotingPlugin,
   MainVotingPlugin__factory,
-  MainVotingPluginSetup,
-  MainVotingPluginSetup__factory,
   MajorityVotingBase,
   PluginRepo,
 } from "../../typechain";
@@ -25,7 +25,7 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { ADDRESS_ZERO } from "../unit-testing/common";
 
-describe("MainVotingPluginSetup processing", function () {
+describe("GovernancePluginsSetup processing", function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -38,7 +38,7 @@ describe("MainVotingPluginSetup processing", function () {
     const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
 
     const pluginRepoInfo = getPluginRepoInfo(
-      MainVotingPluginSetupParams.PLUGIN_REPO_ENS_NAME,
+      GovernancePluginsSetupParams.PLUGIN_REPO_ENS_NAME,
       "hardhat",
     );
     if (!pluginRepoInfo) {
@@ -82,7 +82,7 @@ describe("MainVotingPluginSetup processing", function () {
   });
 
   context("Build 1", async () => {
-    let setup: MainVotingPluginSetup;
+    let setup: GovernancePluginsSetup;
     let pluginSetupRef: PluginSetupRefStruct;
     let plugin: MainVotingPlugin;
     const pluginUpgrader = ADDRESS_ZERO;
@@ -91,7 +91,7 @@ describe("MainVotingPluginSetup processing", function () {
       const release = 1;
 
       // Deploy setups.
-      setup = MainVotingPluginSetup__factory.connect(
+      setup = GovernancePluginsSetup__factory.connect(
         (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
         alice,
       );
@@ -113,15 +113,21 @@ describe("MainVotingPluginSetup processing", function () {
         minProposerVotingPower: 0,
         votingMode: 0,
       };
+      const minMemberAccessProposalDuration = 60 * 60 * 24;
 
       // Install build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          MainVotingPluginSetupParams.METADATA.build.pluginSetup
+          GovernancePluginsSetupParams.METADATA.build.pluginSetup
             .prepareInstallation
             .inputs,
         ),
-        [settings, [alice.address], pluginUpgrader],
+        [
+          settings,
+          [alice.address],
+          minMemberAccessProposalDuration,
+          pluginUpgrader,
+        ],
       );
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
@@ -140,7 +146,7 @@ describe("MainVotingPluginSetup processing", function () {
       // Uninstall build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
         getNamedTypesFromMetadata(
-          MainVotingPluginSetupParams.METADATA.build.pluginSetup
+          GovernancePluginsSetupParams.METADATA.build.pluginSetup
             .prepareUninstallation
             .inputs,
         ),
