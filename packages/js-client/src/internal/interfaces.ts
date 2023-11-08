@@ -38,9 +38,15 @@ export interface IMyPluginClientEncoding {
   getPluginInstallItem(
     params: PrepareInstallationParams,
     network: Networkish
-  ): PluginInstallItem;
+  ): Promise<PluginInstallItem>;
   storeNumberAction(number: bigint): DaoAction;
 }
 export interface IMyPluginClientDecoding {
   storeNumberAction(data: Uint8Array): bigint;
+}
+
+export enum VotingMode {
+  Standard,
+  EarlyExecution,
+  VoteReplacement,
 }

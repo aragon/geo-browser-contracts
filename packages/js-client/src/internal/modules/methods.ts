@@ -1,4 +1,4 @@
-import * as BUILD_METADATA from '../../../../contracts/src/build-metadata.json';
+import * as BUILD_METADATA from '../../../../contracts/src/governance-build-metadata.json';
 import {
   MainVotingPlugin__factory,
   MemberAccessPlugin__factory, // PersonalSpaceAdminPlugin__factory,

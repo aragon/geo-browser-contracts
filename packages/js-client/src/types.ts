@@ -21,6 +21,7 @@ export type PrepareInstallationParams = {
   version?: VersionTag;
   settings: {
     number: bigint;
+    initialEditorAddress: string;
   };
 };
 

@@ -1,6 +1,7 @@
 import * as BUILD_METADATA from '../../../../contracts/src/build-metadata.json';
 import { MyPluginContext } from '../../context';
 import { PrepareInstallationParams } from '../../types';
+import { PLUGIN_1_REPO_ADDRESS } from '../constants';
 import { IMyPluginClientEstimation } from '../interfaces';
 import { PluginRepo__factory } from '@aragon/osx-ethers';
 import {
@@ -45,7 +46,7 @@ export class MyPluginClientEstimation
       const signer = this.web3.getConnectedSigner();
       // connect to the plugin repo
       const pluginRepo = PluginRepo__factory.connect(
-        this.myPluginRepoAddress,
+        PLUGIN_1_REPO_ADDRESS,
         signer
       );
       // get latest release
@@ -59,7 +60,7 @@ export class MyPluginClientEstimation
 
     return prepareGenericInstallationEstimation(this.web3, {
       daoAddressOrEns: params.daoAddressOrEns,
-      pluginRepo: this.myPluginRepoAddress,
+      pluginRepo: PLUGIN_1_REPO_ADDRESS,
       version,
       installationAbi: BUILD_METADATA.pluginSetup.prepareInstallation.inputs,
       installationParams: [params.settings.number],
