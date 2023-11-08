@@ -5,6 +5,8 @@ import {
   MainVotingPlugin,
   MainVotingPlugin__factory,
   MajorityVotingBase,
+  MemberAccessPlugin,
+  MemberAccessPlugin__factory,
   PluginRepo,
 } from "../../typechain";
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
@@ -84,7 +86,8 @@ describe("GovernancePluginsSetup processing", function () {
   context("Build 1", async () => {
     let setup: GovernancePluginsSetup;
     let pluginSetupRef: PluginSetupRefStruct;
-    let plugin: MainVotingPlugin;
+    let mainVotingPlugin: MainVotingPlugin;
+    let memberAccessPlugin: MemberAccessPlugin;
     const pluginUpgrader = ADDRESS_ZERO;
 
     before(async () => {
@@ -129,19 +132,30 @@ describe("GovernancePluginsSetup processing", function () {
           pluginUpgrader,
         ],
       );
-      const results = await installPlugin(psp, dao, pluginSetupRef, data);
+      const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
-      plugin = MainVotingPlugin__factory.connect(
-        results.preparedEvent.args.plugin,
+      const mvAddress = installation.preparedEvent.args.plugin;
+      mainVotingPlugin = MainVotingPlugin__factory.connect(
+        mvAddress,
+        alice,
+      );
+      const mapAddress =
+        installation.preparedEvent.args.preparedSetupData.helpers[0];
+      memberAccessPlugin = MemberAccessPlugin__factory.connect(
+        mapAddress,
         alice,
       );
     });
 
     it("installs & uninstalls", async () => {
-      expect(await plugin.implementation()).to.be.eq(
+      expect(await mainVotingPlugin.implementation()).to.be.eq(
         await setup.implementation(),
       );
-      expect(await plugin.dao()).to.be.eq(dao.address);
+      expect(await memberAccessPlugin.implementation()).to.be.eq(
+        await setup.memberAccessPluginImplementation(),
+      );
+      expect(await mainVotingPlugin.dao()).to.be.eq(dao.address);
+      expect(await memberAccessPlugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
       const data = ethers.utils.defaultAbiCoder.encode(
@@ -152,7 +166,14 @@ describe("GovernancePluginsSetup processing", function () {
         ),
         [pluginUpgrader],
       );
-      await uninstallPlugin(psp, dao, plugin, pluginSetupRef, data, []);
+      await uninstallPlugin(
+        psp,
+        dao,
+        mainVotingPlugin,
+        pluginSetupRef,
+        data,
+        [memberAccessPlugin.address],
+      );
     });
   });
 });
