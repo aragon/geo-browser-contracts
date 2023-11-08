@@ -1,12 +1,12 @@
-import buildMetadata from "../../src/governance-build-metadata.json";
+import buildMetadata from '../../src/governance-build-metadata.json';
 import {
   DAO,
   GovernancePluginsSetup,
   GovernancePluginsSetup__factory,
   MainVotingPlugin__factory,
-} from "../../typechain";
-import { deployTestDao } from "../helpers/test-dao";
-import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
+} from '../../typechain';
+import {deployTestDao} from '../helpers/test-dao';
+import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
 import {
   abiCoder,
   ADDRESS_ONE,
@@ -19,12 +19,12 @@ import {
   UPDATE_VOTING_SETTINGS_PERMISSION_ID,
   UPGRADE_PLUGIN_PERMISSION_ID,
   VotingMode,
-} from "./common";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect } from "chai";
-import { ethers } from "hardhat";
+} from './common';
+import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
+import {expect} from 'chai';
+import {ethers} from 'hardhat';
 
-describe("Governance Plugins Setup", function () {
+describe('Governance Plugins Setup', function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let governancePluginsSetup: GovernancePluginsSetup;
@@ -34,18 +34,19 @@ describe("Governance Plugins Setup", function () {
     [alice, bob] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
-    governancePluginsSetup = await new GovernancePluginsSetup__factory(alice)
-      .deploy();
+    governancePluginsSetup = await new GovernancePluginsSetup__factory(
+      alice
+    ).deploy();
   });
 
-  describe("prepareInstallation", async () => {
-    it("returns the plugin, helpers, and permissions (no pluginUpgrader)", async () => {
+  describe('prepareInstallation', async () => {
+    it('returns the plugin, helpers, and permissions (no pluginUpgrader)', async () => {
       const pluginUpgrader = ADDRESS_ZERO;
 
       // Params: (MajorityVotingBase.VotingSettings, address, address)
       const initData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs,
+          buildMetadata.pluginSetup.prepareInstallation.inputs
         ),
         [
           {
@@ -58,33 +59,34 @@ describe("Governance Plugins Setup", function () {
           [alice.address],
           60 * 60 * 24,
           pluginUpgrader,
-        ],
+        ]
       );
       const nonce = await ethers.provider.getTransactionCount(
-        governancePluginsSetup.address,
+        governancePluginsSetup.address
       );
-      const anticipatedMainVotingPluginAddress = ethers.utils
-        .getContractAddress({
+      const anticipatedMainVotingPluginAddress =
+        ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce,
         });
-      const anticipatedMemberAccessPluginAddress = ethers.utils
-        .getContractAddress({
+      const anticipatedMemberAccessPluginAddress =
+        ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedConditionPluginAddress = ethers.utils
-        .getContractAddress({
+      const anticipatedConditionPluginAddress = ethers.utils.getContractAddress(
+        {
           from: governancePluginsSetup.address,
           nonce: nonce + 2,
-        });
+        }
+      );
 
       const {
         mainVotingPlugin,
-        preparedSetupData: { helpers, permissions },
+        preparedSetupData: {helpers, permissions},
       } = await governancePluginsSetup.callStatic.prepareInstallation(
         dao.address,
-        initData,
+        initData
       );
       expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
       expect(helpers.length).to.be.equal(1);
@@ -146,7 +148,7 @@ describe("Governance Plugins Setup", function () {
 
       await governancePluginsSetup.prepareInstallation(dao.address, initData);
       const myPlugin = new MainVotingPlugin__factory(alice).attach(
-        mainVotingPlugin,
+        mainVotingPlugin
       );
 
       // initialization is correct
@@ -154,13 +156,13 @@ describe("Governance Plugins Setup", function () {
       expect(await myPlugin.isEditor(alice.address)).to.be.true;
     });
 
-    it("returns the plugin, helpers, and permissions (with a pluginUpgrader)", async () => {
+    it('returns the plugin, helpers, and permissions (with a pluginUpgrader)', async () => {
       const pluginUpgrader = bob.address;
 
       // Params: (MajorityVotingBase.VotingSettings, address, address)
       const initData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs,
+          buildMetadata.pluginSetup.prepareInstallation.inputs
         ),
         [
           {
@@ -173,33 +175,34 @@ describe("Governance Plugins Setup", function () {
           [alice.address],
           60 * 60 * 24,
           pluginUpgrader,
-        ],
+        ]
       );
       const nonce = await ethers.provider.getTransactionCount(
-        governancePluginsSetup.address,
+        governancePluginsSetup.address
       );
-      const anticipatedMainVotingPluginAddress = ethers.utils
-        .getContractAddress({
+      const anticipatedMainVotingPluginAddress =
+        ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce,
         });
-      const anticipatedMemberAccessPluginAddress = ethers.utils
-        .getContractAddress({
+      const anticipatedMemberAccessPluginAddress =
+        ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedConditionPluginAddress = ethers.utils
-        .getContractAddress({
+      const anticipatedConditionPluginAddress = ethers.utils.getContractAddress(
+        {
           from: governancePluginsSetup.address,
           nonce: nonce + 2,
-        });
+        }
+      );
 
       const {
         mainVotingPlugin,
-        preparedSetupData: { helpers, permissions },
+        preparedSetupData: {helpers, permissions},
       } = await governancePluginsSetup.callStatic.prepareInstallation(
         dao.address,
-        initData,
+        initData
       );
       expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
       expect(helpers.length).to.be.equal(1);
@@ -275,7 +278,7 @@ describe("Governance Plugins Setup", function () {
 
       await governancePluginsSetup.prepareInstallation(dao.address, initData);
       const myPlugin = new MainVotingPlugin__factory(alice).attach(
-        mainVotingPlugin,
+        mainVotingPlugin
       );
 
       // initialization is correct
@@ -284,28 +287,30 @@ describe("Governance Plugins Setup", function () {
     });
   });
 
-  describe("prepareUninstallation", async () => {
-    it("returns the permissions (no pluginUpgrader)", async () => {
-      const mainVotingPlugin = await new MainVotingPlugin__factory(alice)
-        .deploy();
-      const memberAccessPlugin = await new MainVotingPlugin__factory(alice)
-        .deploy();
+  describe('prepareUninstallation', async () => {
+    it('returns the permissions (no pluginUpgrader)', async () => {
+      const mainVotingPlugin = await new MainVotingPlugin__factory(
+        alice
+      ).deploy();
+      const memberAccessPlugin = await new MainVotingPlugin__factory(
+        alice
+      ).deploy();
 
       const pluginUpgrader = ADDRESS_ZERO;
       const uninstallData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs,
+          buildMetadata.pluginSetup.prepareUninstallation.inputs
         ),
-        [pluginUpgrader],
+        [pluginUpgrader]
       );
-      const permissions = await governancePluginsSetup.callStatic
-        .prepareUninstallation(
+      const permissions =
+        await governancePluginsSetup.callStatic.prepareUninstallation(
           dao.address,
           {
             plugin: mainVotingPlugin.address,
             currentHelpers: [memberAccessPlugin.address],
             data: uninstallData,
-          },
+          }
         );
 
       expect(permissions.length).to.be.equal(7);
@@ -362,27 +367,29 @@ describe("Governance Plugins Setup", function () {
       ]);
     });
 
-    it("returns the permissions (with a pluginUpgrader)", async () => {
-      const mainVotingPlugin = await new MainVotingPlugin__factory(alice)
-        .deploy();
-      const memberAccessPlugin = await new MainVotingPlugin__factory(alice)
-        .deploy();
+    it('returns the permissions (with a pluginUpgrader)', async () => {
+      const mainVotingPlugin = await new MainVotingPlugin__factory(
+        alice
+      ).deploy();
+      const memberAccessPlugin = await new MainVotingPlugin__factory(
+        alice
+      ).deploy();
 
       const pluginUpgrader = bob.address;
       const uninstallData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs,
+          buildMetadata.pluginSetup.prepareUninstallation.inputs
         ),
-        [pluginUpgrader],
+        [pluginUpgrader]
       );
-      const permissions = await governancePluginsSetup.callStatic
-        .prepareUninstallation(
+      const permissions =
+        await governancePluginsSetup.callStatic.prepareUninstallation(
           dao.address,
           {
             plugin: mainVotingPlugin.address,
             currentHelpers: [memberAccessPlugin.address],
             data: uninstallData,
-          },
+          }
         );
 
       expect(permissions.length).to.be.equal(9);

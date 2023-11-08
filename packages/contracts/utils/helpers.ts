@@ -1,61 +1,59 @@
-import { activeContractsList } from "@aragon/osx-ethers";
-import { ContractFactory, ContractTransaction } from "ethers";
+import {activeContractsList} from '@aragon/osx-ethers';
+import {ContractFactory, ContractTransaction} from 'ethers';
 import {
   defaultAbiCoder,
   Interface,
   keccak256,
   LogDescription,
-} from "ethers/lib/utils";
-import { ethers } from "hardhat";
-import { upgrades } from "hardhat";
+} from 'ethers/lib/utils';
+import {ethers} from 'hardhat';
+import {upgrades} from 'hardhat';
 
-export type NetworkNameMapping = { [index: string]: string };
+export type NetworkNameMapping = {[index: string]: string};
 
-export type ContractList = { [index: string]: { [index: string]: string } };
+export type ContractList = {[index: string]: {[index: string]: string}};
 
 export type ContractBlockNumberList = {
   // network
   [index: string]: {
-    [index: string]: { address: string; blockNumber: number };
+    [index: string]: {address: string; blockNumber: number};
   };
 };
 
 export const osxContracts: ContractList = activeContractsList;
 
 export const networkNameMapping: NetworkNameMapping = {
-  mainnet: "mainnet",
-  goerli: "goerli",
-  polygon: "polygon",
-  polygonMumbai: "mumbai",
-  baseGoerli: "baseGoerli",
+  mainnet: 'mainnet',
+  goerli: 'goerli',
+  polygon: 'polygon',
+  polygonMumbai: 'mumbai',
+  baseGoerli: 'baseGoerli',
 };
 
 export const ERRORS = {
-  ALREADY_INITIALIZED: "Initializable: contract is already initialized",
+  ALREADY_INITIALIZED: 'Initializable: contract is already initialized',
 };
 
 export function getPluginRepoFactoryAddress(networkName: string) {
   let pluginRepoFactoryAddr: string;
 
   if (
-    networkName === "localhost" ||
-    networkName === "hardhat" ||
-    networkName === "coverage"
+    networkName === 'localhost' ||
+    networkName === 'hardhat' ||
+    networkName === 'coverage'
   ) {
-    const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
+    const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 
     pluginRepoFactoryAddr = osxContracts[hardhatForkNetwork].PluginRepoFactory;
     console.log(
-      `Using the "${hardhatForkNetwork}" PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment testing on network "${networkName}"`,
+      `Using the "${hardhatForkNetwork}" PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment testing on network "${networkName}"`
     );
   } else {
     pluginRepoFactoryAddr =
       osxContracts[networkNameMapping[networkName]].PluginRepoFactory;
 
     console.log(
-      `Using the ${
-        networkNameMapping[networkName]
-      } PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment...`,
+      `Using the ${networkNameMapping[networkName]} PluginRepoFactory address (${pluginRepoFactoryAddr}) for deployment...`
     );
   }
   return pluginRepoFactoryAddr;
@@ -64,9 +62,7 @@ export function getPluginRepoFactoryAddress(networkName: string) {
 export async function findEvent<T>(tx: ContractTransaction, eventName: string) {
   const receipt = await tx.wait();
 
-  const event = (receipt.events || []).find((event) =>
-    event.event === eventName
-  );
+  const event = (receipt.events || []).find(event => event.event === eventName);
 
   return event as T | undefined;
 }
@@ -74,11 +70,11 @@ export async function findEvent<T>(tx: ContractTransaction, eventName: string) {
 export async function findEventTopicLog<T>(
   tx: ContractTransaction,
   iface: Interface,
-  eventName: string,
+  eventName: string
 ): Promise<LogDescription & (T | LogDescription)> {
   const receipt = await tx.wait();
   const topic = iface.getEventTopic(eventName);
-  const log = receipt.logs.find((x) => x.topics[0] === topic);
+  const log = receipt.logs.find(x => x.topics[0] === topic);
   if (!log) {
     throw new Error(`No logs found for the topic of event "${eventName}".`);
   }
@@ -87,19 +83,19 @@ export async function findEventTopicLog<T>(
 
 type DeployOptions = {
   constructurArgs?: unknown[];
-  proxyType?: "uups";
+  proxyType?: 'uups';
 };
 
 export async function deployWithProxy<T>(
   contractFactory: ContractFactory,
-  options: DeployOptions = {},
+  options: DeployOptions = {}
 ): Promise<T> {
   upgrades.silenceWarnings(); // Needed because we pass the `unsafeAllow: ["constructor"]` option.
 
   return upgrades.deployProxy(contractFactory, [], {
-    kind: options.proxyType || "uups",
+    kind: options.proxyType || 'uups',
     initializer: false,
-    unsafeAllow: ["constructor"],
+    unsafeAllow: ['constructor'],
     constructorArgs: options.constructurArgs || [],
   }) as unknown as Promise<T>;
 }
@@ -109,10 +105,10 @@ export function toBytes(string: string) {
 }
 
 export function hashHelpers(helpers: string[]) {
-  return keccak256(defaultAbiCoder.encode(["address[]"], [helpers]));
+  return keccak256(defaultAbiCoder.encode(['address[]'], [helpers]));
 }
 
 export function toBytes32(num: number): string {
   const hex = num.toString(16);
-  return `0x${"0".repeat(64 - hex.length)}${hex}`;
+  return `0x${'0'.repeat(64 - hex.length)}${hex}`;
 }

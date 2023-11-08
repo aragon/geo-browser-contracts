@@ -1,13 +1,13 @@
 import {
   MyPluginContextState,
   MyPluginOverriddenState,
-} from "./internal/types";
-import { MyPluginContextParams } from "./types";
-import { Context, ContextCore } from "@aragon/sdk-client-common";
+} from './internal/types';
+import { MyPluginContextParams } from './types';
+import { Context, ContextCore } from '@aragon/sdk-client-common';
 
-const DEFAULT_SPACE_PLUGIN_REPO_ADDRESS = "...";
-const DEFAULT_MEMBER_ACCESS_PLUGIN_REPO_ADDRESS = "...";
-const DEFAULT_MAIN_VOTING_PLUGIN_REPO_ADDRESS = "...";
+const DEFAULT_SPACE_PLUGIN_REPO_ADDRESS = '...';
+const DEFAULT_MEMBER_ACCESS_PLUGIN_REPO_ADDRESS = '...';
+const DEFAULT_MAIN_VOTING_PLUGIN_REPO_ADDRESS = '...';
 
 export class MyPluginContext extends ContextCore {
   // super is called before the properties are initialized
@@ -19,7 +19,7 @@ export class MyPluginContext extends ContextCore {
 
   constructor(
     contextParams?: Partial<MyPluginContextParams>,
-    aragonContext?: Context,
+    aragonContext?: Context
   ) {
     // call the parent constructor
     // so it does not complain and we

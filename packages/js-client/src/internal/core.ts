@@ -1,17 +1,17 @@
-import { MyPluginContext } from "../context";
+import { MyPluginContext } from '../context';
 import {
   IMyPluginClient,
   IMyPluginClientDecoding,
   IMyPluginClientEncoding,
   IMyPluginClientEstimation,
   IMyPluginClientMethods,
-} from "./interfaces";
+} from './interfaces';
 import {
   MyPluginClientDecoding,
   MyPluginClientEncoding,
   MyPluginClientEstimation,
   MyPluginClientMethods,
-} from "./modules";
+} from './modules';
 
 export class StandardSpaceClientCore implements IMyPluginClient {
   public methods: IMyPluginClientMethods;

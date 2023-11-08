@@ -1,8 +1,8 @@
-import { ethers as ethersDirect } from "ethers";
-import { ethers } from "hardhat";
+import {ethers as ethersDirect} from 'ethers';
+import {ethers} from 'hardhat';
 
 export function getInterfaceID(
-  contractInterface: ethersDirect.utils.Interface,
+  contractInterface: ethersDirect.utils.Interface
 ) {
   let interfaceID = ethers.constants.Zero;
   const functions: string[] = Object.keys(contractInterface.functions);

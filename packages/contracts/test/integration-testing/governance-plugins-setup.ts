@@ -1,4 +1,4 @@
-import { GovernancePluginsSetupParams } from "../../plugin-setup-params";
+import {GovernancePluginsSetupParams} from '../../plugin-setup-params';
 import {
   GovernancePluginsSetup,
   GovernancePluginsSetup__factory,
@@ -8,26 +8,26 @@ import {
   MemberAccessPlugin,
   MemberAccessPlugin__factory,
   PluginRepo,
-} from "../../typechain";
-import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
-import { osxContracts } from "../../utils/helpers";
-import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
-import { installPlugin, uninstallPlugin } from "../helpers/setup";
-import { deployTestDao } from "../helpers/test-dao";
+} from '../../typechain';
+import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
+import {osxContracts} from '../../utils/helpers';
+import {getPluginRepoInfo} from '../../utils/plugin-repo-info';
+import {installPlugin, uninstallPlugin} from '../helpers/setup';
+import {deployTestDao} from '../helpers/test-dao';
+import {ADDRESS_ZERO} from '../unit-testing/common';
 // import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
   DAO,
   PluginRepo__factory,
   PluginSetupProcessor,
   PluginSetupProcessor__factory,
-} from "@aragon/osx-ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect } from "chai";
-import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
-import { ADDRESS_ZERO } from "../unit-testing/common";
+} from '@aragon/osx-ethers';
+import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
+import {expect} from 'chai';
+import {BigNumber} from 'ethers';
+import {ethers} from 'hardhat';
 
-describe("GovernancePluginsSetup processing", function () {
+describe('GovernancePluginsSetup processing', function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -37,20 +37,20 @@ describe("GovernancePluginsSetup processing", function () {
   before(async () => {
     [alice] = await ethers.getSigners();
 
-    const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
+    const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 
     const pluginRepoInfo = getPluginRepoInfo(
       GovernancePluginsSetupParams.PLUGIN_REPO_ENS_NAME,
-      "hardhat",
+      'hardhat'
     );
     if (!pluginRepoInfo) {
-      throw new Error("The plugin setup details are not available");
+      throw new Error('The plugin setup details are not available');
     }
 
     // PSP
     psp = PluginSetupProcessor__factory.connect(
-      osxContracts[hardhatForkNetwork]["PluginSetupProcessor"],
-      alice,
+      osxContracts[hardhatForkNetwork]['PluginSetupProcessor'],
+      alice
     );
 
     // Deploy DAO.
@@ -59,31 +59,28 @@ describe("GovernancePluginsSetup processing", function () {
     await dao.grant(
       dao.address,
       psp.address,
-      ethers.utils.id("ROOT_PERMISSION"),
+      ethers.utils.id('ROOT_PERMISSION')
     );
     await dao.grant(
       psp.address,
       alice.address,
-      ethers.utils.id("APPLY_INSTALLATION_PERMISSION"),
+      ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
       alice.address,
-      ethers.utils.id("APPLY_UNINSTALLATION_PERMISSION"),
+      ethers.utils.id('APPLY_UNINSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
       alice.address,
-      ethers.utils.id("APPLY_UPDATE_PERMISSION"),
+      ethers.utils.id('APPLY_UPDATE_PERMISSION')
     );
 
-    pluginRepo = PluginRepo__factory.connect(
-      pluginRepoInfo.address,
-      alice,
-    );
+    pluginRepo = PluginRepo__factory.connect(pluginRepoInfo.address, alice);
   });
 
-  context("Build 1", async () => {
+  context('Build 1', async () => {
     let setup: GovernancePluginsSetup;
     let pluginSetupRef: PluginSetupRefStruct;
     let mainVotingPlugin: MainVotingPlugin;
@@ -95,8 +92,8 @@ describe("GovernancePluginsSetup processing", function () {
 
       // Deploy setups.
       setup = GovernancePluginsSetup__factory.connect(
-        (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
-        alice,
+        (await pluginRepo['getLatestVersion(uint8)'](release)).pluginSetup,
+        alice
       );
 
       pluginSetupRef = {
@@ -123,43 +120,35 @@ describe("GovernancePluginsSetup processing", function () {
         settings,
         [alice.address],
         minMemberAccessProposalDuration,
-        pluginUpgrader,
+        pluginUpgrader
       );
       const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
       const mvAddress = installation.preparedEvent.args.plugin;
-      mainVotingPlugin = MainVotingPlugin__factory.connect(
-        mvAddress,
-        alice,
-      );
+      mainVotingPlugin = MainVotingPlugin__factory.connect(mvAddress, alice);
       const mapAddress =
         installation.preparedEvent.args.preparedSetupData.helpers[0];
       memberAccessPlugin = MemberAccessPlugin__factory.connect(
         mapAddress,
-        alice,
+        alice
       );
     });
 
-    it("installs & uninstalls", async () => {
+    it('installs & uninstalls', async () => {
       expect(await mainVotingPlugin.implementation()).to.be.eq(
-        await setup.implementation(),
+        await setup.implementation()
       );
       expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await setup.memberAccessPluginImplementation(),
+        await setup.memberAccessPluginImplementation()
       );
       expect(await mainVotingPlugin.dao()).to.be.eq(dao.address);
       expect(await memberAccessPlugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
       const data = await setup.encodeUninstallationParams(pluginUpgrader);
-      await uninstallPlugin(
-        psp,
-        dao,
-        mainVotingPlugin,
-        pluginSetupRef,
-        data,
-        [memberAccessPlugin.address],
-      );
+      await uninstallPlugin(psp, dao, mainVotingPlugin, pluginSetupRef, data, [
+        memberAccessPlugin.address,
+      ]);
     });
   });
 });

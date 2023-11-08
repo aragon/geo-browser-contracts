@@ -1,16 +1,18 @@
-import * as BUILD_METADATA from "../../../../contracts/src/build-metadata.json";
-import { MyPluginContext } from "../../context";
-import { PrepareInstallationParams } from "../../types";
-import { IMyPluginClientEstimation } from "../interfaces";
-import { PluginRepo__factory } from "@aragon/osx-ethers";
+import * as BUILD_METADATA from '../../../../contracts/src/build-metadata.json';
+import { MyPluginContext } from '../../context';
+import { PrepareInstallationParams } from '../../types';
+import { IMyPluginClientEstimation } from '../interfaces';
+import { PluginRepo__factory } from '@aragon/osx-ethers';
 import {
   ClientCore,
   GasFeeEstimation,
   prepareGenericInstallationEstimation,
-} from "@aragon/sdk-client-common";
+} from '@aragon/sdk-client-common';
 
-export class MyPluginClientEstimation extends ClientCore
-  implements IMyPluginClientEstimation {
+export class MyPluginClientEstimation
+  extends ClientCore
+  implements IMyPluginClientEstimation
+{
   private spacePluginAddress: string;
   private memberAccessPluginAddress: string;
   private mainVotingPluginAddress: string;
@@ -34,7 +36,7 @@ export class MyPluginClientEstimation extends ClientCore
   }
 
   public async prepareInstallation(
-    params: PrepareInstallationParams,
+    params: PrepareInstallationParams
   ): Promise<GasFeeEstimation> {
     let version = params.version;
     // if not specified use the lates version
@@ -44,13 +46,13 @@ export class MyPluginClientEstimation extends ClientCore
       // connect to the plugin repo
       const pluginRepo = PluginRepo__factory.connect(
         this.myPluginRepoAddress,
-        signer,
+        signer
       );
       // get latest release
       const currentRelease = await pluginRepo.latestRelease();
       // get latest version
-      const latestVersion = await pluginRepo["getLatestVersion(uint8)"](
-        currentRelease,
+      const latestVersion = await pluginRepo['getLatestVersion(uint8)'](
+        currentRelease
       );
       version = latestVersion.tag;
     }

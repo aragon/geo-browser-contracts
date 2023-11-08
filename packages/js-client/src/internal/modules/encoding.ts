@@ -1,11 +1,13 @@
-import { IMyPluginClientEncoding } from "../interfaces";
-import { ClientCore, DaoAction } from "@aragon/sdk-client-common";
-import { hexToBytes } from "@aragon/sdk-common";
-import { SpacePlugin__factory } from "../../../../contracts/typechain";
-import { MyPluginContext } from "../../context";
+import { SpacePlugin__factory } from '../../../../contracts/typechain';
+import { MyPluginContext } from '../../context';
+import { IMyPluginClientEncoding } from '../interfaces';
+import { ClientCore, DaoAction } from '@aragon/sdk-client-common';
+import { hexToBytes } from '@aragon/sdk-common';
 
-export class MyPluginClientEncoding extends ClientCore
-  implements IMyPluginClientEncoding {
+export class MyPluginClientEncoding
+  extends ClientCore
+  implements IMyPluginClientEncoding
+{
   private spacePluginAddress: string;
   private memberAccessPluginAddress: string;
   private mainVotingPluginAddress: string;
@@ -21,10 +23,10 @@ export class MyPluginClientEncoding extends ClientCore
   // implementation of the methods in the interface
   public storeNumberAction(): DaoAction {
     const iface = SpacePlugin__factory.createInterface();
-    const data = iface.encodeFunctionData("processGeoProposal", [
+    const data = iface.encodeFunctionData('processGeoProposal', [
       1,
       4,
-      "ipfs://....",
+      'ipfs://....',
     ]);
 
     return {

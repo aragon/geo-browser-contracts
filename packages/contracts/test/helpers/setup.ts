@@ -1,4 +1,4 @@
-import { DAO, IPlugin, PluginSetupProcessor } from "../../typechain";
+import {DAO, IPlugin, PluginSetupProcessor} from '../../typechain';
 import {
   InstallationAppliedEvent,
   InstallationPreparedEvent,
@@ -7,16 +7,16 @@ import {
   UninstallationPreparedEvent,
   UpdateAppliedEvent,
   UpdatePreparedEvent,
-} from "../../typechain/@aragon/osx/framework/plugin/setup/PluginSetupProcessor";
-import { findEvent, hashHelpers } from "../../utils/helpers";
-import { expect } from "chai";
-import { ContractTransaction } from "ethers";
+} from '../../typechain/@aragon/osx/framework/plugin/setup/PluginSetupProcessor';
+import {findEvent, hashHelpers} from '../../utils/helpers';
+import {expect} from 'chai';
+import {ContractTransaction} from 'ethers';
 
 export async function installPlugin(
   psp: PluginSetupProcessor,
   dao: DAO,
   pluginSetupRef: PluginSetupRefStruct,
-  data: string,
+  data: string
 ): Promise<{
   prepareTx: ContractTransaction;
   applyTx: ContractTransaction;
@@ -30,10 +30,10 @@ export async function installPlugin(
 
   const preparedEvent = await findEvent<InstallationPreparedEvent>(
     prepareTx,
-    "InstallationPrepared",
+    'InstallationPrepared'
   );
   if (!preparedEvent) {
-    throw new Error("Failed to get InstallationPrepared event");
+    throw new Error('Failed to get InstallationPrepared event');
   }
 
   const plugin = preparedEvent.args.plugin;
@@ -47,13 +47,13 @@ export async function installPlugin(
 
   const appliedEvent = await findEvent<InstallationAppliedEvent>(
     applyTx,
-    "InstallationApplied",
+    'InstallationApplied'
   );
   if (!appliedEvent) {
-    throw new Error("Failed to get InstallationApplied event");
+    throw new Error('Failed to get InstallationApplied event');
   }
 
-  return { prepareTx, applyTx, preparedEvent, appliedEvent };
+  return {prepareTx, applyTx, preparedEvent, appliedEvent};
 }
 
 export async function uninstallPlugin(
@@ -62,7 +62,7 @@ export async function uninstallPlugin(
   plugin: IPlugin,
   pluginSetupRef: PluginSetupRefStruct,
   data: string,
-  currentHelpers: string[],
+  currentHelpers: string[]
 ): Promise<{
   prepareTx: ContractTransaction;
   applyTx: ContractTransaction;
@@ -80,10 +80,10 @@ export async function uninstallPlugin(
 
   const preparedEvent = await findEvent<UninstallationPreparedEvent>(
     prepareTx,
-    "UninstallationPrepared",
+    'UninstallationPrepared'
   );
   if (!preparedEvent) {
-    throw new Error("Failed to get UninstallationPrepared event");
+    throw new Error('Failed to get UninstallationPrepared event');
   }
 
   const preparedPermissions = preparedEvent.args.permissions;
@@ -96,13 +96,13 @@ export async function uninstallPlugin(
 
   const appliedEvent = await findEvent<UninstallationAppliedEvent>(
     applyTx,
-    "UninstallationApplied",
+    'UninstallationApplied'
   );
   if (!appliedEvent) {
-    throw new Error("Failed to get UninstallationApplied event");
+    throw new Error('Failed to get UninstallationApplied event');
   }
 
-  return { prepareTx, applyTx, preparedEvent, appliedEvent };
+  return {prepareTx, applyTx, preparedEvent, appliedEvent};
 }
 
 export async function updatePlugin(
@@ -112,7 +112,7 @@ export async function updatePlugin(
   currentHelpers: string[],
   pluginSetupRefCurrent: PluginSetupRefStruct,
   pluginSetupRefUpdate: PluginSetupRefStruct,
-  data: string,
+  data: string
 ): Promise<{
   prepareTx: ContractTransaction;
   applyTx: ContractTransaction;
@@ -120,7 +120,7 @@ export async function updatePlugin(
   appliedEvent: UpdateAppliedEvent;
 }> {
   expect(pluginSetupRefCurrent.pluginSetupRepo).to.equal(
-    pluginSetupRefUpdate.pluginSetupRepo,
+    pluginSetupRefUpdate.pluginSetupRepo
   );
 
   const prepareTx = await psp.prepareUpdate(dao.address, {
@@ -135,10 +135,10 @@ export async function updatePlugin(
   });
   const preparedEvent = await findEvent<UpdatePreparedEvent>(
     prepareTx,
-    "UpdatePrepared",
+    'UpdatePrepared'
   );
   if (!preparedEvent) {
-    throw new Error("Failed to get UpdatePrepared event");
+    throw new Error('Failed to get UpdatePrepared event');
   }
 
   const applyTx = await psp.applyUpdate(dao.address, {
@@ -150,11 +150,11 @@ export async function updatePlugin(
   });
   const appliedEvent = await findEvent<UpdateAppliedEvent>(
     applyTx,
-    "UpdateApplied",
+    'UpdateApplied'
   );
   if (!appliedEvent) {
-    throw new Error("Failed to get UpdateApplied event");
+    throw new Error('Failed to get UpdateApplied event');
   }
 
-  return { prepareTx, applyTx, preparedEvent, appliedEvent };
+  return {prepareTx, applyTx, preparedEvent, appliedEvent};
 }
