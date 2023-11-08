@@ -212,7 +212,7 @@ describe("Space Plugin", function () {
       ).to.be.reverted;
 
       // The DAO can
-      let actions: IDAO.ActionStruct[] = [
+      const actions: IDAO.ActionStruct[] = [
         {
           to: spacePlugin.address,
           value: 0,
@@ -243,7 +243,7 @@ describe("Space Plugin", function () {
       ).to.be.reverted;
 
       // The DAO can
-      let actions: IDAO.ActionStruct[] = [
+      const actions: IDAO.ActionStruct[] = [
         {
           to: spacePlugin.address,
           value: 0,
@@ -270,7 +270,7 @@ describe("Space Plugin", function () {
       ).to.be.reverted;
 
       // The DAO can
-      let actions: IDAO.ActionStruct[] = [
+      const actions: IDAO.ActionStruct[] = [
         {
           to: spacePlugin.address,
           value: 0,

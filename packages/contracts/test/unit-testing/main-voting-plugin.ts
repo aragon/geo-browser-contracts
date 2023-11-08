@@ -25,7 +25,7 @@ import {
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   getTime,
-  MAX_UINT64,
+  // MAX_UINT64,
   MEMBER_PERMISSION_ID,
   mineBlock,
   pctToRatio,
@@ -44,7 +44,7 @@ import { ethers } from "hardhat";
 import { defaultMainVotingSettings } from "./common";
 import { toUtf8Bytes } from "ethers/lib/utils";
 import {
-  ProposalCreatedEvent,
+  // ProposalCreatedEvent,
   ProposalExecutedEvent,
 } from "../../typechain/src/MainVotingPlugin";
 import { ExecutedEvent } from "../../typechain/@aragon/osx/core/dao/DAO";
@@ -530,7 +530,7 @@ describe("Main Voting Plugin", function () {
 
   context("Canceling", () => {
     it("Proposals created by a member can be canceled before they end", async () => {
-      let proposalId = 0;
+      const proposalId = 0;
       await expect(
         mainVotingPlugin.connect(bob).createProposal(
           toUtf8Bytes("ipfs://"),
@@ -572,7 +572,7 @@ describe("Main Voting Plugin", function () {
       await makeEditor(bob.address);
       expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
 
-      let proposalId = 0;
+      const proposalId = 0;
       await expect(
         mainVotingPlugin.connect(bob).createProposal(
           toUtf8Bytes("ipfs://"),
@@ -804,7 +804,7 @@ describe("Main Voting Plugin", function () {
     });
 
     it("Proposals can only be canceled by the creator (member)", async () => {
-      let proposalId = 0;
+      const proposalId = 0;
       await expect(
         mainVotingPlugin.connect(bob).createProposal(
           toUtf8Bytes("ipfs://"),
@@ -872,7 +872,7 @@ describe("Main Voting Plugin", function () {
       await makeEditor(bob.address);
       expect(await mainVotingPlugin.addresslistLength()).to.eq(2);
 
-      let proposalId = 0;
+      const proposalId = 0;
       await expect(
         mainVotingPlugin.connect(bob).createProposal(
           toUtf8Bytes("ipfs://"),
@@ -978,9 +978,9 @@ describe("Main Voting Plugin", function () {
 
       // Propose removing Bob
       await proposeRemoveEditor(bob.address);
-      expect(await mainVotingPlugin.connect(bob).vote(3, VoteOption.Yes, true))
-        .to
-        .not.be.reverted;
+      await expect(
+        mainVotingPlugin.connect(bob).vote(3, VoteOption.Yes, true),
+      ).to.not.be.reverted;
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
     });
 
@@ -1127,7 +1127,7 @@ describe("Main Voting Plugin", function () {
     });
 
     it("Approved proposals can be executed by anyone after passed", async () => {
-      let pid = 0;
+      const pid = 0;
       await expect(createDummyProposal(bob, false)).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
 
@@ -2087,7 +2087,7 @@ describe("Tests replicated from the original AddressList plugin", async () => {
         expect(await mainVotingPlugin.canExecute(id)).to.be.true;
 
         // `tryEarlyExecution` is turned on and the vote is decided
-        let tx = await mainVotingPlugin
+        const tx = await mainVotingPlugin
           .connect(signers[6])
           .vote(id, VoteOption.Abstain, true);
         {
@@ -2656,7 +2656,7 @@ describe("Tests replicated from the original AddressList plugin", async () => {
 
       it("does not execute with 0 votes", async () => {
         // does not execute early
-        advanceIntoVoteTime(startDate, endDate);
+        await advanceIntoVoteTime(startDate, endDate);
 
         expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be
           .true;

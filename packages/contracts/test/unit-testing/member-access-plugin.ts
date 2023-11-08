@@ -503,9 +503,9 @@ describe("Member Access Plugin", function () {
           dave.address,
         ),
       ).to.not.be.reverted;
-      let pid = 0;
+      const pid = 0;
 
-      let proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await memberAccessPlugin.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.parameters.minApprovals).to.eq(1);
       expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
@@ -864,9 +864,9 @@ describe("Member Access Plugin", function () {
           dave.address,
         ),
       ).to.not.be.reverted;
-      let pid = 0;
+      const pid = 0;
 
-      let proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await memberAccessPlugin.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.parameters.minApprovals).to.eq(1);
       expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
@@ -894,7 +894,7 @@ describe("Member Access Plugin", function () {
           dave.address,
         ),
       ).to.not.be.reverted;
-      let pid = 0;
+      const pid = 0;
 
       const proposal = await memberAccessPlugin.getProposal(pid);
       expect(proposal.executed).to.eq(false);
@@ -1122,7 +1122,7 @@ describe("Member Access Plugin", function () {
         ),
       ).to.not.be.reverted;
 
-      let pid = 0;
+      const pid = 0;
       await expect(memberAccessPlugin.approve(pid, false)).to.not.be.reverted;
       await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
     });
@@ -1135,7 +1135,7 @@ describe("Member Access Plugin", function () {
         ),
       ).to.not.be.reverted;
 
-      let pid = 0;
+      const pid = 0;
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
       await expect(memberAccessPlugin.reject(pid)).to.be.reverted;
     });
@@ -1194,7 +1194,7 @@ describe("Member Access Plugin", function () {
         ),
       ).to.not.be.reverted;
 
-      let pid = 0;
+      const pid = 0;
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
       await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
     });
@@ -1207,7 +1207,7 @@ describe("Member Access Plugin", function () {
         ),
       ).to.not.be.reverted;
 
-      let pid = 0;
+      const pid = 0;
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
       await expect(memberAccessPlugin.execute(pid)).to.be.reverted;
     });

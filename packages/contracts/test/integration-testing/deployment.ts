@@ -6,7 +6,7 @@ import {
   PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from "../../plugin-setup-params";
-import { toHex } from "../../utils/ipfs";
+// import { toHex } from "../../utils/ipfs";
 import { PluginRepoRegistry__factory } from "@aragon/osx-ethers";
 import { PluginRepoRegistry } from "@aragon/osx-ethers";
 import { PluginRepo__factory } from "@aragon/osx-ethers";

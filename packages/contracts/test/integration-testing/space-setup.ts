@@ -11,7 +11,7 @@ import { osxContracts } from "../../utils/helpers";
 import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
 import { installPlugin, uninstallPlugin } from "../helpers/setup";
 import { deployTestDao } from "../helpers/test-dao";
-import { getNamedTypesFromMetadata } from "../helpers/types";
+// import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
   DAO,
   PluginRepo__factory,

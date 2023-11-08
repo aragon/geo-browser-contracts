@@ -230,8 +230,8 @@ describe("Personal Space Admin Plugin", function () {
         );
 
       // Alice is an editor
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           dummyActions,
           0,
@@ -240,8 +240,8 @@ describe("Personal Space Admin Plugin", function () {
     });
 
     it("Proposal execution is immediate", async () => {
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           dummyActions,
           0,
@@ -264,16 +264,16 @@ describe("Personal Space Admin Plugin", function () {
         },
       ];
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actions,
           0,
         ),
       ).to.emit(personalSpaceVotingPlugin, "ProposalCreated");
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actions,
           0,
@@ -281,8 +281,8 @@ describe("Personal Space Admin Plugin", function () {
       ).to.emit(personalSpaceVotingPlugin, "Executed")
         .withArgs(1);
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actions,
           0,
@@ -305,16 +305,16 @@ describe("Personal Space Admin Plugin", function () {
         },
       ];
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actions,
           0,
         ),
       ).to.emit(personalSpaceVotingPlugin, "ProposalCreated");
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actions,
           0,
@@ -322,8 +322,8 @@ describe("Personal Space Admin Plugin", function () {
       ).to.emit(personalSpaceVotingPlugin, "Executed")
         .withArgs(1);
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actions,
           0,
@@ -362,16 +362,16 @@ describe("Personal Space Admin Plugin", function () {
       );
 
       // remove
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actionsRemove,
           0,
         ),
       ).to.emit(personalSpaceVotingPlugin, "ProposalCreated");
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actionsRemove,
           0,
@@ -379,8 +379,8 @@ describe("Personal Space Admin Plugin", function () {
       ).to.emit(personalSpaceVotingPlugin, "Executed")
         .withArgs(2);
 
-      expect(
-        await personalSpaceVotingPlugin.connect(alice).executeProposal(
+      await expect(
+        personalSpaceVotingPlugin.connect(alice).executeProposal(
           "0x",
           actionsRemove,
           0,
@@ -403,8 +403,7 @@ describe("Personal Space Admin Plugin", function () {
           await personalSpaceVotingPlugin.supportsInterface(
             getInterfaceID(iface),
           ),
-        ).to.be
-          .true;
+        ).to.be.true;
       });
 
       it("supports the `IPlugin` interface", async () => {
@@ -413,8 +412,7 @@ describe("Personal Space Admin Plugin", function () {
           await personalSpaceVotingPlugin.supportsInterface(
             getInterfaceID(iface),
           ),
-        ).to.be
-          .true;
+        ).to.be.true;
       });
 
       it("supports the `IProposal` interface", async () => {
@@ -423,8 +421,7 @@ describe("Personal Space Admin Plugin", function () {
           await personalSpaceVotingPlugin.supportsInterface(
             getInterfaceID(iface),
           ),
-        ).to.be
-          .true;
+        ).to.be.true;
       });
 
       it("supports the `Admin` interface", async () => {
@@ -432,9 +429,7 @@ describe("Personal Space Admin Plugin", function () {
           await personalSpaceVotingPlugin.supportsInterface(
             getInterfaceID(psvpInterface),
           ),
-        )
-          .to
-          .be.true;
+        ).to.be.true;
       });
     });
 
