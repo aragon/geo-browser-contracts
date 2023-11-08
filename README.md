@@ -444,7 +444,7 @@ See `SpacePluginSetup`, `PersonalSpaceAdminPluginSetup`, `MemberAccessPluginSetu
 
 [Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
 
-### Passing install parameters
+### Plugin Setup install parameters
 
 In both of the cases described above, a call to `prepareInstallation()` will be made by the `PluginSetupProcessor` from OSx.
 
@@ -456,20 +456,25 @@ function prepareInstallation(
 ```
 
 - The first parameter (dao address) will be provided by the PSP.
-- The second parameter allows to pass an arbitrary array of bytes, encoding any set of custom settings that the plugin needs to receive.
+- The second parameter contains an arbitrary array of bytes, with the ABI encoded custom settings that the plugin setup needs to operate.
 
-The first step for `prepareInstallation()` is to decode them and use them on the deployment script as needed:
+Convenience functions are provided within the plugin setup contracts:
 
 ```solidity
-// Decode incoming params
-(
+// SpacePluginSetup.sol
+
+function encodeInstallationParams(
   string memory _firstBlockContentUri,
   address _predecessorAddress,
   address _pluginUpgrader
-) = abi.decode(_data, (string, address, address));
+) public pure returns (bytes memory);
+
+function encodeUninstallationParams(
+  address _pluginUpgrader
+) public pure returns (bytes memory)
 ```
 
-The JSON encoded ABI definition can be found at the corresponding `<name>-build-metadata.json` file:
+The JSON encoded ABI definition can also be found at the corresponding `<name>-build-metadata.json` file:
 
 ```json
 {

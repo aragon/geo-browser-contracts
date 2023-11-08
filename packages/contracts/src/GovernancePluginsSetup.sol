@@ -36,7 +36,7 @@ contract GovernancePluginsSetup is PluginSetup {
             address[] memory _initialEditors,
             uint64 _memberAccessProposalDuration,
             address _pluginUpgrader
-        ) = abi.decode(_data, (MajorityVotingBase.VotingSettings, address[], uint64, address));
+        ) = decodeInstallationParams(_data);
 
         // Deploy the main voting plugin
         mainVotingPlugin = createERC1967Proxy(
@@ -168,7 +168,7 @@ contract GovernancePluginsSetup is PluginSetup {
         }
 
         // Decode incoming params
-        address _pluginUpgrader = abi.decode(_payload.data, (address));
+        address _pluginUpgrader = decodeUninstallationParams(_payload.data);
         address _memberAccessPlugin = _payload.currentHelpers[0];
 
         permissionChanges = new PermissionLib.MultiTargetPermission[](
@@ -266,5 +266,54 @@ contract GovernancePluginsSetup is PluginSetup {
     /// @inheritdoc IPluginSetup
     function implementation() external view returns (address) {
         return mainVotingPluginImplementation;
+    }
+
+    /// @notice Encodes the given installation parameters into a byte array
+    function encodeInstallationParams(
+        MajorityVotingBase.VotingSettings calldata _votingSettings,
+        address[] calldata _initialEditors,
+        uint64 _memberAccessProposalDuration,
+        address _pluginUpgrader
+    ) public pure returns (bytes memory) {
+        return
+            abi.encode(
+                _votingSettings,
+                _initialEditors,
+                _memberAccessProposalDuration,
+                _pluginUpgrader
+            );
+    }
+
+    /// @notice Decodes the given byte array into the original installation parameters
+    function decodeInstallationParams(
+        bytes memory _data
+    )
+        public
+        pure
+        returns (
+            MajorityVotingBase.VotingSettings memory votingSettings,
+            address[] memory initialEditors,
+            uint64 memberAccessProposalDuration,
+            address pluginUpgrader
+        )
+    {
+        (votingSettings, initialEditors, memberAccessProposalDuration, pluginUpgrader) = abi.decode(
+            _data,
+            (MajorityVotingBase.VotingSettings, address[], uint64, address)
+        );
+    }
+
+    /// @notice Encodes the given uninstallation parameters into a byte array
+    function encodeUninstallationParams(
+        address _pluginUpgrader
+    ) public pure returns (bytes memory) {
+        return abi.encode(_pluginUpgrader);
+    }
+
+    /// @notice Decodes the given byte array into the original uninstallation parameters
+    function decodeUninstallationParams(
+        bytes memory _data
+    ) public pure returns (address pluginUpgrader) {
+        (pluginUpgrader) = abi.decode(_data, (address));
     }
 }

@@ -119,18 +119,11 @@ describe("GovernancePluginsSetup processing", function () {
       const minMemberAccessProposalDuration = 60 * 60 * 24;
 
       // Install build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          GovernancePluginsSetupParams.METADATA.build.pluginSetup
-            .prepareInstallation
-            .inputs,
-        ),
-        [
-          settings,
-          [alice.address],
-          minMemberAccessProposalDuration,
-          pluginUpgrader,
-        ],
+      const data = await setup.encodeInstallationParams(
+        settings,
+        [alice.address],
+        minMemberAccessProposalDuration,
+        pluginUpgrader,
       );
       const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
@@ -158,14 +151,7 @@ describe("GovernancePluginsSetup processing", function () {
       expect(await memberAccessPlugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          GovernancePluginsSetupParams.METADATA.build.pluginSetup
-            .prepareUninstallation
-            .inputs,
-        ),
-        [pluginUpgrader],
-      );
+      const data = await setup.encodeUninstallationParams(pluginUpgrader);
       await uninstallPlugin(
         psp,
         dao,
