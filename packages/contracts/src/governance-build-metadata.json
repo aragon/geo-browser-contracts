@@ -43,6 +43,11 @@
           "type": "address[]"
         },
         {
+          "internalType": "uint64",
+          "name": "memberAccessProposalDuration",
+          "type": "uint64"
+        },
+        {
           "internalType": "address",
           "name": "pluginUpgrader",
           "type": "address"

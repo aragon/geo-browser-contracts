@@ -107,13 +107,10 @@ describe("SpacePluginSetup processing", function () {
 
     beforeEach(async () => {
       // Install build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
-            .prepareInstallation
-            .inputs,
-        ),
-        [toHex("ipfs://1234"), ADDRESS_ZERO, pluginUpgrader],
+      const data = await setup.encodeInstallationParams(
+        toHex("ipfs://1234"),
+        ADDRESS_ZERO,
+        pluginUpgrader,
       );
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
@@ -130,14 +127,7 @@ describe("SpacePluginSetup processing", function () {
       expect(await plugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          SpacePluginSetupParams.METADATA.build.pluginSetup
-            .prepareUninstallation
-            .inputs,
-        ),
-        [pluginUpgrader],
-      );
+      const data = await setup.encodeUninstallationParams(pluginUpgrader);
       await uninstallPlugin(psp, dao, plugin, pluginSetupRef, data, []);
     });
   });

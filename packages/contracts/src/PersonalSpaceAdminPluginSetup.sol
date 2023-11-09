@@ -35,7 +35,7 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
         bytes calldata _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
         // Decode `_data` to extract the params needed for cloning and initializing the `PersonalSpaceAdminPlugin` plugin.
-        address editor = abi.decode(_data, (address));
+        address editor = decodeInstallationParams(_data);
 
         if (editor == address(0)) {
             revert EditorAddressInvalid({editor: editor});
@@ -94,5 +94,17 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
     /// @inheritdoc IPluginSetup
     function implementation() external view returns (address) {
         return implementation_;
+    }
+
+    /// @notice Encodes the given installation parameters into a byte array
+    function encodeInstallationParams(address _initialEditor) public pure returns (bytes memory) {
+        return abi.encode(_initialEditor);
+    }
+
+    /// @notice Decodes the given byte array into the original installation parameters
+    function decodeInstallationParams(
+        bytes memory _data
+    ) public pure returns (address initialEditor) {
+        (initialEditor) = abi.decode(_data, (address));
     }
 }

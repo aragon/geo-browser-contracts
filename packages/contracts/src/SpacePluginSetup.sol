@@ -26,7 +26,7 @@ contract SpacePluginSetup is PluginSetup {
             string memory _firstBlockContentUri,
             address _predecessorAddress,
             address _pluginUpgrader
-        ) = abi.decode(_data, (string, address, address));
+        ) = decodeInstallationParams(_data);
 
         // Deploy new plugin instance
         plugin = createERC1967Proxy(
@@ -90,7 +90,7 @@ contract SpacePluginSetup is PluginSetup {
         SetupPayload calldata _payload
     ) external view returns (PermissionLib.MultiTargetPermission[] memory permissionChanges) {
         // Decode incoming params
-        address _pluginUpgrader = abi.decode(_payload.data, (address));
+        address _pluginUpgrader = decodeUninstallationParams(_payload.data);
 
         permissionChanges = new PermissionLib.MultiTargetPermission[](
             _pluginUpgrader == address(0x0) ? 3 : 4
@@ -133,5 +133,46 @@ contract SpacePluginSetup is PluginSetup {
     /// @inheritdoc IPluginSetup
     function implementation() external view returns (address) {
         return pluginImplementation;
+    }
+
+    /// @notice Encodes the given installation parameters into a byte array
+    function encodeInstallationParams(
+        string memory _firstBlockContentUri,
+        address _predecessorAddress,
+        address _pluginUpgrader
+    ) public pure returns (bytes memory) {
+        return abi.encode(_firstBlockContentUri, _predecessorAddress, _pluginUpgrader);
+    }
+
+    /// @notice Decodes the given byte array into the original installation parameters
+    function decodeInstallationParams(
+        bytes memory _data
+    )
+        public
+        pure
+        returns (
+            string memory firstBlockContentUri,
+            address predecessorAddress,
+            address pluginUpgrader
+        )
+    {
+        (firstBlockContentUri, predecessorAddress, pluginUpgrader) = abi.decode(
+            _data,
+            (string, address, address)
+        );
+    }
+
+    /// @notice Encodes the given uninstallation parameters into a byte array
+    function encodeUninstallationParams(
+        address _pluginUpgrader
+    ) public pure returns (bytes memory) {
+        return abi.encode(_pluginUpgrader);
+    }
+
+    /// @notice Decodes the given byte array into the original uninstallation parameters
+    function decodeUninstallationParams(
+        bytes memory _data
+    ) public pure returns (address pluginUpgrader) {
+        (pluginUpgrader) = abi.decode(_data, (address));
     }
 }

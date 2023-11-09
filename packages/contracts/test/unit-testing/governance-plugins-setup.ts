@@ -1,9 +1,9 @@
-import buildMetadata from "../../src/main-voting-build-metadata.json";
+import buildMetadata from "../../src/governance-build-metadata.json";
 import {
   DAO,
+  GovernancePluginsSetup,
+  GovernancePluginsSetup__factory,
   MainVotingPlugin__factory,
-  MainVotingPluginSetup,
-  MainVotingPluginSetup__factory,
 } from "../../typechain";
 import { deployTestDao } from "../helpers/test-dao";
 import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
@@ -15,6 +15,7 @@ import {
   NO_CONDITION,
   pctToRatio,
   UPDATE_ADDRESSES_PERMISSION_ID,
+  UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
   UPDATE_VOTING_SETTINGS_PERMISSION_ID,
   UPGRADE_PLUGIN_PERMISSION_ID,
   VotingMode,
@@ -23,17 +24,17 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("Main Voting Plugin Setup", function () {
+describe("Governance Plugins Setup", function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let mainVotingPluginSetup: MainVotingPluginSetup;
+  let governancePluginsSetup: GovernancePluginsSetup;
   let dao: DAO;
 
   before(async () => {
     [alice, bob] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
-    mainVotingPluginSetup = await new MainVotingPluginSetup__factory(alice)
+    governancePluginsSetup = await new GovernancePluginsSetup__factory(alice)
       .deploy();
   });
 
@@ -55,62 +56,97 @@ describe("Main Voting Plugin Setup", function () {
             minProposerVotingPower: 0,
           },
           [alice.address],
+          60 * 60 * 24,
           pluginUpgrader,
         ],
       );
       const nonce = await ethers.provider.getTransactionCount(
-        mainVotingPluginSetup.address,
+        governancePluginsSetup.address,
       );
-      const anticipatedPluginAddress = ethers.utils.getContractAddress({
-        from: mainVotingPluginSetup.address,
-        nonce,
-      });
+      const anticipatedMainVotingPluginAddress = ethers.utils
+        .getContractAddress({
+          from: governancePluginsSetup.address,
+          nonce,
+        });
+      const anticipatedMemberAccessPluginAddress = ethers.utils
+        .getContractAddress({
+          from: governancePluginsSetup.address,
+          nonce: nonce + 1,
+        });
+      const anticipatedConditionPluginAddress = ethers.utils
+        .getContractAddress({
+          from: governancePluginsSetup.address,
+          nonce: nonce + 2,
+        });
 
       const {
-        plugin,
+        mainVotingPlugin,
         preparedSetupData: { helpers, permissions },
-      } = await mainVotingPluginSetup.callStatic.prepareInstallation(
+      } = await governancePluginsSetup.callStatic.prepareInstallation(
         dao.address,
         initData,
       );
+      expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
+      expect(helpers.length).to.be.equal(1);
+      const [memberAccessPlugin] = helpers;
+      expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
 
-      expect(plugin).to.be.equal(anticipatedPluginAddress);
-      expect(helpers.length).to.be.equal(0);
-      expect(permissions.length).to.be.equal(4);
+      expect(permissions.length).to.be.equal(7);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
           dao.address,
-          plugin,
+          mainVotingPlugin,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          plugin,
+          mainVotingPlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          plugin,
+          mainVotingPlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          plugin,
+          mainVotingPlugin,
+          dao.address,
+          NO_CONDITION,
+          UPGRADE_PLUGIN_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          dao.address,
+          memberAccessPlugin,
+          anticipatedConditionPluginAddress,
+          EXECUTE_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          memberAccessPlugin,
+          dao.address,
+          NO_CONDITION,
+          UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          memberAccessPlugin,
           dao.address,
           NO_CONDITION,
           UPGRADE_PLUGIN_PERMISSION_ID,
         ],
       ]);
 
-      await mainVotingPluginSetup.prepareInstallation(dao.address, initData);
+      await governancePluginsSetup.prepareInstallation(dao.address, initData);
       const myPlugin = new MainVotingPlugin__factory(alice).attach(
-        plugin,
+        mainVotingPlugin,
       );
 
       // initialization is correct
@@ -135,69 +171,111 @@ describe("Main Voting Plugin Setup", function () {
             minProposerVotingPower: 0,
           },
           [alice.address],
+          60 * 60 * 24,
           pluginUpgrader,
         ],
       );
       const nonce = await ethers.provider.getTransactionCount(
-        mainVotingPluginSetup.address,
+        governancePluginsSetup.address,
       );
-      const anticipatedPluginAddress = ethers.utils.getContractAddress({
-        from: mainVotingPluginSetup.address,
-        nonce,
-      });
+      const anticipatedMainVotingPluginAddress = ethers.utils
+        .getContractAddress({
+          from: governancePluginsSetup.address,
+          nonce,
+        });
+      const anticipatedMemberAccessPluginAddress = ethers.utils
+        .getContractAddress({
+          from: governancePluginsSetup.address,
+          nonce: nonce + 1,
+        });
+      const anticipatedConditionPluginAddress = ethers.utils
+        .getContractAddress({
+          from: governancePluginsSetup.address,
+          nonce: nonce + 2,
+        });
 
       const {
-        plugin,
+        mainVotingPlugin,
         preparedSetupData: { helpers, permissions },
-      } = await mainVotingPluginSetup.callStatic.prepareInstallation(
+      } = await governancePluginsSetup.callStatic.prepareInstallation(
         dao.address,
         initData,
       );
+      expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
+      expect(helpers.length).to.be.equal(1);
+      const [memberAccessPlugin] = helpers;
+      expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
 
-      expect(plugin).to.be.equal(anticipatedPluginAddress);
-      expect(helpers.length).to.be.equal(0);
-      expect(permissions.length).to.be.equal(5);
+      expect(permissions.length).to.be.equal(9);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
           dao.address,
-          plugin,
+          mainVotingPlugin,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          plugin,
+          mainVotingPlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          plugin,
+          mainVotingPlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          plugin,
+          mainVotingPlugin,
           dao.address,
           NO_CONDITION,
           UPGRADE_PLUGIN_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          plugin,
+          dao.address,
+          memberAccessPlugin,
+          anticipatedConditionPluginAddress,
+          EXECUTE_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          memberAccessPlugin,
+          dao.address,
+          NO_CONDITION,
+          UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          memberAccessPlugin,
+          dao.address,
+          NO_CONDITION,
+          UPGRADE_PLUGIN_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          mainVotingPlugin,
+          pluginUpgrader,
+          NO_CONDITION,
+          UPGRADE_PLUGIN_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          memberAccessPlugin,
           pluginUpgrader,
           NO_CONDITION,
           UPGRADE_PLUGIN_PERMISSION_ID,
         ],
       ]);
 
-      await mainVotingPluginSetup.prepareInstallation(dao.address, initData);
+      await governancePluginsSetup.prepareInstallation(dao.address, initData);
       const myPlugin = new MainVotingPlugin__factory(alice).attach(
-        plugin,
+        mainVotingPlugin,
       );
 
       // initialization is correct
@@ -208,7 +286,10 @@ describe("Main Voting Plugin Setup", function () {
 
   describe("prepareUninstallation", async () => {
     it("returns the permissions (no pluginUpgrader)", async () => {
-      const plugin = await new MainVotingPlugin__factory(alice).deploy();
+      const mainVotingPlugin = await new MainVotingPlugin__factory(alice)
+        .deploy();
+      const memberAccessPlugin = await new MainVotingPlugin__factory(alice)
+        .deploy();
 
       const pluginUpgrader = ADDRESS_ZERO;
       const uninstallData = abiCoder.encode(
@@ -217,42 +298,63 @@ describe("Main Voting Plugin Setup", function () {
         ),
         [pluginUpgrader],
       );
-      const permissions = await mainVotingPluginSetup.callStatic
+      const permissions = await governancePluginsSetup.callStatic
         .prepareUninstallation(
           dao.address,
           {
-            plugin: plugin.address,
-            currentHelpers: [],
+            plugin: mainVotingPlugin.address,
+            currentHelpers: [memberAccessPlugin.address],
             data: uninstallData,
           },
         );
 
-      expect(permissions.length).to.be.equal(4);
+      expect(permissions.length).to.be.equal(7);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
           dao.address,
-          plugin.address,
+          mainVotingPlugin.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          plugin.address,
+          mainVotingPlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          plugin.address,
+          mainVotingPlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          plugin.address,
+          mainVotingPlugin.address,
+          dao.address,
+          NO_CONDITION,
+          UPGRADE_PLUGIN_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          dao.address,
+          memberAccessPlugin.address,
+          NO_CONDITION,
+          EXECUTE_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          memberAccessPlugin.address,
+          dao.address,
+          NO_CONDITION,
+          UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          memberAccessPlugin.address,
           dao.address,
           NO_CONDITION,
           UPGRADE_PLUGIN_PERMISSION_ID,
@@ -260,8 +362,11 @@ describe("Main Voting Plugin Setup", function () {
       ]);
     });
 
-    it("returns the permissions (no pluginUpgrader)", async () => {
-      const plugin = await new MainVotingPlugin__factory(alice).deploy();
+    it("returns the permissions (with a pluginUpgrader)", async () => {
+      const mainVotingPlugin = await new MainVotingPlugin__factory(alice)
+        .deploy();
+      const memberAccessPlugin = await new MainVotingPlugin__factory(alice)
+        .deploy();
 
       const pluginUpgrader = bob.address;
       const uninstallData = abiCoder.encode(
@@ -270,49 +375,77 @@ describe("Main Voting Plugin Setup", function () {
         ),
         [pluginUpgrader],
       );
-      const permissions = await mainVotingPluginSetup.callStatic
+      const permissions = await governancePluginsSetup.callStatic
         .prepareUninstallation(
           dao.address,
           {
-            plugin: plugin.address,
-            currentHelpers: [],
+            plugin: mainVotingPlugin.address,
+            currentHelpers: [memberAccessPlugin.address],
             data: uninstallData,
           },
         );
 
-      expect(permissions.length).to.be.equal(5);
+      expect(permissions.length).to.be.equal(9);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
           dao.address,
-          plugin.address,
+          mainVotingPlugin.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          plugin.address,
+          mainVotingPlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          plugin.address,
+          mainVotingPlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          plugin.address,
+          mainVotingPlugin.address,
           dao.address,
           NO_CONDITION,
           UPGRADE_PLUGIN_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          plugin.address,
+          dao.address,
+          memberAccessPlugin.address,
+          NO_CONDITION,
+          EXECUTE_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          memberAccessPlugin.address,
+          dao.address,
+          NO_CONDITION,
+          UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          memberAccessPlugin.address,
+          dao.address,
+          NO_CONDITION,
+          UPGRADE_PLUGIN_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          mainVotingPlugin.address,
+          pluginUpgrader,
+          NO_CONDITION,
+          UPGRADE_PLUGIN_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          memberAccessPlugin.address,
           pluginUpgrader,
           NO_CONDITION,
           UPGRADE_PLUGIN_PERMISSION_ID,

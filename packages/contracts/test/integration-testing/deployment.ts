@@ -1,13 +1,8 @@
-import {
-  PluginRepo,
-  SpacePluginSetup,
-  SpacePluginSetup__factory,
-} from "../../typechain";
+import { PluginRepo } from "../../typechain";
 import { osxContracts } from "../../utils/helpers";
 import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
 import {
-  MainVotingPluginSetupParams,
-  MemberAccessPluginSetupParams,
+  GovernancePluginsSetupParams,
   PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from "../../plugin-setup-params";
@@ -39,8 +34,7 @@ describe("PluginRepo Deployment", function () {
   });
 
   const setups = [
-    MainVotingPluginSetupParams,
-    MemberAccessPluginSetupParams,
+    GovernancePluginsSetupParams,
     PersonalSpaceAdminPluginSetupParams,
     SpacePluginSetupParams,
   ];
@@ -125,15 +119,9 @@ describe("PluginRepo Deployment", function () {
               );
               break;
 
-            case MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
+            case GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
               expect(receivedStriMetadata).to.equal(
-                "ipfs://Qmd6LmivjWNMisxMKqZgmD9HasnQq2JngKJH3WTmqMjCNn",
-              );
-              break;
-
-            case MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
-              expect(receivedStriMetadata).to.equal(
-                "ipfs://QmNxhDLP2FL8vUJwUq8pKrLg1AGSKdgwopS6tQb5Gy7VSg",
+                "ipfs://QmNh5KHv167RKZgD8zb6d3CvRE7mNT8AZYZkwrmvyRt1YD",
               );
               break;
 

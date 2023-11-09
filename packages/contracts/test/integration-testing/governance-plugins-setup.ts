@@ -1,10 +1,12 @@
-import { MainVotingPluginSetupParams } from "../../plugin-setup-params";
+import { GovernancePluginsSetupParams } from "../../plugin-setup-params";
 import {
+  GovernancePluginsSetup,
+  GovernancePluginsSetup__factory,
   MainVotingPlugin,
   MainVotingPlugin__factory,
-  MainVotingPluginSetup,
-  MainVotingPluginSetup__factory,
   MajorityVotingBase,
+  MemberAccessPlugin,
+  MemberAccessPlugin__factory,
   PluginRepo,
 } from "../../typechain";
 import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
@@ -25,7 +27,7 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { ADDRESS_ZERO } from "../unit-testing/common";
 
-describe("MainVotingPluginSetup processing", function () {
+describe("GovernancePluginsSetup processing", function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -38,7 +40,7 @@ describe("MainVotingPluginSetup processing", function () {
     const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
 
     const pluginRepoInfo = getPluginRepoInfo(
-      MainVotingPluginSetupParams.PLUGIN_REPO_ENS_NAME,
+      GovernancePluginsSetupParams.PLUGIN_REPO_ENS_NAME,
       "hardhat",
     );
     if (!pluginRepoInfo) {
@@ -82,16 +84,17 @@ describe("MainVotingPluginSetup processing", function () {
   });
 
   context("Build 1", async () => {
-    let setup: MainVotingPluginSetup;
+    let setup: GovernancePluginsSetup;
     let pluginSetupRef: PluginSetupRefStruct;
-    let plugin: MainVotingPlugin;
+    let mainVotingPlugin: MainVotingPlugin;
+    let memberAccessPlugin: MemberAccessPlugin;
     const pluginUpgrader = ADDRESS_ZERO;
 
     before(async () => {
       const release = 1;
 
       // Deploy setups.
-      setup = MainVotingPluginSetup__factory.connect(
+      setup = GovernancePluginsSetup__factory.connect(
         (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
         alice,
       );
@@ -113,40 +116,50 @@ describe("MainVotingPluginSetup processing", function () {
         minProposerVotingPower: 0,
         votingMode: 0,
       };
+      const minMemberAccessProposalDuration = 60 * 60 * 24;
 
       // Install build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          MainVotingPluginSetupParams.METADATA.build.pluginSetup
-            .prepareInstallation
-            .inputs,
-        ),
-        [settings, [alice.address], pluginUpgrader],
+      const data = await setup.encodeInstallationParams(
+        settings,
+        [alice.address],
+        minMemberAccessProposalDuration,
+        pluginUpgrader,
       );
-      const results = await installPlugin(psp, dao, pluginSetupRef, data);
+      const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
-      plugin = MainVotingPlugin__factory.connect(
-        results.preparedEvent.args.plugin,
+      const mvAddress = installation.preparedEvent.args.plugin;
+      mainVotingPlugin = MainVotingPlugin__factory.connect(
+        mvAddress,
+        alice,
+      );
+      const mapAddress =
+        installation.preparedEvent.args.preparedSetupData.helpers[0];
+      memberAccessPlugin = MemberAccessPlugin__factory.connect(
+        mapAddress,
         alice,
       );
     });
 
     it("installs & uninstalls", async () => {
-      expect(await plugin.implementation()).to.be.eq(
+      expect(await mainVotingPlugin.implementation()).to.be.eq(
         await setup.implementation(),
       );
-      expect(await plugin.dao()).to.be.eq(dao.address);
+      expect(await memberAccessPlugin.implementation()).to.be.eq(
+        await setup.memberAccessPluginImplementation(),
+      );
+      expect(await mainVotingPlugin.dao()).to.be.eq(dao.address);
+      expect(await memberAccessPlugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          MainVotingPluginSetupParams.METADATA.build.pluginSetup
-            .prepareUninstallation
-            .inputs,
-        ),
-        [pluginUpgrader],
+      const data = await setup.encodeUninstallationParams(pluginUpgrader);
+      await uninstallPlugin(
+        psp,
+        dao,
+        mainVotingPlugin,
+        pluginSetupRef,
+        data,
+        [memberAccessPlugin.address],
       );
-      await uninstallPlugin(psp, dao, plugin, pluginSetupRef, data, []);
     });
   });
 });

@@ -1,6 +1,5 @@
 import {
-  MainVotingPluginSetupParams,
-  MemberAccessPluginSetupParams,
+  GovernancePluginsSetupParams,
   PersonalSpaceAdminPluginSetupParams,
   PluginSetupParams,
   SpacePluginSetupParams,
@@ -19,8 +18,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
   return publishPlugin(hre, SpacePluginSetupParams)
     .then(() => publishPlugin(hre, PersonalSpaceAdminPluginSetupParams))
-    .then(() => publishPlugin(hre, MemberAccessPluginSetupParams))
-    .then(() => publishPlugin(hre, MainVotingPluginSetupParams));
+    .then(() => publishPlugin(hre, GovernancePluginsSetupParams));
 };
 
 async function publishPlugin(
@@ -150,7 +148,6 @@ export default func;
 func.tags = [
   SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  MemberAccessPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  MainVotingPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   "Publication",
 ];

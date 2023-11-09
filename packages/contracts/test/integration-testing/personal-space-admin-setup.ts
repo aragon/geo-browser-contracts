@@ -22,7 +22,6 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
-import { toHex } from "../../utils/ipfs";
 
 describe("PersonalSpaceAdmin processing", function () {
   let alice: SignerWithAddress;
@@ -88,6 +87,12 @@ describe("PersonalSpaceAdmin processing", function () {
     before(async () => {
       const release = 1;
 
+      // Deploy setup.
+      setup = PersonalSpaceAdminPluginSetup__factory.connect(
+        (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
+        alice,
+      );
+
       pluginSetupRef = {
         versionTag: {
           release: BigNumber.from(release),
@@ -101,14 +106,7 @@ describe("PersonalSpaceAdmin processing", function () {
       const initialEditor = alice.address;
 
       // Install build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          PersonalSpaceAdminPluginSetupParams.METADATA.build.pluginSetup
-            .prepareInstallation
-            .inputs,
-        ),
-        [initialEditor],
-      );
+      const data = await setup.encodeInstallationParams(initialEditor);
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
       plugin = PersonalSpaceAdminPlugin__factory.connect(
@@ -121,14 +119,7 @@ describe("PersonalSpaceAdmin processing", function () {
       expect(await plugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
-      const data = ethers.utils.defaultAbiCoder.encode(
-        getNamedTypesFromMetadata(
-          PersonalSpaceAdminPluginSetupParams.METADATA.build.pluginSetup
-            .prepareUninstallation
-            .inputs,
-        ),
-        [],
-      );
+      const data = "0x"; // no parameters
       await uninstallPlugin(psp, dao, plugin, pluginSetupRef, data, []);
     });
   });
