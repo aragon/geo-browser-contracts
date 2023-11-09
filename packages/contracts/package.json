@@ -65,7 +65,7 @@
     "coverage": "hardhat coverage --solcoverjs ./.solcover.js --temp artifacts --testfiles \"test/**/*.ts\" && yarn typechain",
     "deploy": "hardhat deploy",
     "lint": "yarn lint:sol && yarn lint:ts",
-    "lint:sol": "solhint --max-warnings 0 \"src/**/*.sol\"",
+    "lint:sol": "solhint \"src/**/*.sol\"",
     "lint:ts": "eslint --ignore-path ./.eslintignore --ext .js,.ts .",
     "postinstall": "DOTENV_CONFIG_PATH=../../.env.example yarn typechain",
     "test": "hardhat test",

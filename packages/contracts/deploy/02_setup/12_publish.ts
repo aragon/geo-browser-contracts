@@ -3,17 +3,17 @@ import {
   PersonalSpaceAdminPluginSetupParams,
   PluginSetupParams,
   SpacePluginSetupParams,
-} from "../../plugin-setup-params";
+} from '../../plugin-setup-params';
+import {toHex} from '../../utils/ipfs';
+import {uploadToIPFS} from '../../utils/ipfs';
 import {
   addDeployedVersion,
   getPluginRepoInfo,
   PluginRepoBuild,
-} from "../../utils/plugin-repo-info";
-import { toHex } from "../../utils/ipfs";
-import { uploadToIPFS } from "../../utils/ipfs";
-import { PluginRepo__factory, PluginSetup__factory } from "@aragon/osx-ethers";
-import { DeployFunction } from "hardhat-deploy/types";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+} from '../../utils/plugin-repo-info';
+import {PluginRepo__factory, PluginSetup__factory} from '@aragon/osx-ethers';
+import {DeployFunction} from 'hardhat-deploy/types';
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
   return publishPlugin(hre, SpacePluginSetupParams)
@@ -23,23 +23,23 @@ const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
 
 async function publishPlugin(
   hre: HardhatRuntimeEnvironment,
-  pluginSetupParams: PluginSetupParams,
+  pluginSetupParams: PluginSetupParams
 ) {
   console.log(
-    `Publishing ${pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} as v${pluginSetupParams.VERSION.release}.${pluginSetupParams.VERSION.build} in the "${pluginSetupParams.PLUGIN_REPO_ENS_NAME}" plugin repo`,
+    `Publishing ${pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} as v${pluginSetupParams.VERSION.release}.${pluginSetupParams.VERSION.build} in the "${pluginSetupParams.PLUGIN_REPO_ENS_NAME}" plugin repo`
   );
 
-  const { deployments, network } = hre;
+  const {deployments, network} = hre;
   const [deployer] = await hre.ethers.getSigners();
 
   // Upload the metadata to IPFS
   const releaseMetadataURI = `ipfs://${await uploadToIPFS(
     JSON.stringify(pluginSetupParams.METADATA.release),
-    false,
+    false
   )}`;
   const buildMetadataURI = `ipfs://${await uploadToIPFS(
     JSON.stringify(pluginSetupParams.METADATA.build),
-    false,
+    false
   )}`;
 
   console.log(`Uploaded release metadata: ${releaseMetadataURI}`);
@@ -47,46 +47,51 @@ async function publishPlugin(
 
   // Get PluginSetup
   const setup = await deployments.get(
-    pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+    pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME
   );
 
   // Get PluginRepo
   const pluginRepoInfo = getPluginRepoInfo(
     pluginSetupParams.PLUGIN_REPO_ENS_NAME,
-    network.name,
+    network.name
   );
-  if (!pluginRepoInfo) throw new Error("The plugin repo cannot be found");
+  if (!pluginRepoInfo) throw new Error('The plugin repo cannot be found');
   const pluginRepo = PluginRepo__factory.connect(
     pluginRepoInfo.address,
-    deployer,
+    deployer
   );
 
   // Check release number
   const latestRelease = await pluginRepo.latestRelease();
   if (pluginSetupParams.VERSION.release > latestRelease + 1) {
     throw Error(
-      `Publishing with release number ${pluginSetupParams.VERSION.release} is not possible. 
+      `Publishing with release number ${
+        pluginSetupParams.VERSION.release
+      } is not possible. 
       The latest release is ${latestRelease} and the next release you can publish is release number ${
         latestRelease + 1
-      }.`,
+      }.`
     );
   }
 
   // Check build number
-  const latestBuild =
-    (await pluginRepo.buildCount(pluginSetupParams.VERSION.release)).toNumber();
+  const latestBuild = (
+    await pluginRepo.buildCount(pluginSetupParams.VERSION.release)
+  ).toNumber();
   if (pluginSetupParams.VERSION.build <= latestBuild) {
     throw Error(
       `Publishing with build number ${pluginSetupParams.VERSION.build} is not possible. 
-      The latest build is ${latestBuild} and build ${pluginSetupParams.VERSION.build} has been deployed already.`,
+      The latest build is ${latestBuild} and build ${pluginSetupParams.VERSION.build} has been deployed already.`
     );
   }
   if (pluginSetupParams.VERSION.build > latestBuild + 1) {
     throw Error(
-      `Publishing with build number ${pluginSetupParams.VERSION.build} is not possible. 
+      `Publishing with build number ${
+        pluginSetupParams.VERSION.build
+      } is not possible. 
       The latest build is ${latestBuild} and the next release you can publish is release number ${
         latestBuild + 1
-      }.`,
+      }.`
     );
   }
 
@@ -95,29 +100,29 @@ async function publishPlugin(
     pluginSetupParams.VERSION.release,
     setup.address,
     toHex(buildMetadataURI),
-    toHex(releaseMetadataURI),
+    toHex(releaseMetadataURI)
   );
 
   const blockNumberOfPublication = (await tx.wait()).blockNumber;
 
   if (setup == undefined || setup?.receipt == undefined) {
-    throw Error("setup deployment unavailable");
+    throw Error('setup deployment unavailable');
   }
 
-  const version = await pluginRepo["getLatestVersion(uint8)"](
-    pluginSetupParams.VERSION.release,
+  const version = await pluginRepo['getLatestVersion(uint8)'](
+    pluginSetupParams.VERSION.release
   );
   if (pluginSetupParams.VERSION.release !== version.tag.release) {
-    throw Error("something went wrong");
+    throw Error('something went wrong');
   }
 
   const implementationAddress = await PluginSetup__factory.connect(
     setup.address,
-    deployer,
+    deployer
   ).implementation();
 
   console.log(
-    `Published ${pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} at ${setup.address} in PluginRepo ${pluginSetupParams.PLUGIN_REPO_ENS_NAME} at ${pluginRepo.address} at block ${blockNumberOfPublication}.`,
+    `Published ${pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} at ${setup.address} in PluginRepo ${pluginSetupParams.PLUGIN_REPO_ENS_NAME} at ${pluginRepo.address} at block ${blockNumberOfPublication}.`
   );
 
   const pluginBuild: PluginRepoBuild = {
@@ -139,8 +144,8 @@ async function publishPlugin(
     pluginSetupParams.PLUGIN_REPO_ENS_NAME,
     network.name,
     releaseMetadataURI,
-    { release: pluginSetupParams.VERSION.release, build: version.tag.build },
-    pluginBuild,
+    {release: pluginSetupParams.VERSION.release, build: version.tag.build},
+    pluginBuild
   );
 }
 
@@ -149,5 +154,5 @@ func.tags = [
   SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  "Publication",
+  'Publication',
 ];

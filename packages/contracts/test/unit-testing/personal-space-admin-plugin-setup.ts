@@ -1,28 +1,25 @@
-import { expect } from "chai";
-import { ethers } from "hardhat";
-
+import metadata from '../../src/personal-space-admin-build-metadata.json';
 import {
   PersonalSpaceAdminPlugin__factory,
   PersonalSpaceAdminPluginSetup,
   PersonalSpaceAdminPluginSetup__factory,
-} from "../../typechain";
-import metadata from "../../src/personal-space-admin-build-metadata.json";
-import { psvpInterface } from "./personal-space-admin-plugin";
-import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
-import { deployTestDao } from "../helpers/test-dao";
-import { getInterfaceID } from "../../utils/interfaces";
+} from '../../typechain';
+import {getInterfaceID} from '../../utils/interfaces';
+import {deployTestDao} from '../helpers/test-dao';
+import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
+import {psvpInterface} from './personal-space-admin-plugin';
+import {expect} from 'chai';
+import {ethers} from 'hardhat';
 
 const abiCoder = ethers.utils.defaultAbiCoder;
 const AddressZero = ethers.constants.AddressZero;
-const EMPTY_DATA = "0x";
+const EMPTY_DATA = '0x';
 
 // Permissions
-const EDITOR_PERMISSION_ID = ethers.utils.id(
-  "EDITOR_PERMISSION",
-);
-const EXECUTE_PERMISSION_ID = ethers.utils.id("EXECUTE_PERMISSION");
+const EDITOR_PERMISSION_ID = ethers.utils.id('EDITOR_PERMISSION');
+const EXECUTE_PERMISSION_ID = ethers.utils.id('EXECUTE_PERMISSION');
 
-describe("Personal Space Admin Plugin Setup", function () {
+describe('Personal Space Admin Plugin Setup', function () {
   let ownerAddress: string;
   let signers: any;
   let adminSetup: PersonalSpaceAdminPluginSetup;
@@ -37,9 +34,9 @@ describe("Personal Space Admin Plugin Setup", function () {
 
     minimum_data = abiCoder.encode(
       getNamedTypesFromMetadata(
-        metadata.pluginSetup.prepareInstallation.inputs,
+        metadata.pluginSetup.prepareInstallation.inputs
       ),
-      [ownerAddress],
+      [ownerAddress]
     );
 
     const PersonalSpaceAdminPluginSetup =
@@ -49,60 +46,57 @@ describe("Personal Space Admin Plugin Setup", function () {
     implementationAddress = await adminSetup.implementation();
   });
 
-  it("does not support the empty interface", async () => {
-    expect(await adminSetup.supportsInterface("0xffffffff")).to.be.false;
+  it('does not support the empty interface', async () => {
+    expect(await adminSetup.supportsInterface('0xffffffff')).to.be.false;
   });
 
-  it("creates admin address base with the correct interface", async () => {
+  it('creates admin address base with the correct interface', async () => {
     const factory = new PersonalSpaceAdminPlugin__factory(signers[0]);
     const adminAddressContract = factory.attach(implementationAddress);
 
     expect(
       await adminAddressContract.supportsInterface(
-        getInterfaceID(psvpInterface),
-      ),
+        getInterfaceID(psvpInterface)
+      )
     ).to.be.eq(true);
   });
 
-  describe("prepareInstallation", async () => {
-    it("fails if data is empty, or not of minimum length", async () => {
+  describe('prepareInstallation', async () => {
+    it('fails if data is empty, or not of minimum length', async () => {
       await expect(
-        adminSetup.prepareInstallation(targetDao.address, EMPTY_DATA),
+        adminSetup.prepareInstallation(targetDao.address, EMPTY_DATA)
       ).to.be.reverted;
 
       await expect(
         adminSetup.prepareInstallation(
           targetDao.address,
-          minimum_data.substring(0, minimum_data.length - 2),
-        ),
+          minimum_data.substring(0, minimum_data.length - 2)
+        )
       ).to.be.reverted;
 
       await expect(
-        adminSetup.prepareInstallation(targetDao.address, minimum_data),
+        adminSetup.prepareInstallation(targetDao.address, minimum_data)
       ).not.to.be.reverted;
     });
 
-    it("reverts if encoded address in `_data` is zero", async () => {
+    it('reverts if encoded address in `_data` is zero', async () => {
       const dataWithAddressZero = abiCoder.encode(
         getNamedTypesFromMetadata(
-          metadata.pluginSetup.prepareInstallation.inputs,
+          metadata.pluginSetup.prepareInstallation.inputs
         ),
-        [AddressZero],
+        [AddressZero]
       );
 
       await expect(
-        adminSetup.prepareInstallation(targetDao.address, dataWithAddressZero),
+        adminSetup.prepareInstallation(targetDao.address, dataWithAddressZero)
       )
-        .to.be.revertedWithCustomError(
-          adminSetup,
-          "EditorAddressInvalid",
-        )
+        .to.be.revertedWithCustomError(adminSetup, 'EditorAddressInvalid')
         .withArgs(AddressZero);
     });
 
-    it("correctly returns plugin, helpers and permissions", async () => {
+    it('correctly returns plugin, helpers and permissions', async () => {
       const nonce = await ethers.provider.getTransactionCount(
-        adminSetup.address,
+        adminSetup.address
       );
       const anticipatedPluginAddress = ethers.utils.getContractAddress({
         from: adminSetup.address,
@@ -111,10 +105,10 @@ describe("Personal Space Admin Plugin Setup", function () {
 
       const {
         plugin,
-        preparedSetupData: { helpers, permissions },
+        preparedSetupData: {helpers, permissions},
       } = await adminSetup.callStatic.prepareInstallation(
         targetDao.address,
-        minimum_data,
+        minimum_data
       );
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
@@ -138,11 +132,11 @@ describe("Personal Space Admin Plugin Setup", function () {
       ]);
     });
 
-    it("correctly sets up the plugin", async () => {
+    it('correctly sets up the plugin', async () => {
       const daoAddress = targetDao.address;
 
       const nonce = await ethers.provider.getTransactionCount(
-        adminSetup.address,
+        adminSetup.address
       );
       const anticipatedPluginAddress = ethers.utils.getContractAddress({
         from: adminSetup.address,
@@ -158,8 +152,8 @@ describe("Personal Space Admin Plugin Setup", function () {
     });
   });
 
-  describe("prepareUninstallation", async () => {
-    it("correctly returns permissions", async () => {
+  describe('prepareUninstallation', async () => {
+    it('correctly returns permissions', async () => {
       const plugin = ethers.Wallet.createRandom().address;
 
       const permissions = await adminSetup.callStatic.prepareUninstallation(
@@ -168,7 +162,7 @@ describe("Personal Space Admin Plugin Setup", function () {
           plugin,
           currentHelpers: [],
           data: EMPTY_DATA,
-        },
+        }
       );
 
       expect(permissions.length).to.be.equal(1);

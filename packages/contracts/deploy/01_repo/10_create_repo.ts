@@ -2,19 +2,19 @@ import {
   GovernancePluginsSetupParams,
   PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
-} from "../../plugin-setup-params";
+} from '../../plugin-setup-params';
 import {
   findEventTopicLog,
   getPluginRepoFactoryAddress,
-} from "../../utils/helpers";
-import { addDeployedRepo } from "../../utils/plugin-repo-info";
+} from '../../utils/helpers';
+import {addDeployedRepo} from '../../utils/plugin-repo-info';
 import {
   PluginRepo__factory,
   PluginRepoFactory__factory,
   PluginRepoRegistry__factory,
-} from "@aragon/osx-ethers";
-import { DeployFunction } from "hardhat-deploy/types";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+} from '@aragon/osx-ethers';
+import {DeployFunction} from 'hardhat-deploy/types';
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
   return deployRepo(hre, SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME)
@@ -28,49 +28,47 @@ const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
 
 async function deployRepo(
   hre: HardhatRuntimeEnvironment,
-  ensSubdomain: string,
+  ensSubdomain: string
 ) {
-  console.log(
-    `\nDeploying the "${ensSubdomain}" plugin repo`,
-  );
+  console.log(`\nDeploying the "${ensSubdomain}" plugin repo`);
 
-  const { network } = hre;
+  const {network} = hre;
   const [deployer] = await hre.ethers.getSigners();
 
   // Get the PluginRepoFactory address
   const pluginRepoFactoryAddr: string = getPluginRepoFactoryAddress(
-    network.name,
+    network.name
   );
 
   const pluginRepoFactory = PluginRepoFactory__factory.connect(
     pluginRepoFactoryAddr,
-    deployer,
+    deployer
   );
 
   // Create the PluginRepo
   const tx = await pluginRepoFactory.createPluginRepo(
     ensSubdomain,
-    deployer.address,
+    deployer.address
   );
 
   const eventLog = await findEventTopicLog(
     tx,
     PluginRepoRegistry__factory.createInterface(),
-    "PluginRepoRegistered",
+    'PluginRepoRegistered'
   );
   if (!eventLog) {
-    throw new Error("Failed to get PluginRepoRegistered event log");
+    throw new Error('Failed to get PluginRepoRegistered event log');
   }
 
   const pluginRepo = PluginRepo__factory.connect(
     eventLog.args.pluginRepo,
-    deployer,
+    deployer
   );
 
   const blockNumberOfDeployment = (await tx.wait()).blockNumber;
 
   console.log(
-    `"${ensSubdomain}" PluginRepo deployed at: ${pluginRepo.address} at block ${blockNumberOfDeployment}.`,
+    `"${ensSubdomain}" PluginRepo deployed at: ${pluginRepo.address} at block ${blockNumberOfDeployment}.`
   );
 
   // Store the information
@@ -78,9 +76,9 @@ async function deployRepo(
     ensSubdomain,
     network.name,
     pluginRepo.address,
-    blockNumberOfDeployment,
+    blockNumberOfDeployment
   );
 }
 
 export default func;
-func.tags = ["PluginRepo", "Deployment"];
+func.tags = ['PluginRepo', 'Deployment'];

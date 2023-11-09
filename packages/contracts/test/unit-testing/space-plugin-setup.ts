@@ -1,12 +1,12 @@
-import buildMetadata from "../../src/space-build-metadata.json";
+import buildMetadata from '../../src/space-build-metadata.json';
 import {
   DAO,
   SpacePlugin__factory,
   SpacePluginSetup,
   SpacePluginSetup__factory,
-} from "../../typechain";
-import { deployTestDao } from "../helpers/test-dao";
-import { getNamedTypesFromMetadata, Operation } from "../helpers/types";
+} from '../../typechain';
+import {deployTestDao} from '../helpers/test-dao';
+import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
 import {
   abiCoder,
   ADDRESS_ONE,
@@ -15,18 +15,18 @@ import {
   NO_CONDITION,
   SUBSPACE_PERMISSION_ID,
   UPGRADE_PLUGIN_PERMISSION_ID,
-} from "./common";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect } from "chai";
-import { ethers } from "hardhat";
+} from './common';
+import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
+import {expect} from 'chai';
+import {ethers} from 'hardhat';
 
-describe("Space Plugin Setup", function () {
+describe('Space Plugin Setup', function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let spacePluginSetup: SpacePluginSetup;
   let SpacePluginSetup: SpacePluginSetup__factory;
   let dao: DAO;
-  const defaultInitData = { contentUri: "ipfs://" };
+  const defaultInitData = {contentUri: 'ipfs://'};
 
   before(async () => {
     [alice, bob] = await ethers.getSigners();
@@ -36,16 +36,16 @@ describe("Space Plugin Setup", function () {
     spacePluginSetup = await SpacePluginSetup.deploy();
   });
 
-  describe("prepareInstallation", async () => {
-    it("returns the plugin, helpers, and permissions (no pluginUpgrader)", async () => {
+  describe('prepareInstallation', async () => {
+    it('returns the plugin, helpers, and permissions (no pluginUpgrader)', async () => {
       const initData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs,
+          buildMetadata.pluginSetup.prepareInstallation.inputs
         ),
-        [defaultInitData.contentUri, ADDRESS_ZERO, ADDRESS_ZERO],
+        [defaultInitData.contentUri, ADDRESS_ZERO, ADDRESS_ZERO]
       );
       const nonce = await ethers.provider.getTransactionCount(
-        spacePluginSetup.address,
+        spacePluginSetup.address
       );
       const anticipatedPluginAddress = ethers.utils.getContractAddress({
         from: spacePluginSetup.address,
@@ -54,10 +54,10 @@ describe("Space Plugin Setup", function () {
 
       const {
         plugin,
-        preparedSetupData: { helpers, permissions },
+        preparedSetupData: {helpers, permissions},
       } = await spacePluginSetup.callStatic.prepareInstallation(
         dao.address,
-        initData,
+        initData
       );
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
@@ -94,16 +94,16 @@ describe("Space Plugin Setup", function () {
       expect(await myPlugin.dao()).to.eq(dao.address);
     });
 
-    it("returns the plugin, helpers, and permissions (with a pluginUpgrader)", async () => {
+    it('returns the plugin, helpers, and permissions (with a pluginUpgrader)', async () => {
       const pluginUpgrader = bob.address;
       const initData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs,
+          buildMetadata.pluginSetup.prepareInstallation.inputs
         ),
-        [defaultInitData.contentUri, ADDRESS_ONE, pluginUpgrader],
+        [defaultInitData.contentUri, ADDRESS_ONE, pluginUpgrader]
       );
       const nonce = await ethers.provider.getTransactionCount(
-        spacePluginSetup.address,
+        spacePluginSetup.address
       );
       const anticipatedPluginAddress = ethers.utils.getContractAddress({
         from: spacePluginSetup.address,
@@ -112,10 +112,10 @@ describe("Space Plugin Setup", function () {
 
       const {
         plugin,
-        preparedSetupData: { helpers, permissions },
+        preparedSetupData: {helpers, permissions},
       } = await spacePluginSetup.callStatic.prepareInstallation(
         dao.address,
-        initData,
+        initData
       );
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
@@ -160,26 +160,23 @@ describe("Space Plugin Setup", function () {
     });
   });
 
-  describe("prepareUninstallation", async () => {
-    it("returns the permission changes (no pluginUpgrader)", async () => {
+  describe('prepareUninstallation', async () => {
+    it('returns the permission changes (no pluginUpgrader)', async () => {
       const plugin = await new SpacePlugin__factory(alice).deploy();
 
       const uninstallData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs,
+          buildMetadata.pluginSetup.prepareUninstallation.inputs
         ),
-        [ADDRESS_ZERO],
+        [ADDRESS_ZERO]
       );
 
-      const permissions = await spacePluginSetup.callStatic
-        .prepareUninstallation(
-          dao.address,
-          {
-            plugin: plugin.address,
-            currentHelpers: [],
-            data: uninstallData,
-          },
-        );
+      const permissions =
+        await spacePluginSetup.callStatic.prepareUninstallation(dao.address, {
+          plugin: plugin.address,
+          currentHelpers: [],
+          data: uninstallData,
+        });
 
       expect(permissions.length).to.be.equal(3);
       expect(permissions).to.deep.equal([
@@ -207,26 +204,23 @@ describe("Space Plugin Setup", function () {
       ]);
     });
 
-    it("returns the permission changes (with a pluginUpgrader)", async () => {
+    it('returns the permission changes (with a pluginUpgrader)', async () => {
       const plugin = await new SpacePlugin__factory(alice).deploy();
 
       const pluginUpgrader = bob.address;
       const uninstallData = abiCoder.encode(
         getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs,
+          buildMetadata.pluginSetup.prepareUninstallation.inputs
         ),
-        [pluginUpgrader],
+        [pluginUpgrader]
       );
 
-      const permissions = await spacePluginSetup.callStatic
-        .prepareUninstallation(
-          dao.address,
-          {
-            plugin: plugin.address,
-            currentHelpers: [],
-            data: uninstallData,
-          },
-        );
+      const permissions =
+        await spacePluginSetup.callStatic.prepareUninstallation(dao.address, {
+          plugin: plugin.address,
+          currentHelpers: [],
+          data: uninstallData,
+        });
 
       expect(permissions.length).to.be.equal(4);
       expect(permissions).to.deep.equal([

@@ -1,4 +1,4 @@
-import { ContextState, OverriddenState } from "@aragon/sdk-client-common";
+import { ContextState, OverriddenState } from '@aragon/sdk-client-common';
 
 export type SubgraphNumberListItem = {
   id: string;
@@ -26,19 +26,19 @@ export type MyPluginContextState = ContextState & {
   mainVotingPluginRepoAddress: string;
 };
 
-export type MyPluginOverriddenState =
-  & OverriddenState
-  & {
-    [key in keyof MyPluginContextState]: boolean;
-  };
+export type MyPluginOverriddenState = OverriddenState & {
+  [key in keyof MyPluginContextState]: boolean;
+};
 
 export enum ProposeMemberStep {
-  WAITING = "waiting",
-  DONE = "done",
+  WAITING = 'waiting',
+  DONE = 'done',
 }
-export type ProposeMemberStepValue = {
-  status: ProposeMemberStep.WAITING;
-  txHash: string;
-} | {
-  status: ProposeMemberStep.DONE;
-};
+export type ProposeMemberStepValue =
+  | {
+      status: ProposeMemberStep.WAITING;
+      txHash: string;
+    }
+  | {
+      status: ProposeMemberStep.DONE;
+    };

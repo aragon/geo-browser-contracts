@@ -1,31 +1,31 @@
-import { SpacePluginSetupParams } from "../../plugin-setup-params";
+import {SpacePluginSetupParams} from '../../plugin-setup-params';
 import {
   PluginRepo,
   SpacePlugin,
   SpacePlugin__factory,
   SpacePluginSetup,
   SpacePluginSetup__factory,
-} from "../../typechain";
-import { PluginSetupRefStruct } from "../../typechain/@aragon/osx/framework/dao/DAOFactory";
-import { osxContracts } from "../../utils/helpers";
-import { getPluginRepoInfo } from "../../utils/plugin-repo-info";
-import { installPlugin, uninstallPlugin } from "../helpers/setup";
-import { deployTestDao } from "../helpers/test-dao";
-import { getNamedTypesFromMetadata } from "../helpers/types";
+} from '../../typechain';
+import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
+import {osxContracts} from '../../utils/helpers';
+import {toHex} from '../../utils/ipfs';
+import {getPluginRepoInfo} from '../../utils/plugin-repo-info';
+import {installPlugin, uninstallPlugin} from '../helpers/setup';
+import {deployTestDao} from '../helpers/test-dao';
+import {ADDRESS_ZERO} from '../unit-testing/common';
+// import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
   DAO,
   PluginRepo__factory,
   PluginSetupProcessor,
   PluginSetupProcessor__factory,
-} from "@aragon/osx-ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect } from "chai";
-import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
-import { ADDRESS_ZERO } from "../unit-testing/common";
-import { toHex } from "../../utils/ipfs";
+} from '@aragon/osx-ethers';
+import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
+import {expect} from 'chai';
+import {BigNumber} from 'ethers';
+import {ethers} from 'hardhat';
 
-describe("SpacePluginSetup processing", function () {
+describe('SpacePluginSetup processing', function () {
   let alice: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -35,20 +35,20 @@ describe("SpacePluginSetup processing", function () {
   before(async () => {
     [alice] = await ethers.getSigners();
 
-    const hardhatForkNetwork = process.env.NETWORK_NAME ?? "mainnet";
+    const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 
     const pluginRepoInfo = getPluginRepoInfo(
       SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME,
-      "hardhat",
+      'hardhat'
     );
     if (!pluginRepoInfo) {
-      throw new Error("The plugin setup details are not available");
+      throw new Error('The plugin setup details are not available');
     }
 
     // PSP
     psp = PluginSetupProcessor__factory.connect(
-      osxContracts[hardhatForkNetwork]["PluginSetupProcessor"],
-      alice,
+      osxContracts[hardhatForkNetwork]['PluginSetupProcessor'],
+      alice
     );
 
     // Deploy DAO.
@@ -57,31 +57,28 @@ describe("SpacePluginSetup processing", function () {
     await dao.grant(
       dao.address,
       psp.address,
-      ethers.utils.id("ROOT_PERMISSION"),
+      ethers.utils.id('ROOT_PERMISSION')
     );
     await dao.grant(
       psp.address,
       alice.address,
-      ethers.utils.id("APPLY_INSTALLATION_PERMISSION"),
+      ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
       alice.address,
-      ethers.utils.id("APPLY_UNINSTALLATION_PERMISSION"),
+      ethers.utils.id('APPLY_UNINSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
       alice.address,
-      ethers.utils.id("APPLY_UPDATE_PERMISSION"),
+      ethers.utils.id('APPLY_UPDATE_PERMISSION')
     );
 
-    pluginRepo = PluginRepo__factory.connect(
-      pluginRepoInfo.address,
-      alice,
-    );
+    pluginRepo = PluginRepo__factory.connect(pluginRepoInfo.address, alice);
   });
 
-  context("Build 1", async () => {
+  context('Build 1', async () => {
     let setup: SpacePluginSetup;
     let pluginSetupRef: PluginSetupRefStruct;
     let plugin: SpacePlugin;
@@ -92,8 +89,8 @@ describe("SpacePluginSetup processing", function () {
 
       // Deploy setups.
       setup = SpacePluginSetup__factory.connect(
-        (await pluginRepo["getLatestVersion(uint8)"](release)).pluginSetup,
-        alice,
+        (await pluginRepo['getLatestVersion(uint8)'](release)).pluginSetup,
+        alice
       );
 
       pluginSetupRef = {
@@ -108,21 +105,21 @@ describe("SpacePluginSetup processing", function () {
     beforeEach(async () => {
       // Install build 1.
       const data = await setup.encodeInstallationParams(
-        toHex("ipfs://1234"),
+        toHex('ipfs://1234'),
         ADDRESS_ZERO,
-        pluginUpgrader,
+        pluginUpgrader
       );
       const results = await installPlugin(psp, dao, pluginSetupRef, data);
 
       plugin = SpacePlugin__factory.connect(
         results.preparedEvent.args.plugin,
-        alice,
+        alice
       );
     });
 
-    it("installs & uninstalls", async () => {
+    it('installs & uninstalls', async () => {
       expect(await plugin.implementation()).to.be.eq(
-        await setup.implementation(),
+        await setup.implementation()
       );
       expect(await plugin.dao()).to.be.eq(dao.address);
 

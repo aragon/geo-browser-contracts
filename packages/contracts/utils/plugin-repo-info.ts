@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import {existsSync, readFileSync, statSync, writeFileSync} from 'fs';
 
 type PluginRepos = {
   [k: string]: PluginRepoInfo[];
@@ -7,10 +7,10 @@ export type PluginRepoInfo = {
   ensName: string;
   address: string;
   blockNumberOfDeployment: number;
-  releases: { [k: string]: PluginRepoRelease };
+  releases: {[k: string]: PluginRepoRelease};
 };
 type PluginRepoRelease = {
-  builds: { [k: string]: PluginRepoBuild };
+  builds: {[k: string]: PluginRepoBuild};
   releaseMetadataURI: string;
 };
 export type PluginRepoBuild = {
@@ -34,15 +34,15 @@ export type PluginRepoBuild = {
 };
 
 function getFilePathFromNetwork(networkName: string): string {
-  if (["localhost", "hardhat", "coverage"].includes(networkName)) {
-    return "plugin-repo-info-dev.json";
+  if (['localhost', 'hardhat', 'coverage'].includes(networkName)) {
+    return 'plugin-repo-info-dev.json';
   }
-  return "plugin-repo-info.json";
+  return 'plugin-repo-info.json';
 }
 
 export function getPluginRepoInfo(
   repoEnsName: string,
-  networkName: string,
+  networkName: string
 ): PluginRepoInfo | null {
   const pluginReposFilePath = getFilePathFromNetwork(networkName);
 
@@ -54,18 +54,17 @@ export function getPluginRepoInfo(
   }
 
   const pluginRepos: PluginRepos = JSON.parse(
-    readFileSync(pluginReposFilePath, "utf-8"),
+    readFileSync(pluginReposFilePath, 'utf-8')
   );
   if (!pluginRepos[networkName]?.length) {
     return null;
   }
-  return pluginRepos[networkName].find((r) => r.ensName === repoEnsName) ||
-    null;
+  return pluginRepos[networkName].find(r => r.ensName === repoEnsName) || null;
 }
 
 function storePluginRepoInfo(
   pluginRepoInfo: PluginRepoInfo,
-  networkName: string,
+  networkName: string
 ) {
   const pluginReposFilePath = getFilePathFromNetwork(networkName);
 
@@ -75,9 +74,7 @@ function storePluginRepoInfo(
     existsSync(pluginReposFilePath) &&
     statSync(pluginReposFilePath).size > 1
   ) {
-    pluginRepos = JSON.parse(
-      readFileSync(pluginReposFilePath, "utf-8"),
-    );
+    pluginRepos = JSON.parse(readFileSync(pluginReposFilePath, 'utf-8'));
   } else {
     pluginRepos = {};
   }
@@ -85,8 +82,8 @@ function storePluginRepoInfo(
   if (!pluginRepos[networkName]?.length) {
     pluginRepos[networkName] = [];
   }
-  const idx = pluginRepos[networkName].findIndex((r) =>
-    r.ensName === pluginRepoInfo.ensName
+  const idx = pluginRepos[networkName].findIndex(
+    r => r.ensName === pluginRepoInfo.ensName
   );
   if (idx < 0) {
     pluginRepos[networkName].push(pluginRepoInfo);
@@ -96,7 +93,7 @@ function storePluginRepoInfo(
 
   writeFileSync(
     pluginReposFilePath,
-    JSON.stringify(pluginRepos, null, 2) + "\n",
+    JSON.stringify(pluginRepos, null, 2) + '\n'
   );
 }
 
@@ -104,12 +101,12 @@ export function addDeployedRepo(
   repoEnsName: string,
   networkName: string,
   contractAddr: string,
-  blockNumber: number,
+  blockNumber: number
 ) {
   const pluginRepoInfo = getPluginRepoInfo(repoEnsName, networkName);
   if (pluginRepoInfo !== null) {
     console.warn(
-      `Warning: Adding a deployed plugin repo over the existing ${repoEnsName}`,
+      `Warning: Adding a deployed plugin repo over the existing ${repoEnsName}`
     );
   }
 
@@ -126,8 +123,8 @@ export function addDeployedVersion(
   repoEnsName: string,
   networkName: string,
   releaseMetadataURI: string,
-  version: { release: number; build: number },
-  pluginRepoBuild: PluginRepoBuild,
+  version: {release: number; build: number},
+  pluginRepoBuild: PluginRepoBuild
 ) {
   const pluginRepoInfo = getPluginRepoInfo(repoEnsName, networkName);
   if (!pluginRepoInfo) {
@@ -150,7 +147,7 @@ export function addDeployedVersion(
 
   if (pluginRepoInfo.releases[version.release].builds[version.build]) {
     console.warn(
-      `Warning: Writing a build on top of the existing build ${version.build} or ${repoEnsName}`,
+      `Warning: Writing a build on top of the existing build ${version.build} or ${repoEnsName}`
     );
   }
   pluginRepoInfo.releases[version.release].builds[version.build] =

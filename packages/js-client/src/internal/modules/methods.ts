@@ -1,35 +1,36 @@
-import * as BUILD_METADATA from "../../../../contracts/src/build-metadata.json";
+import * as BUILD_METADATA from '../../../../contracts/src/governance-build-metadata.json';
+import {
+  MainVotingPlugin__factory,
+  MemberAccessPlugin__factory, // PersonalSpaceAdminPlugin__factory,
+  SpacePlugin__factory,
+} from '../../../../contracts/typechain';
+import { MyPluginContext } from '../../context';
 import {
   NumberListItem,
   NumbersQueryParams,
   NumbersSortBy,
   PrepareInstallationParams,
-} from "../../types";
-import {
-  MainVotingPlugin__factory,
-  MemberAccessPlugin__factory,
-  // PersonalSpaceAdminPlugin__factory,
-  SpacePlugin__factory,
-} from "../../../../contracts/typechain";
-import { QueryNumber, QueryNumbers } from "../graphql-queries";
-import { IMyPluginClientMethods } from "../interfaces";
+} from '../../types';
+import { QueryNumber, QueryNumbers } from '../graphql-queries';
+import { IMyPluginClientMethods } from '../interfaces';
 import {
   ProposeMemberStep,
   ProposeMemberStepValue,
   SubgraphNumber,
   SubgraphNumberListItem,
-} from "../types";
-import { toNumber, toNumberListItem } from "../utils";
+} from '../types';
+import { toNumber, toNumberListItem } from '../utils';
 import {
   ClientCore,
   prepareGenericInstallation,
   PrepareInstallationStepValue,
   SortDirection,
-} from "@aragon/sdk-client-common";
-import { MyPluginContext } from "../../context";
+} from '@aragon/sdk-client-common';
 
-export class MyPluginClientMethods extends ClientCore
-  implements IMyPluginClientMethods {
+export class MyPluginClientMethods
+  extends ClientCore
+  implements IMyPluginClientMethods
+{
   private spacePluginAddress: string;
   private memberAccessPluginAddress: string;
   private mainVotingPluginAddress: string;
@@ -54,7 +55,7 @@ export class MyPluginClientMethods extends ClientCore
 
   // implementation of the methods in the interface
   public async *prepareInstallation(
-    params: PrepareInstallationParams,
+    params: PrepareInstallationParams
   ): AsyncGenerator<PrepareInstallationStepValue> {
     // do any additionall custom operations here before you prepare your plugin
 
@@ -71,37 +72,37 @@ export class MyPluginClientMethods extends ClientCore
 
   async doSomething() {
     const spaceClient = new SpacePlugin__factory().attach(
-      this.spacePluginAddress,
+      this.spacePluginAddress
     );
     const memberAccessClient = new MemberAccessPlugin__factory().attach(
-      this.memberAccessPluginAddress,
+      this.memberAccessPluginAddress
     );
     const mainVotingClient = new MainVotingPlugin__factory().attach(
-      this.mainVotingPluginAddress,
+      this.mainVotingPluginAddress
     );
 
     // complex operation
     const tx1 = await memberAccessClient.proposeNewMember(
-      "ipfs://...",
-      "0x0.....",
+      'ipfs://...',
+      '0x0.....'
     );
     await tx1.wait();
 
     const tx2 = await mainVotingClient.createProposal(
-      "",
+      '',
       [],
       0,
       0,
       0,
       1,
-      false,
+      false
     );
     await tx2.wait();
   }
 
   public async getNumber(daoAddressOrEns: string): Promise<bigint> {
     const query = QueryNumber;
-    const name = "Numbers";
+    const name = 'Numbers';
     type T = { dao: SubgraphNumber };
     const { dao } = await this.graphql.request<T>({
       query,
@@ -124,7 +125,7 @@ export class MyPluginClientMethods extends ClientCore
       direction,
       sortBy,
     };
-    const name = "Numbers";
+    const name = 'Numbers';
     type T = { daos: SubgraphNumberListItem[] };
     const { daos } = await this.graphql.request<T>({
       query,
@@ -134,22 +135,22 @@ export class MyPluginClientMethods extends ClientCore
     return Promise.all(
       daos.map(async (number) => {
         return toNumberListItem(number);
-      }),
+      })
     );
   }
 
   // implementation of the methods in the interface
   public async *proposeMember(
-    memberAddress: string,
+    memberAddress: string
   ): AsyncGenerator<ProposeMemberStepValue> {
     const signer = this.web3.getSigner();
     const storageClient = MemberAccessPlugin__factory.connect(
       this.spacePluginAddress,
-      signer,
+      signer
     );
 
     // TODO: PIN metadata
-    const metadataUri = "ipfs://...";
+    const metadataUri = 'ipfs://...';
 
     const tx = await storageClient.proposeNewMember(metadataUri, memberAddress);
 

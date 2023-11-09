@@ -5,15 +5,15 @@ import {
   IMyPluginClientEncoding,
   IMyPluginClientEstimation,
   IMyPluginClientMethods,
-  SimpleStoragClientEstimation,
+  MyPluginClientEstimation,
   MyPluginClientDecoding,
   MyPluginClientEncoding,
   MyPluginClientMethods,
 } from './internal';
-import { MyPluginClientCore } from './internal/core';
+import { StandardSpaceClientCore } from './internal/core';
 
 export class MyPluginClient
-  extends MyPluginClientCore
+  extends StandardSpaceClientCore
   implements IMyPluginClient
 {
   public methods: IMyPluginClientMethods;
@@ -24,7 +24,7 @@ export class MyPluginClient
   constructor(pluginContext: MyPluginContext) {
     super(pluginContext);
     this.methods = new MyPluginClientMethods(pluginContext);
-    this.estimation = new SimpleStoragClientEstimation(pluginContext);
+    this.estimation = new MyPluginClientEstimation(pluginContext);
     this.encoding = new MyPluginClientEncoding(pluginContext);
     this.decoding = new MyPluginClientDecoding(pluginContext);
   }
