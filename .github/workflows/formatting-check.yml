@@ -31,5 +31,5 @@ jobs:
         run: 'yarn lint'
         working-directory: packages/contracts
 
-      # - name: 'Check code formatting'
-      #   run: yarn prettier:check
+      - name: 'Check code formatting'
+        run: yarn prettier:check

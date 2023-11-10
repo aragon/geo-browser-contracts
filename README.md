@@ -2,8 +2,6 @@
 
 The following project contains the plugin smart contracts providing the foundation of the Geo Browser project. See `packages/contracts` and `packages/contracts-ethers`.
 
-A template for a future JS client and a Subgraph indexer is also provided but not populated.
-
 ## Getting started
 
 ```
@@ -170,11 +168,9 @@ See `packages/contracts/typechain` for all the generated JS/TS wrappers to inter
 
 Making calls to the DAO is straightforward, however making execute arbitrary actions requires them to be encoded, stored on chain and be approved before they can be executed.
 
-To this end, the DAO has a struct called `Action { to, value, data }`, which will make the DAO call the `to` address, with `value` ether and call the given calldata (if any). To encode these functions, you can make use of the provided [JS client template](packages/js-client/src).
+To this end, the DAO has a struct called `Action { to, value, data }`, which will make the DAO call the `to` address, with `value` ether and call the given calldata (if any).
 
 It uses the generated typechain artifacts, which contain the interfaces for the available contract methods and allow to easily encode function calls into hex strings.
-
-See [packages/js-client/src/internal/modules/encoding.ts](packages/js-client/src/internal/modules/encoding.ts) and [decoding.ts](packages/js-client/src/internal/modules/decoding.ts) for a JS boilerplate.
 
 ## Adding members and editors
 
@@ -538,8 +534,6 @@ The recommended way to create a DAO is by using `@aragon/sdk-client`. It uses th
 [See an example](https://devs.aragon.org/docs/sdk/examples/client/create-dao).
 
 In the example, the code is making use of the existing JS client for [Aragon's Token Voting plugin](https://github.com/aragon/sdk/tree/develop/modules/client/src/tokenVoting). They encapsulate all the Typechain and Subgraph calls and provide a high level library.
-
-It is **recommended** to use the provided boilerplate on `packages/js-client` and adapt the existing Aragon's TokenVoting plugin to make use of the `MainVotingPlugin__factory` class.
 
 ## Plugin deployment
 

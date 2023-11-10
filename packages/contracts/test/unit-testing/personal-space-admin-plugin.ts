@@ -229,7 +229,7 @@ describe('Personal Space Admin Plugin', function () {
           .connect(alice)
           .executeProposal('0x', dummyActions, 0)
       )
-        .to.emit(personalSpaceVotingPlugin, 'Executed')
+        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
         .withArgs(0);
     });
 
@@ -258,7 +258,7 @@ describe('Personal Space Admin Plugin', function () {
           .connect(alice)
           .executeProposal('0x', actions, 0)
       )
-        .to.emit(personalSpaceVotingPlugin, 'Executed')
+        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
         .withArgs(1);
 
       await expect(
@@ -295,7 +295,7 @@ describe('Personal Space Admin Plugin', function () {
           .connect(alice)
           .executeProposal('0x', actions, 0)
       )
-        .to.emit(personalSpaceVotingPlugin, 'Executed')
+        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
         .withArgs(1);
 
       await expect(
@@ -346,7 +346,7 @@ describe('Personal Space Admin Plugin', function () {
           .connect(alice)
           .executeProposal('0x', actionsRemove, 0)
       )
-        .to.emit(personalSpaceVotingPlugin, 'Executed')
+        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
         .withArgs(2);
 
       await expect(
@@ -354,7 +354,7 @@ describe('Personal Space Admin Plugin', function () {
           .connect(alice)
           .executeProposal('0x', actionsRemove, 0)
       )
-        .to.emit(spacePlugin, 'SubspaceAccepted')
+        .to.emit(spacePlugin, 'SubspaceRemoved')
         .withArgs(ADDRESS_TWO);
     });
   });
