@@ -4,6 +4,7 @@ pragma solidity ^0.8.8;
 
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
+import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {MemberAccessPlugin} from "./MemberAccessPlugin.sol";
 import {MemberAccessExecuteCondition} from "./MemberAccessExecuteCondition.sol";
@@ -41,11 +42,9 @@ contract GovernancePluginsSetup is PluginSetup {
         // Deploy the main voting plugin
         mainVotingPlugin = createERC1967Proxy(
             mainVotingPluginImplementation,
-            abi.encodeWithSelector(
-                MainVotingPlugin.initialize.selector,
-                _dao,
-                _votingSettings,
-                _initialEditors
+            abi.encodeCall(
+                MainVotingPlugin.initialize,
+                (IDAO(_dao), _votingSettings, _initialEditors)
             )
         );
 
@@ -56,7 +55,7 @@ contract GovernancePluginsSetup is PluginSetup {
 
         address _memberAccessPlugin = createERC1967Proxy(
             memberAccessPluginImplementation,
-            abi.encodeWithSelector(MemberAccessPlugin.initialize.selector, _dao, _multisigSettings)
+            abi.encodeCall(MemberAccessPlugin.initialize, (IDAO(_dao), _multisigSettings))
         );
 
         // Condition contract (member access plugin execute)

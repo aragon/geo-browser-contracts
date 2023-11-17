@@ -17,10 +17,8 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         targetContract = _targetContract;
     }
 
-    function getSelector(bytes memory _data) public pure returns (bytes4 sig) {
-        assembly {
-            sig := mload(add(_data, 32))
-        }
+    function getSelector(bytes calldata _data) public pure returns (bytes4 selector) {
+        selector = bytes4(_data[:4]);
     }
 
     /// @notice Checks whether the current action wants to grant membership on the predefined address

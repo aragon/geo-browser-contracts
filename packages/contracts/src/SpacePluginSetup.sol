@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.8;
 
+import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {SpacePlugin} from "./SpacePlugin.sol";
@@ -31,11 +32,9 @@ contract SpacePluginSetup is PluginSetup {
         // Deploy new plugin instance
         plugin = createERC1967Proxy(
             pluginImplementation,
-            abi.encodeWithSelector(
-                SpacePlugin.initialize.selector,
-                _dao,
-                _firstBlockContentUri,
-                _predecessorAddress
+            abi.encodeCall(
+                SpacePlugin.initialize,
+                (IDAO(_dao), _firstBlockContentUri, _predecessorAddress)
             )
         );
 
