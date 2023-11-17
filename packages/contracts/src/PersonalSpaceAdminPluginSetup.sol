@@ -12,7 +12,7 @@ import {PersonalSpaceAdminPlugin} from "./PersonalSpaceAdminPlugin.sol";
 import {EDITOR_PERMISSION_ID} from "./constants.sol";
 
 /// @title PersonalSpaceAdminPluginSetup
-/// @author Aragon Association - 2022-2023
+/// @author Aragon - 2023
 /// @notice The setup contract of the `PersonalSpaceAdminPlugin` plugin.
 contract PersonalSpaceAdminPluginSetup is PluginSetup {
     using Clones for address;

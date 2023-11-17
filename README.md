@@ -47,11 +47,11 @@ The current repository provides the plugins necessary to cover two use cases:
    - Calling `approve()` makes the proposal succeed
    - Calling `reject()` cancels the proposal
 3. A succeeded proposal is executed automatically
-   - This makes the DAO call `grant()` on itself to grant the `MEMBERSHIP_PERMISSION` to the intended address
+   - This makes the DAO call `grant()` on itself to grant the `MEMBER_PERMISSION_ID` to the intended address
 
 ### Creating proposals for a space
 
-1. An editor or a wallet with the `MEMBERSHIP_PERMISSION` granted, creates a proposal
+1. An editor or a wallet with the `MEMBER_PERMISSION_ID` granted, creates a proposal
 2. Editors can vote on it for a predefined amount of time
 3. If the proposal exceeds the required quorum and support, the proposal succeeds
 4. Succeeded proposals can be executed by anyone
@@ -243,7 +243,7 @@ Inherited:
 
 ### Member Access plugin
 
-Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to grant `MEMBERSHIP_PERMISSION` to an address on the main voting plugin and Editors can approve or reject it. Once approved, the permission allows to create proposals on the other plugin.
+Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to grant `MEMBER_PERMISSION_ID` to an address on the main voting plugin and Editors can approve or reject it. Once approved, the permission allows to create proposals on the other plugin.
 
 #### Methods
 

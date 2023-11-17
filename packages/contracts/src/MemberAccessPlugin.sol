@@ -19,7 +19,7 @@ bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selec
     MemberAccessPlugin.getProposal.selector;
 
 /// @title Multisig - Release 1, Build 1
-/// @author Aragon Association - 2022-2023
+/// @author Aragon - 2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
 contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
@@ -253,11 +253,13 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _actions[0] = IDAO.Action({
             to: address(dao()),
             value: 0,
-            data: abi.encodeWithSelector(
-                PermissionManager.grant.selector, // grant()
-                address(multisigSettings.mainVotingPlugin), // where
-                _proposedMember, // who
-                MEMBER_PERMISSION_ID // permission ID
+            data: abi.encodeCall(
+                PermissionManager.grant,
+                (
+                    address(multisigSettings.mainVotingPlugin), // where
+                    _proposedMember, // who
+                    MEMBER_PERMISSION_ID // permission ID
+                )
             )
         });
 
@@ -282,11 +284,13 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _actions[0] = IDAO.Action({
             to: address(dao()),
             value: 0,
-            data: abi.encodeWithSelector(
-                PermissionManager.revoke.selector, // revoke()
-                address(multisigSettings.mainVotingPlugin), // where
-                _proposedMember, // who
-                MEMBER_PERMISSION_ID // permission ID
+            data: abi.encodeCall(
+                PermissionManager.revoke,
+                (
+                    address(multisigSettings.mainVotingPlugin), // where
+                    _proposedMember, // who
+                    MEMBER_PERMISSION_ID // permission ID
+                )
             )
         });
 
@@ -489,5 +493,5 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
     /// https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    uint256[50] private __gap;
+    uint256[47] private __gap;
 }
