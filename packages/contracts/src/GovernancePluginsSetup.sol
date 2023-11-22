@@ -6,8 +6,10 @@ import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
+import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {MemberAccessPlugin} from "./MemberAccessPlugin.sol";
 import {MemberAccessExecuteCondition} from "./MemberAccessExecuteCondition.sol";
+import {OnlyPluginUpgraderCondition} from "./OnlyPluginUpgraderCondition.sol";
 import {MainVotingPlugin} from "./MainVotingPlugin.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 
@@ -16,11 +18,13 @@ import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting
 contract GovernancePluginsSetup is PluginSetup {
     address private immutable mainVotingPluginImplementation;
     address public immutable memberAccessPluginImplementation;
+    address private immutable pluginSetupProcessor;
 
     /// @notice Thrown when the array of helpers does not have the correct size
     error InvalidHelpers(uint256 actualLength);
 
-    constructor() {
+    constructor(PluginSetupProcessor _pluginSetupProcessor) {
+        pluginSetupProcessor = address(_pluginSetupProcessor);
         mainVotingPluginImplementation = address(new MainVotingPlugin());
         memberAccessPluginImplementation = address(new MemberAccessPlugin());
     }
@@ -30,7 +34,7 @@ contract GovernancePluginsSetup is PluginSetup {
     function prepareInstallation(
         address _dao,
         bytes memory _data
-    ) external returns (address mainVotingPlugin, PreparedSetupData memory preparedSetupData) {
+    ) external returns (address _mainVotingPlugin, PreparedSetupData memory _preparedSetupData) {
         // Decode the custom installation parameters
         (
             MajorityVotingBase.VotingSettings memory _votingSettings,
@@ -40,7 +44,7 @@ contract GovernancePluginsSetup is PluginSetup {
         ) = decodeInstallationParams(_data);
 
         // Deploy the main voting plugin
-        mainVotingPlugin = createERC1967Proxy(
+        _mainVotingPlugin = createERC1967Proxy(
             mainVotingPluginImplementation,
             abi.encodeCall(
                 MainVotingPlugin.initialize,
@@ -51,7 +55,7 @@ contract GovernancePluginsSetup is PluginSetup {
         // Deploy the member access plugin
         MemberAccessPlugin.MultisigSettings memory _multisigSettings;
         _multisigSettings.proposalDuration = _memberAccessProposalDuration;
-        _multisigSettings.mainVotingPlugin = MainVotingPlugin(mainVotingPlugin);
+        _multisigSettings.mainVotingPlugin = MainVotingPlugin(_mainVotingPlugin);
 
         address _memberAccessPlugin = createERC1967Proxy(
             memberAccessPluginImplementation,
@@ -59,26 +63,28 @@ contract GovernancePluginsSetup is PluginSetup {
         );
 
         // Condition contract (member access plugin execute)
-        address conditionContract = address(new MemberAccessExecuteCondition(mainVotingPlugin));
+        address _memberAccessExecuteCondition = address(
+            new MemberAccessExecuteCondition(_mainVotingPlugin)
+        );
 
         // List the requested permissions
         PermissionLib.MultiTargetPermission[]
             memory permissions = new PermissionLib.MultiTargetPermission[](
-                _pluginUpgrader == address(0x0) ? 7 : 9
+                _pluginUpgrader == address(0x0) ? 5 : 6
             );
 
         // The main voting plugin can execute on the DAO
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _dao,
-            who: mainVotingPlugin,
+            who: _mainVotingPlugin,
             condition: PermissionLib.NO_CONDITION,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO can update the main voting plugin settings
         permissions[1] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: mainVotingPlugin,
+            where: _mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(mainVotingPluginImplementation)
@@ -87,33 +93,23 @@ contract GovernancePluginsSetup is PluginSetup {
         // The DAO can manage the list of addresses
         permissions[2] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: mainVotingPlugin,
+            where: _mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(mainVotingPluginImplementation)
                 .UPDATE_ADDRESSES_PERMISSION_ID()
         });
-        // The DAO can upgrade the main voting plugin
-        permissions[3] = PermissionLib.MultiTargetPermission({
-            operation: PermissionLib.Operation.Grant,
-            where: mainVotingPlugin,
-            who: _dao,
-            condition: PermissionLib.NO_CONDITION,
-            permissionId: MainVotingPlugin(mainVotingPluginImplementation)
-                .UPGRADE_PLUGIN_PERMISSION_ID()
-        });
 
         // The member access plugin needs to execute on the DAO
-        permissions[4] = PermissionLib.MultiTargetPermission({
+        permissions[3] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _dao,
             who: _memberAccessPlugin,
-            condition: conditionContract,
+            condition: _memberAccessExecuteCondition,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
-
         // The DAO needs to be able to update the member access plugin settings
-        permissions[5] = PermissionLib.MultiTargetPermission({
+        permissions[4] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _memberAccessPlugin,
             who: _dao,
@@ -122,39 +118,32 @@ contract GovernancePluginsSetup is PluginSetup {
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
 
-        // The DAO needs to be able to upgrade the member access plugin
-        permissions[6] = PermissionLib.MultiTargetPermission({
-            operation: PermissionLib.Operation.Grant,
-            where: _memberAccessPlugin,
-            who: _dao,
-            condition: PermissionLib.NO_CONDITION,
-            permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
-                .UPGRADE_PLUGIN_PERMISSION_ID()
-        });
+        // The DAO doesn't need APPLY_UPDATE_PERMISSION_ID on the PSP
 
-        // pluginUpgrader needs to be able to upgrade the plugins
+        // pluginUpgrader permissions
         if (_pluginUpgrader != address(0x0)) {
-            permissions[7] = PermissionLib.MultiTargetPermission({
+            // pluginUpgrader can make the DAO execute applyUpdate
+            // pluginUpgrader can make the DAO execute grant/revoke
+            address[] memory _targetPluginAddresses = new address[](2);
+            _targetPluginAddresses[0] = _mainVotingPlugin;
+            _targetPluginAddresses[1] = _memberAccessPlugin;
+            OnlyPluginUpgraderCondition _onlyPluginUpgraderCondition = new OnlyPluginUpgraderCondition(
+                    DAO(payable(_dao)),
+                    PluginSetupProcessor(pluginSetupProcessor),
+                    _targetPluginAddresses
+                );
+            permissions[5] = PermissionLib.MultiTargetPermission({
                 operation: PermissionLib.Operation.Grant,
-                where: mainVotingPlugin,
+                where: _dao,
                 who: _pluginUpgrader,
-                condition: PermissionLib.NO_CONDITION,
-                permissionId: MainVotingPlugin(mainVotingPluginImplementation)
-                    .UPGRADE_PLUGIN_PERMISSION_ID()
-            });
-            permissions[8] = PermissionLib.MultiTargetPermission({
-                operation: PermissionLib.Operation.Grant,
-                where: _memberAccessPlugin,
-                who: _pluginUpgrader,
-                condition: PermissionLib.NO_CONDITION,
-                permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
-                    .UPGRADE_PLUGIN_PERMISSION_ID()
+                condition: address(_onlyPluginUpgraderCondition),
+                permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
             });
         }
 
-        preparedSetupData.permissions = permissions;
-        preparedSetupData.helpers = new address[](1);
-        preparedSetupData.helpers[0] = _memberAccessPlugin;
+        _preparedSetupData.permissions = permissions;
+        _preparedSetupData.helpers = new address[](1);
+        _preparedSetupData.helpers[0] = _memberAccessPlugin;
     }
 
     /// @inheritdoc IPluginSetup
