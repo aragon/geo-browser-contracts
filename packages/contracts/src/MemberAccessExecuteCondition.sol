@@ -19,10 +19,23 @@ contract MemberAccessExecuteCondition is PermissionCondition {
     }
 
     function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
-        // Slices are only supported for bytes calldata
+        // Slices are only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
             selector := mload(add(_data, 32))
+        }
+    }
+
+    function decodeGrantRevokeCalldata(
+        bytes memory _data
+    ) public pure returns (bytes4 sig, address who, address where, bytes32 permissionId) {
+        // Slicing is only supported for bytes calldata, not bytes memory
+        // Bytes memory requires an assembly block
+        assembly {
+            sig := mload(add(_data, 32))
+            who := mload(add(_data, 36))
+            where := mload(add(_data, 68))
+            permissionId := mload(add(_data, 100))
         }
     }
 
@@ -35,8 +48,8 @@ contract MemberAccessExecuteCondition is PermissionCondition {
     ) external view returns (bool) {
         (_where, _who, _permissionId);
 
-        bytes4 _requestedFuncSig = getSelector(_data);
-        if (_requestedFuncSig != IDAO.execute.selector) {
+        // Is execute()?
+        if (getSelector(_data) != IDAO.execute.selector) {
             return false;
         }
 
@@ -47,18 +60,19 @@ contract MemberAccessExecuteCondition is PermissionCondition {
 
         // Check actions
         if (_actions.length != 1) return false;
-        _requestedFuncSig = getSelector(_actions[0].data);
-
-        if (
-            _requestedFuncSig != PermissionManager.grant.selector &&
-            _requestedFuncSig != PermissionManager.revoke.selector
-        ) return false;
 
         // Decode the call being requested (both have the same parameters)
-        (, address _requestedWhere, , bytes32 _requestedPermission) = abi.decode(
-            _actions[0].data,
-            (bytes4 /*funcSig*/, address /*where*/, address /*who*/, bytes32 /*perm*/)
-        );
+        (
+            bytes4 _requestedSelector,
+            address _requestedWhere,
+            ,
+            bytes32 _requestedPermission
+        ) = decodeGrantRevokeCalldata(_actions[0].data);
+
+        if (
+            _requestedSelector != PermissionManager.grant.selector &&
+            _requestedSelector != PermissionManager.revoke.selector
+        ) return false;
 
         if (_requestedWhere != targetContract) return false;
         else if (_requestedPermission != MEMBER_PERMISSION_ID) return false;
