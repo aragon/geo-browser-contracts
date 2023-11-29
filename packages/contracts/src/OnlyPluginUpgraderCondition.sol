@@ -40,6 +40,7 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
 
     function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
         // Slices are only supported for bytes calldata
+        // Bytes memory requires an assembly block
         assembly {
             selector := mload(add(_data, 32))
         }
@@ -65,31 +66,25 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         );
 
         // Check all actions
-        for (uint256 i; i < _actions.length; ) {
-            _requestedFuncSig = getSelector(_actions[i].data);
+        if (_actions.length != 3) return false;
 
-            // Can only grant/revoke UPGRADE_PLUGIN_PERMISSION_ID to the PSP on the plugins
-            if (
-                _requestedFuncSig == PermissionManager.grant.selector ||
-                _requestedFuncSig == PermissionManager.revoke.selector
-            ) {
-                if (!isValidExecuteGrantRevokeCalldata(_actions[i].data)) return false;
-                else if (_actions[i].to != dao) return false;
-            }
-            // Can only make the DAO execute applyUpdate() on the PSP
-            else if (_requestedFuncSig == PluginSetupProcessor.applyUpdate.selector) {
-                if (!isValidExecuteApplyUpdateCalldata(_actions[i].data)) return false;
-                else if (_actions[i].to != psp) return false;
-            }
-            // Not allowed
-            else {
-                return false;
-            }
+        // Action 1: GRANT UPGRADE_PLUGIN_PERMISSION_ID to the PSP on targetPlugis[]
+        _requestedFuncSig = getSelector(_actions[0].data);
+        if (_requestedFuncSig != PermissionManager.grant.selector) return false;
+        else if (_actions[0].to != dao) return false;
+        else if (!isValidExecuteGrantRevokeCalldata(_actions[0].data)) return false;
 
-            unchecked {
-                i++;
-            }
-        }
+        // Action 2: CALL PSP.applyUpdate() onto targetPlugins[]
+        _requestedFuncSig = getSelector(_actions[1].data);
+        if (_requestedFuncSig != PluginSetupProcessor.applyUpdate.selector) return false;
+        else if (_actions[1].to != psp) return false;
+        else if (!isValidExecuteApplyUpdateCalldata(_actions[1].data)) return false;
+
+        // Action 3: REVOKE UPGRADE_PLUGIN_PERMISSION_ID to the PSP on targetPlugis[]
+        _requestedFuncSig = getSelector(_actions[2].data);
+        if (_requestedFuncSig != PermissionManager.revoke.selector) return false;
+        else if (_actions[2].to != dao) return false;
+        else if (!isValidExecuteGrantRevokeCalldata(_actions[2].data)) return false;
 
         return true;
     }
@@ -99,7 +94,10 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
     function isValidExecuteGrantRevokeCalldata(bytes memory _data) private view returns (bool) {
         // Decode the call being requested
         (, address _requestedWhere, address _requestedWho, bytes32 _requestedPermission) = abi
-            .decode(_data, (bytes4, address, address, bytes32));
+            .decode(
+                _data,
+                (bytes4 /*funcSig*/, address /*where*/, address /*who*/, bytes32 /*perm*/)
+            );
 
         if (_requestedPermission != UPGRADE_PLUGIN_PERMISSION_ID) return false;
         else if (_requestedWho != psp) return false;

@@ -440,6 +440,10 @@ See `SpacePluginSetup`, `PersonalSpaceAdminPluginSetup`, `MemberAccessPluginSetu
 
 [Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
 
+### PluginSetup contracts
+
+(They need to receive the PSP Address)
+
 ### Plugin Setup install parameters
 
 In both of the cases described above, a call to `prepareInstallation()` will be made by the `PluginSetupProcessor` from OSx.
@@ -561,9 +565,29 @@ The format of these settings is defined in the `packages/contracts/src/*-build.m
 
 ## Plugin upgradeability
 
-By default, only the DAO can upgrade plugins to newer versions. This requires passing a proposal. For the 3 upgradeable plugins, their plugin setup allows to pass an optional parameter to define a plugin upgrader address.
+The first step to upgrade a plugin is calling `ThePluginSetup.prepareUpdate()`, which will register an update request on the `PluginSetupProcessor`. See [Plugin Setup install parameters](#plugin-setup-install-parameters) above.
 
-When a zero address is passed, only the DAO can call `upgradeTo()` and `upgradeToAndCall()`. When a non-zero address is passed, the desired address will be able to upgrade to whatever newer version the developer has published.
+By default, only the DAO can upgrade plugins to newer versions. This requires passing a proposal with these 3 actions:
+
+Action 1:
+
+- Grant `UPGRADE_PLUGIN_PERMISSION_ID` to the PSP on the target plugin
+
+Action 2:
+
+- Make the DAO call `PSP.applyUpdate()` with the ID generated during `prepareUpdate()`
+
+Action 3:
+
+- Revoke `UPGRADE_PLUGIN_PERMISSION_ID` to the PSP on the target plugin
+
+The address of the `PluginSetupProcessor` depends on the chain. The existing deployments [can be checked here](https://github.com/aragon/osx/blob/develop/active_contracts.json).
+
+### Plugin Upgrader
+
+For the 3 upgradeable plugins, their plugin setup allows to pass an optional parameter to define a plugin upgrader address.
+
+When a zero address is passed, only a passed proposal can make the DAO call `PSP.applyUpdate()`. When a non-zero address is passed, the desired address will be able to execute the 3 actions abover to upgrade to whatever newer version the developer has published.
 
 Every new version needs to be published to the plugin's repository.
 

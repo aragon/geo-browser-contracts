@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.17;
 
+import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionCondition} from "@aragon/osx/core/permission/PermissionCondition.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {MEMBER_PERMISSION_ID} from "./constants.sol";
@@ -17,8 +18,12 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         targetContract = _targetContract;
     }
 
-    function getSelector(bytes calldata _data) public pure returns (bytes4 selector) {
-        selector = bytes4(_data[:4]);
+    function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
+        // Slices are only supported for bytes calldata
+        // Bytes memory requires an assembly block
+        assembly {
+            selector := mload(add(_data, 32))
+        }
     }
 
     /// @notice Checks whether the current action wants to grant membership on the predefined address
@@ -31,15 +36,28 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         (_where, _who, _permissionId);
 
         bytes4 _requestedFuncSig = getSelector(_data);
+        if (_requestedFuncSig != IDAO.execute.selector) {
+            return false;
+        }
+
+        (, IDAO.Action[] memory _actions, ) = abi.decode(
+            _data[4:],
+            (bytes32, IDAO.Action[], uint256)
+        );
+
+        // Check actions
+        if (_actions.length != 1) return false;
+        _requestedFuncSig = getSelector(_actions[0].data);
+
         if (
             _requestedFuncSig != PermissionManager.grant.selector &&
             _requestedFuncSig != PermissionManager.revoke.selector
         ) return false;
 
-        // Decode the call being requested
-        (address _requestedWhere, , bytes32 _requestedPermission) = abi.decode(
-            _data[4:],
-            (address, address, bytes32)
+        // Decode the call being requested (both have the same parameters)
+        (, address _requestedWhere, , bytes32 _requestedPermission) = abi.decode(
+            _actions[0].data,
+            (bytes4 /*funcSig*/, address /*where*/, address /*who*/, bytes32 /*perm*/)
         );
 
         if (_requestedWhere != targetContract) return false;
