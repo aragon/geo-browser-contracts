@@ -36,7 +36,7 @@ contract GovernancePluginsSetup is PluginSetup {
     function prepareInstallation(
         address _dao,
         bytes memory _data
-    ) external returns (address _mainVotingPlugin, PreparedSetupData memory _preparedSetupData) {
+    ) external returns (address mainVotingPlugin, PreparedSetupData memory preparedSetupData) {
         // Decode the custom installation parameters
         (
             MajorityVotingBase.VotingSettings memory _votingSettings,
@@ -46,7 +46,7 @@ contract GovernancePluginsSetup is PluginSetup {
         ) = decodeInstallationParams(_data);
 
         // Deploy the main voting plugin
-        _mainVotingPlugin = createERC1967Proxy(
+        mainVotingPlugin = createERC1967Proxy(
             mainVotingPluginImplementation,
             abi.encodeCall(
                 MainVotingPlugin.initialize,
@@ -57,7 +57,7 @@ contract GovernancePluginsSetup is PluginSetup {
         // Deploy the member access plugin
         MemberAccessPlugin.MultisigSettings memory _multisigSettings;
         _multisigSettings.proposalDuration = _memberAccessProposalDuration;
-        _multisigSettings.mainVotingPlugin = MainVotingPlugin(_mainVotingPlugin);
+        _multisigSettings.mainVotingPlugin = MainVotingPlugin(mainVotingPlugin);
 
         address _memberAccessPlugin = createERC1967Proxy(
             memberAccessPluginImplementation,
@@ -66,7 +66,7 @@ contract GovernancePluginsSetup is PluginSetup {
 
         // Condition contract (member access plugin execute)
         address _memberAccessExecuteCondition = address(
-            new MemberAccessExecuteCondition(_mainVotingPlugin)
+            new MemberAccessExecuteCondition(mainVotingPlugin)
         );
 
         // List the requested permissions
@@ -79,14 +79,14 @@ contract GovernancePluginsSetup is PluginSetup {
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _dao,
-            who: _mainVotingPlugin,
+            who: mainVotingPlugin,
             condition: PermissionLib.NO_CONDITION,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO can update the main voting plugin settings
         permissions[1] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: _mainVotingPlugin,
+            where: mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(mainVotingPluginImplementation)
@@ -95,7 +95,7 @@ contract GovernancePluginsSetup is PluginSetup {
         // The DAO can manage the list of addresses
         permissions[2] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: _mainVotingPlugin,
+            where: mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: MainVotingPlugin(mainVotingPluginImplementation)
@@ -127,7 +127,7 @@ contract GovernancePluginsSetup is PluginSetup {
             // pluginUpgrader can make the DAO execute applyUpdate
             // pluginUpgrader can make the DAO execute grant/revoke
             address[] memory _targetPluginAddresses = new address[](2);
-            _targetPluginAddresses[0] = _mainVotingPlugin;
+            _targetPluginAddresses[0] = mainVotingPlugin;
             _targetPluginAddresses[1] = _memberAccessPlugin;
             OnlyPluginUpgraderCondition _onlyPluginUpgraderCondition = new OnlyPluginUpgraderCondition(
                     DAO(payable(_dao)),
@@ -143,9 +143,9 @@ contract GovernancePluginsSetup is PluginSetup {
             });
         }
 
-        _preparedSetupData.permissions = permissions;
-        _preparedSetupData.helpers = new address[](1);
-        _preparedSetupData.helpers[0] = _memberAccessPlugin;
+        preparedSetupData.permissions = permissions;
+        preparedSetupData.helpers = new address[](1);
+        preparedSetupData.helpers[0] = _memberAccessPlugin;
     }
 
     /// @inheritdoc IPluginSetup
