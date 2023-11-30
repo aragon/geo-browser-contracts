@@ -82,7 +82,7 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         // Slices are only supported for bytes calldata
         // Bytes memory requires an assembly block
         assembly {
-            selector := mload(add(_data, 32))
+            selector := mload(add(_data, 0x20)) // 32
         }
     }
 
@@ -92,30 +92,21 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
-            selector := mload(add(_data, 32))
-            where := mload(add(_data, 36))
-            who := mload(add(_data, 68))
-            permissionId := mload(add(_data, 100))
+            selector := mload(add(_data, 0x20)) // 32
+            where := mload(add(_data, 0x24)) // 32 + 4
+            who := mload(add(_data, 0x44)) // 32 + 4 + 32
+            permissionId := mload(add(_data, 0x64)) // 32 + 4 + 32 + 32
         }
     }
 
     function decodeApplyUpdateCalldata(
         bytes memory _data
-    )
-        public
-        pure
-        returns (
-            bytes4 selector,
-            address daoAddress,
-            PluginSetupProcessor.ApplyUpdateParams memory applyUpdateParams
-        )
-    {
+    ) public pure returns (bytes4 selector, address daoAddress) {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
-            selector := mload(add(_data, 32))
-            daoAddress := mload(add(_data, 36))
-            applyUpdateParams := mload(add(_data, 68))
+            selector := mload(add(_data, 0x20)) // 32
+            daoAddress := mload(add(_data, 0x24)) // 32 + 4
         }
     }
 
@@ -158,15 +149,11 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
     }
 
     function isValidApplyUpdateCalldata(bytes memory _data) private view returns (bool) {
-        (
-            bytes4 _selector,
-            address _dao,
-            PluginSetupProcessor.ApplyUpdateParams memory _applyParams
-        ) = decodeApplyUpdateCalldata(_data);
+        (bytes4 _selector, address _dao) = decodeApplyUpdateCalldata(_data);
 
         if (_selector != PluginSetupProcessor.applyUpdate.selector) return false;
         else if (_dao != dao) return false;
-        else if (!allowedPluginAddresses[_applyParams.plugin]) return false;
+        // else if (!allowedPluginAddresses[_applyParams.plugin]) return false;
 
         return true;
     }

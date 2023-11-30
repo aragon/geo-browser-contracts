@@ -63,7 +63,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         // Slices are only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
-            selector := mload(add(_data, 32))
+            selector := mload(add(_data, 0x20)) // 32
         }
     }
 
@@ -73,10 +73,10 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
-            sig := mload(add(_data, 32))
-            where := mload(add(_data, 36))
-            who := mload(add(_data, 68))
-            permissionId := mload(add(_data, 100))
+            sig := mload(add(_data, 0x20)) // 32
+            where := mload(add(_data, 0x24)) // 32 + 4
+            who := mload(add(_data, 0x44)) // 32 + 4 + 32
+            permissionId := mload(add(_data, 0x64)) // 32 + 4 + 32 + 32
         }
     }
 }

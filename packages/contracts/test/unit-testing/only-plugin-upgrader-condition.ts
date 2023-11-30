@@ -24,8 +24,8 @@ import {expect} from 'chai';
 import {ethers, network} from 'hardhat';
 
 const ONE_BYTES32 = '0x' + '0'.repeat(63) + '1';
-const PLUGIN_ADDR_1 = ADDRESS_ONE;
-const PLUGIN_ADDR_2 = ADDRESS_TWO;
+const ALLOWED_PLUGIN_ADDRESS_1 = ADDRESS_ONE;
+const ALLOWED_PLUGIN_ADDRESS_2 = ADDRESS_TWO;
 
 const daoInterface = DAO__factory.createInterface();
 const pspInterface = PluginSetupProcessor__factory.createInterface();
@@ -50,19 +50,19 @@ describe('Only Plugin Upgrader Condition', function () {
     onlyPluginUpgraderCondition = await factory.deploy(
       dao.address,
       pspAddress,
-      [PLUGIN_ADDR_1, PLUGIN_ADDR_2]
+      [ALLOWED_PLUGIN_ADDRESS_1, ALLOWED_PLUGIN_ADDRESS_2]
     );
 
     applyUpdateParams = {
-      plugin: PLUGIN_ADDR_1,
+      plugin: ALLOWED_PLUGIN_ADDRESS_1,
       helpersHash: ONE_BYTES32,
       initData: '0x',
       permissions: [],
       pluginSetupRef: {
-        pluginSetupRepo: ADDRESS_ONE,
+        pluginSetupRepo: ADDRESS_TWO,
         versionTag: {
-          release: 1,
-          build: 1,
+          release: 3,
+          build: 4,
         },
       },
     };
@@ -75,7 +75,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -92,7 +92,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -124,7 +124,7 @@ describe('Only Plugin Upgrader Condition', function () {
           ADDRESS_ZERO, // who
           EXECUTE_PERMISSION_ID, // permission
           daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ])
@@ -147,7 +147,7 @@ describe('Only Plugin Upgrader Condition', function () {
           ADDRESS_TWO, // who
           EXECUTE_PERMISSION_ID, // permission
           daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ])
@@ -161,7 +161,7 @@ describe('Only Plugin Upgrader Condition', function () {
           ADDRESS_ZERO, // where
           ADDRESS_ZERO, // who
           EXECUTE_PERMISSION_ID, // permission
-          daoInterface.encodeFunctionData('setDaoURI', ['ipfs://'])
+          daoInterface.encodeFunctionData('setDaoURI', ['0x'])
         )
       ).to.eq(false);
       expect(
@@ -169,7 +169,7 @@ describe('Only Plugin Upgrader Condition', function () {
           ADDRESS_ZERO, // where
           ADDRESS_ZERO, // who
           EXECUTE_PERMISSION_ID, // permission
-          daoInterface.encodeFunctionData('setMetadata', ['ipfs://'])
+          daoInterface.encodeFunctionData('setMetadata', ['0x'])
         )
       ).to.eq(false);
     });
@@ -180,7 +180,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -226,7 +226,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -257,7 +257,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -274,7 +274,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -328,7 +328,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: bob.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -345,7 +345,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -375,7 +375,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -392,7 +392,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: bob.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -423,7 +423,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -440,7 +440,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -473,7 +473,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -490,7 +490,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -520,7 +520,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -537,7 +537,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -568,7 +568,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             carol.address,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -585,7 +585,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -615,7 +615,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -632,7 +632,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             carol.address,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -663,7 +663,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             EXECUTE_PERMISSION_ID,
           ]),
@@ -680,7 +680,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -710,7 +710,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -727,7 +727,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             EDITOR_PERMISSION_ID,
           ]),
@@ -775,7 +775,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -805,7 +805,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -902,7 +902,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -919,7 +919,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -949,7 +949,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -966,7 +966,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -997,7 +997,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1014,7 +1014,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1044,7 +1044,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1061,7 +1061,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1093,7 +1093,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1110,7 +1110,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1199,7 +1199,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1216,7 +1216,7 @@ describe('Only Plugin Upgrader Condition', function () {
           to: dao.address,
           value: 0,
           data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+            ALLOWED_PLUGIN_ADDRESS_1,
             pspAddress,
             UPGRADE_PLUGIN_PERMISSION_ID,
           ]),
@@ -1239,12 +1239,12 @@ describe('Only Plugin Upgrader Condition', function () {
     it('Should decode decodeGrantRevokeCalldata properly', async () => {
       const calldataList = [
         daoInterface.encodeFunctionData('grant', [
-          PLUGIN_ADDR_1,
+          ALLOWED_PLUGIN_ADDRESS_1,
           pspAddress,
           UPGRADE_PLUGIN_PERMISSION_ID,
         ]),
         daoInterface.encodeFunctionData('revoke', [
-          PLUGIN_ADDR_2,
+          ALLOWED_PLUGIN_ADDRESS_2,
           ADDRESS_THREE,
           ROOT_PERMISSION_ID,
         ]),
@@ -1256,17 +1256,17 @@ describe('Only Plugin Upgrader Condition', function () {
           calldataList[0]
         );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
-      expect(where).to.eq(PLUGIN_ADDR_1);
+      expect(where).to.eq(ALLOWED_PLUGIN_ADDRESS_1);
       expect(who).to.eq(pspAddress);
       expect(permissionId).to.eq(UPGRADE_PLUGIN_PERMISSION_ID);
 
       // 2
       [selector, where, who, permissionId] =
         await onlyPluginUpgraderCondition.decodeGrantRevokeCalldata(
-          calldataList[2]
+          calldataList[1]
         );
-      expect(selector).to.eq(calldataList[2].slice(0, 10));
-      expect(where).to.eq(PLUGIN_ADDR_2);
+      expect(selector).to.eq(calldataList[1].slice(0, 10));
+      expect(where).to.eq(ALLOWED_PLUGIN_ADDRESS_2);
       expect(who).to.eq(ADDRESS_THREE);
       expect(permissionId).to.eq(ROOT_PERMISSION_ID);
     });
@@ -1285,22 +1285,20 @@ describe('Only Plugin Upgrader Condition', function () {
       ];
 
       // 1
-      let [selector, decodedDaoAddress, decodedParams] =
+      let [selector, decodedDaoAddress] =
         await onlyPluginUpgraderCondition.decodeApplyUpdateCalldata(
           calldataList[0]
         );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
       expect(decodedDaoAddress).to.eq(dao.address);
-      expect(decodedParams.plugin).to.eq(bob.address);
 
       // 2
-      [selector, decodedDaoAddress, decodedParams] =
+      [selector, decodedDaoAddress] =
         await onlyPluginUpgraderCondition.decodeApplyUpdateCalldata(
-          calldataList[2]
+          calldataList[1]
         );
-      expect(selector).to.eq(calldataList[2].slice(0, 10));
+      expect(selector).to.eq(calldataList[1].slice(0, 10));
       expect(decodedDaoAddress).to.eq(ADDRESS_THREE);
-      expect(decodedParams.plugin).to.eq(bob.address);
     });
   });
 });

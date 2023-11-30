@@ -486,9 +486,9 @@ describe('Member Access Condition', function () {
       // 2
       [selector, where, who, permissionId] =
         await memberAccessExecuteCondition.decodeGrantRevokeCalldata(
-          calldataList[2]
+          calldataList[1]
         );
-      expect(selector).to.eq(calldataList[2].slice(0, 10));
+      expect(selector).to.eq(calldataList[1].slice(0, 10));
       expect(where).to.eq(PLUGIN_ADDR_2);
       expect(who).to.eq(bob.address);
       expect(permissionId).to.eq(ROOT_PERMISSION_ID);
