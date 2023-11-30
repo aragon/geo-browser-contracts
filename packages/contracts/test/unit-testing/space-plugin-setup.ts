@@ -5,6 +5,7 @@ import {
   SpacePluginSetup,
   SpacePluginSetup__factory,
 } from '../../typechain';
+import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
 import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
 import {
@@ -16,10 +17,9 @@ import {
   NO_CONDITION,
   SUBSPACE_PERMISSION_ID,
 } from './common';
-import {activeContractsList} from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
-import {ethers} from 'hardhat';
+import {ethers, network} from 'hardhat';
 
 describe('Space Plugin Setup', function () {
   let alice: SignerWithAddress;
@@ -33,11 +33,7 @@ describe('Space Plugin Setup', function () {
     [alice, bob] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
-    const hardhatForkNetwork = (process.env.NETWORK_NAME ??
-      'mainnet') as keyof typeof activeContractsList;
-
-    const pspAddress =
-      activeContractsList[hardhatForkNetwork].PluginSetupProcessor;
+    const pspAddress = getPluginSetupProcessorAddress(network.name);
 
     SpacePluginSetup = new SpacePluginSetup__factory(alice);
     spacePluginSetup = await SpacePluginSetup.deploy(pspAddress);

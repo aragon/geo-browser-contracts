@@ -18,27 +18,6 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         targetContract = _targetContract;
     }
 
-    function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
-        // Slices are only supported for bytes calldata, not bytes memory
-        // Bytes memory requires an assembly block
-        assembly {
-            selector := mload(add(_data, 32))
-        }
-    }
-
-    function decodeGrantRevokeCalldata(
-        bytes memory _data
-    ) public pure returns (bytes4 sig, address who, address where, bytes32 permissionId) {
-        // Slicing is only supported for bytes calldata, not bytes memory
-        // Bytes memory requires an assembly block
-        assembly {
-            sig := mload(add(_data, 32))
-            who := mload(add(_data, 36))
-            where := mload(add(_data, 68))
-            permissionId := mload(add(_data, 100))
-        }
-    }
-
     /// @notice Checks whether the current action wants to grant membership on the predefined address
     function isGranted(
         address _where,
@@ -78,5 +57,26 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         else if (_requestedPermission != MEMBER_PERMISSION_ID) return false;
 
         return true;
+    }
+
+    function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
+        // Slices are only supported for bytes calldata, not bytes memory
+        // Bytes memory requires an assembly block
+        assembly {
+            selector := mload(add(_data, 32))
+        }
+    }
+
+    function decodeGrantRevokeCalldata(
+        bytes memory _data
+    ) public pure returns (bytes4 sig, address who, address where, bytes32 permissionId) {
+        // Slicing is only supported for bytes calldata, not bytes memory
+        // Bytes memory requires an assembly block
+        assembly {
+            sig := mload(add(_data, 32))
+            who := mload(add(_data, 36))
+            where := mload(add(_data, 68))
+            permissionId := mload(add(_data, 100))
+        }
     }
 }

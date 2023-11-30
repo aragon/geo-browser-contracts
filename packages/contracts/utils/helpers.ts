@@ -34,7 +34,7 @@ export const ERRORS = {
   ALREADY_INITIALIZED: 'Initializable: contract is already initialized',
 };
 
-export function getPluginRepoFactoryAddress(networkName: string) {
+export function getPluginRepoFactoryAddress(networkName: string): string {
   let pluginRepoFactoryAddr: string;
 
   if (
@@ -57,6 +57,32 @@ export function getPluginRepoFactoryAddress(networkName: string) {
     );
   }
   return pluginRepoFactoryAddr;
+}
+
+export function getPluginSetupProcessorAddress(networkName: string): string {
+  let pluginSetupProcessorAddr: string;
+
+  if (
+    networkName === 'localhost' ||
+    networkName === 'hardhat' ||
+    networkName === 'coverage'
+  ) {
+    const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
+
+    pluginSetupProcessorAddr =
+      osxContracts[hardhatForkNetwork].PluginSetupProcessor;
+    console.log(
+      `Using the "${hardhatForkNetwork}" PluginSetupProcessor address (${pluginSetupProcessorAddr}) for deployment testing on network "${networkName}"`
+    );
+  } else {
+    pluginSetupProcessorAddr =
+      osxContracts[networkNameMapping[networkName]].PluginSetupProcessor;
+
+    console.log(
+      `Using the ${networkNameMapping[networkName]} PluginSetupProcessor address (${pluginSetupProcessorAddr}) for deployment...`
+    );
+  }
+  return pluginSetupProcessorAddr;
 }
 
 export async function findEvent<T>(tx: ContractTransaction, eventName: string) {

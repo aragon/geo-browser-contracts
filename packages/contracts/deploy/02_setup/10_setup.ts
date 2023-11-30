@@ -3,7 +3,7 @@ import {
   PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
-import {activeContractsList} from '@aragon/osx-ethers';
+import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
@@ -12,13 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deploy} = deployments;
   const {deployer} = await getNamedAccounts();
 
-  const pspAddress =
-    activeContractsList[network.name as keyof typeof activeContractsList]
-      .PluginSetupProcessor;
-
-  console.log(
-    `\nUsing the PluginSetupProcessor address ${pspAddress} on ${network.name}`
-  );
+  const pspAddress = getPluginSetupProcessorAddress(network.name);
 
   // Space Setup
   console.log(
