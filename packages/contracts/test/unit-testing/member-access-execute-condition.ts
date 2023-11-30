@@ -5,6 +5,7 @@ import {
   MemberAccessExecuteCondition,
   MemberAccessExecuteCondition__factory,
 } from '../../typechain';
+import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
 import {
   ADDRESS_ONE,
@@ -20,13 +21,18 @@ import {hexlify} from '@ethersproject/bytes';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
 import {toUtf8Bytes} from 'ethers/lib/utils';
-import {ethers} from 'hardhat';
+import {ethers, network} from 'hardhat';
 
 const SOME_CONTRACT_ADDRESS = '0x' + '1234567890'.repeat(4);
 const ONE_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000001';
+const PLUGIN_ADDR_1 = ADDRESS_ONE;
+const PLUGIN_ADDR_2 = ADDRESS_TWO;
+const daoInterface = DAO__factory.createInterface();
 
 describe('Member Access Condition', function () {
+  const pspAddress = getPluginSetupProcessorAddress(network.name, true);
+
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
@@ -44,8 +50,6 @@ describe('Member Access Condition', function () {
   });
 
   describe('Executing grant/revoke MEMBER_PERMISSION_ID on a certain contract', () => {
-    const daoInterface = DAO__factory.createInterface();
-
     it('Should only allow executing grant and revoke', async () => {
       const actions: IDAO.ActionStruct[] = [
         {to: dao.address, value: 0, data: '0x'},
@@ -420,6 +424,74 @@ describe('Member Access Condition', function () {
           ])
         )
       ).to.eq(false);
+    });
+  });
+
+  describe('Decoders', () => {
+    it('Should decode getSelector properly', async () => {
+      const actions: IDAO.ActionStruct[] = [
+        {
+          to: dao.address,
+          value: 0,
+          data: daoInterface.encodeFunctionData('grant', [
+            PLUGIN_ADDR_1,
+            pspAddress,
+            MEMBER_PERMISSION_ID,
+          ]),
+        },
+        {
+          to: dao.address,
+          value: 0,
+          data: daoInterface.encodeFunctionData('revoke', [
+            PLUGIN_ADDR_1,
+            pspAddress,
+            MEMBER_PERMISSION_ID,
+          ]),
+        },
+      ];
+
+      expect(
+        await memberAccessExecuteCondition.getSelector(actions[0].data)
+      ).to.eq((actions[0].data as string).slice(0, 10));
+
+      expect(
+        await memberAccessExecuteCondition.getSelector(actions[1].data)
+      ).to.eq((actions[1].data as string).slice(0, 10));
+    });
+
+    it('Should decode decodeGrantRevokeCalldata properly', async () => {
+      const calldataList = [
+        daoInterface.encodeFunctionData('grant', [
+          PLUGIN_ADDR_1,
+          pspAddress,
+          MEMBER_PERMISSION_ID,
+        ]),
+        daoInterface.encodeFunctionData('revoke', [
+          PLUGIN_ADDR_2,
+          bob.address,
+          ROOT_PERMISSION_ID,
+        ]),
+      ];
+
+      // 1
+      let [selector, where, who, permissionId] =
+        await memberAccessExecuteCondition.decodeGrantRevokeCalldata(
+          calldataList[0]
+        );
+      expect(selector).to.eq(calldataList[0].slice(0, 10));
+      expect(where).to.eq(PLUGIN_ADDR_1);
+      expect(who).to.eq(pspAddress);
+      expect(permissionId).to.eq(MEMBER_PERMISSION_ID);
+
+      // 2
+      [selector, where, who, permissionId] =
+        await memberAccessExecuteCondition.decodeGrantRevokeCalldata(
+          calldataList[2]
+        );
+      expect(selector).to.eq(calldataList[2].slice(0, 10));
+      expect(where).to.eq(PLUGIN_ADDR_2);
+      expect(who).to.eq(bob.address);
+      expect(permissionId).to.eq(ROOT_PERMISSION_ID);
     });
   });
 });

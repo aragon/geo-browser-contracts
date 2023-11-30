@@ -69,13 +69,13 @@ contract MemberAccessExecuteCondition is PermissionCondition {
 
     function decodeGrantRevokeCalldata(
         bytes memory _data
-    ) public pure returns (bytes4 sig, address who, address where, bytes32 permissionId) {
+    ) public pure returns (bytes4 sig, address where, address who, bytes32 permissionId) {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
             sig := mload(add(_data, 32))
-            who := mload(add(_data, 36))
-            where := mload(add(_data, 68))
+            where := mload(add(_data, 36))
+            who := mload(add(_data, 68))
             permissionId := mload(add(_data, 100))
         }
     }

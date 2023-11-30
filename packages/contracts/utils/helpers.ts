@@ -59,7 +59,10 @@ export function getPluginRepoFactoryAddress(networkName: string): string {
   return pluginRepoFactoryAddr;
 }
 
-export function getPluginSetupProcessorAddress(networkName: string): string {
+export function getPluginSetupProcessorAddress(
+  networkName: string,
+  silent = false
+): string {
   let pluginSetupProcessorAddr: string;
 
   if (
@@ -71,16 +74,20 @@ export function getPluginSetupProcessorAddress(networkName: string): string {
 
     pluginSetupProcessorAddr =
       osxContracts[hardhatForkNetwork].PluginSetupProcessor;
-    console.log(
-      `Using the "${hardhatForkNetwork}" PluginSetupProcessor address (${pluginSetupProcessorAddr}) for deployment testing on network "${networkName}"`
-    );
+    if (!silent) {
+      console.log(
+        `Using the "${hardhatForkNetwork}" PluginSetupProcessor address (${pluginSetupProcessorAddr}) for deployment testing on network "${networkName}"`
+      );
+    }
   } else {
     pluginSetupProcessorAddr =
       osxContracts[networkNameMapping[networkName]].PluginSetupProcessor;
 
-    console.log(
-      `Using the ${networkNameMapping[networkName]} PluginSetupProcessor address (${pluginSetupProcessorAddr}) for deployment...`
-    );
+    if (!silent) {
+      console.log(
+        `Using the ${networkNameMapping[networkName]} PluginSetupProcessor address (${pluginSetupProcessorAddr}) for deployment...`
+      );
+    }
   }
   return pluginSetupProcessorAddr;
 }
