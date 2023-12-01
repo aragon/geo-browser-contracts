@@ -101,12 +101,26 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
 
     function decodeApplyUpdateCalldata(
         bytes memory _data
-    ) public pure returns (bytes4 selector, address daoAddress) {
+    ) public pure returns (bytes4 selector, address daoAddress, address targetPluginAddress) {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
-            selector := mload(add(_data, 0x20)) // 32
-            daoAddress := mload(add(_data, 0x24)) // 32 + 4
+            selector := mload(add(_data, 0x20))
+
+            let _payloadStart := add(_data, 0x24)
+            daoAddress := mload(_payloadStart)
+
+            let _paramsStructOffset := mload(add(_payloadStart, 0x20))
+
+            // Extracting the first field of the struct at offset 0
+            // struct ApplyUpdateParams {
+            //     address plugin;
+            //     PluginSetupRef pluginSetupRef;
+            //     bytes initData;
+            //     PermissionLib.MultiTargetPermission[] permissions;
+            //     bytes32 helpersHash;
+            // }
+            targetPluginAddress := mload(add(_payloadStart, _paramsStructOffset))
         }
     }
 
@@ -149,11 +163,13 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
     }
 
     function isValidApplyUpdateCalldata(bytes memory _data) private view returns (bool) {
-        (bytes4 _selector, address _dao) = decodeApplyUpdateCalldata(_data);
+        (bytes4 _selector, address _dao, address _targetPluginAddress) = decodeApplyUpdateCalldata(
+            _data
+        );
 
         if (_selector != PluginSetupProcessor.applyUpdate.selector) return false;
         else if (_dao != dao) return false;
-        // else if (!allowedPluginAddresses[_applyParams.plugin]) return false;
+        else if (!allowedPluginAddresses[_targetPluginAddress]) return false;
 
         return true;
     }

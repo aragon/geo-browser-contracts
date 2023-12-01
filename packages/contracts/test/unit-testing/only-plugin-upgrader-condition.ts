@@ -1273,6 +1273,9 @@ describe('Only Plugin Upgrader Condition', function () {
 
     it('Should decode decodeApplyUpdateCalldata properly', async () => {
       applyUpdateParams.plugin = bob.address;
+      const applyUpdateParams2 = JSON.parse(JSON.stringify(applyUpdateParams));
+      applyUpdateParams2.plugin = alice.address;
+
       const calldataList = [
         pspInterface.encodeFunctionData('applyUpdate', [
           dao.address,
@@ -1280,25 +1283,27 @@ describe('Only Plugin Upgrader Condition', function () {
         ]),
         pspInterface.encodeFunctionData('applyUpdate', [
           ADDRESS_THREE,
-          applyUpdateParams,
+          applyUpdateParams2,
         ]),
       ];
 
       // 1
-      let [selector, decodedDaoAddress] =
+      let [selector, decodedDaoAddress, pluginAddress] =
         await onlyPluginUpgraderCondition.decodeApplyUpdateCalldata(
           calldataList[0]
         );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
       expect(decodedDaoAddress).to.eq(dao.address);
+      expect(pluginAddress).to.eq(bob.address);
 
       // 2
-      [selector, decodedDaoAddress] =
+      [selector, decodedDaoAddress, pluginAddress] =
         await onlyPluginUpgraderCondition.decodeApplyUpdateCalldata(
           calldataList[1]
         );
       expect(selector).to.eq(calldataList[1].slice(0, 10));
       expect(decodedDaoAddress).to.eq(ADDRESS_THREE);
+      expect(pluginAddress).to.eq(alice.address);
     });
   });
 });
