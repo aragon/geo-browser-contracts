@@ -418,7 +418,7 @@ describe('Only Plugin Upgrader Condition', function () {
     });
 
     it('Should reject if action 2 is not executed on the PSP', async () => {
-      let actions: IDAO.ActionStruct[] = [
+      const actions: IDAO.ActionStruct[] = [
         {
           to: dao.address,
           value: 0,
