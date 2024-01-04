@@ -79,7 +79,7 @@ contract SpacePluginSetup is PluginSetup {
                     _targetPluginAddresses
                 );
             permissions[2] = PermissionLib.MultiTargetPermission({
-                operation: PermissionLib.Operation.Grant,
+                operation: PermissionLib.Operation.GrantWithCondition,
                 where: _dao,
                 who: _pluginUpgrader,
                 condition: address(_onlyPluginUpgraderCondition),

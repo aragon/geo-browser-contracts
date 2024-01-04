@@ -14,10 +14,7 @@ import {
   UpgradedEvent,
 } from '../../typechain/@aragon/osx/core/dao/DAO';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
-import {
-  UpdateAppliedEvent,
-  UpdatePreparedEvent,
-} from '../../typechain/@aragon/osx/framework/plugin/setup/PluginSetupProcessor';
+import {UpdatePreparedEvent} from '../../typechain/@aragon/osx/framework/plugin/setup/PluginSetupProcessor';
 import {
   findEvent,
   findEventTopicLog,
