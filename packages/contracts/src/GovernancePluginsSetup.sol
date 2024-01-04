@@ -104,7 +104,7 @@ contract GovernancePluginsSetup is PluginSetup {
 
         // The member access plugin needs to execute on the DAO
         permissions[3] = PermissionLib.MultiTargetPermission({
-            operation: PermissionLib.Operation.Grant,
+            operation: PermissionLib.Operation.GrantWithCondition,
             where: _dao,
             who: _memberAccessPlugin,
             condition: _memberAccessExecuteCondition,
@@ -135,7 +135,7 @@ contract GovernancePluginsSetup is PluginSetup {
                     _targetPluginAddresses
                 );
             permissions[5] = PermissionLib.MultiTargetPermission({
-                operation: PermissionLib.Operation.Grant,
+                operation: PermissionLib.Operation.GrantWithCondition,
                 where: _dao,
                 who: _pluginUpgrader,
                 condition: address(_onlyPluginUpgraderCondition),

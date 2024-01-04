@@ -139,9 +139,9 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         ) = decodeGrantRevokeCalldata(_grantData);
 
         if (_grantSelector != PermissionManager.grant.selector) return false;
+        else if (!allowedPluginAddresses[_grantWhere]) return false;
         else if (_grantWho != psp) return false;
         else if (_grantPermission != UPGRADE_PLUGIN_PERMISSION_ID) return false;
-        else if (!allowedPluginAddresses[_grantWhere]) return false;
 
         // Revoke checks
         (
@@ -152,9 +152,9 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         ) = decodeGrantRevokeCalldata(_revokeData);
 
         if (_revokeSelector != PermissionManager.revoke.selector) return false;
+        else if (!allowedPluginAddresses[_revokeWhere]) return false;
         else if (_revokeWho != psp) return false;
         else if (_revokePermission != UPGRADE_PLUGIN_PERMISSION_ID) return false;
-        else if (!allowedPluginAddresses[_revokeWhere]) return false;
 
         // Combined checks
         if (_grantWhere != _revokeWhere) return false;

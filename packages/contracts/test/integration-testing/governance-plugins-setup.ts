@@ -10,7 +10,10 @@ import {
   PluginRepo,
 } from '../../typechain';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
-import {UpdatePreparedEvent} from '../../typechain/@aragon/osx/framework/plugin/setup/PluginSetupProcessor';
+import {
+  UpdateAppliedEvent,
+  UpdatePreparedEvent,
+} from '../../typechain/@aragon/osx/framework/plugin/setup/PluginSetupProcessor';
 import {
   findEvent,
   findEventTopicLog,
@@ -186,6 +189,7 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     // Deploy DAO.
     dao = await deployTestDao(deployer);
 
+    // Permissions (build 1 install)
     await dao.grant(
       dao.address,
       psp.address,
@@ -239,18 +243,11 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     );
   });
 
-  it('Allows pluginUpgrader to call applyUpdate', async () => {
+  it('Allows pluginUpgrader to execute psp.applyUpdate()', async () => {
     const pluginSetupRef1: PluginSetupRefStruct = {
       versionTag: {
         release,
         build: 1,
-      },
-      pluginSetupRepo: pluginRepo.address,
-    };
-    const pluginSetupRef2: PluginSetupRefStruct = {
-      versionTag: {
-        release,
-        build: 2,
       },
       pluginSetupRepo: pluginRepo.address,
     };
@@ -285,6 +282,12 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     // Deploy PluginSetup build 2 (new instance, disregarding the lack of changes)
     const pSetupBuild2 = await gpsFactory.deploy(psp.address);
 
+    // Check
+    expect(await pSetupBuild1.implementation()).to.not.be.eq(
+      await pSetupBuild2.implementation(),
+      'Builds 1-2 implementation should differ'
+    );
+
     // Publish build 2
     let tx = await pluginRepo.createVersion(
       1,
@@ -292,6 +295,7 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
       toHex('build'),
       toHex('release')
     );
+    await tx.wait();
 
     // Upgrade to build 2
     tx = await psp.prepareUpdate(dao.address, {
@@ -306,7 +310,7 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
       pluginSetupRepo: pluginRepo.address,
       setupPayload: {
         currentHelpers: [memberAccessPlugin.address],
-        data: toHex(''),
+        data: '0x',
         plugin: mainVotingPlugin.address,
       },
     });
@@ -317,6 +321,24 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     if (!preparedEvent) {
       throw new Error('Failed to get UpdatePrepared event');
     }
+
+    // Should not allow to execute other than the expected 3 actions
+    await expect(dao.execute(toHex('01234123412341234123412341234123'), [], 0))
+      .to.be.reverted;
+    await expect(
+      dao
+        .connect(pluginUpgrader)
+        .execute(toHex('01234123412341234123412341234123'), [], 0)
+    ).to.be.reverted;
+    await expect(
+      dao
+        .connect(pluginUpgrader)
+        .execute(
+          toHex('01234123412341234123412341234123'),
+          [{to: dao.address, value: 0, data: '0x'}],
+          0
+        )
+    ).to.be.reverted;
 
     // Params
     const applyUpdateParams: PluginSetupProcessor.ApplyUpdateParamsStruct = {
@@ -334,8 +356,8 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     };
 
     // Execute grant + applyUpdate + revoke
-    dao.connect(pluginUpgrader).execute(
-      toHex(Date.now().toString()),
+    await dao.connect(pluginUpgrader).execute(
+      toHex('12341234123412341234123412341234'),
       [
         // Grant permission to the PSP
         {
