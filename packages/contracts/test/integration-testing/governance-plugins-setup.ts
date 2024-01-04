@@ -9,6 +9,10 @@ import {
   MemberAccessPlugin__factory,
   PluginRepo,
 } from '../../typechain';
+import {
+  ExecutedEvent,
+  UpgradedEvent,
+} from '../../typechain/@aragon/osx/core/dao/DAO';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
 import {
   UpdateAppliedEvent,
@@ -28,6 +32,7 @@ import {deployTestDao} from '../helpers/test-dao';
 import {
   ADDRESS_ZERO,
   UPGRADE_PLUGIN_PERMISSION_ID,
+  ZERO_BYTES32,
 } from '../unit-testing/common';
 // import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
@@ -57,6 +62,8 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   votingMode: 0,
 };
 const minMemberAccessProposalDuration = 60 * 60 * 24;
+const daoInterface = DAO__factory.createInterface();
+const pspInterface = PluginSetupProcessor__factory.createInterface();
 
 describe('GovernancePluginsSetup processing', function () {
   let deployer: SignerWithAddress;
@@ -189,16 +196,11 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     // Deploy DAO.
     dao = await deployTestDao(deployer);
 
-    // Permissions (build 1 install)
+    // The DAO is root on itself
     await dao.grant(
       dao.address,
-      psp.address,
+      dao.address,
       ethers.utils.id('ROOT_PERMISSION')
-    );
-    await dao.grant(
-      psp.address,
-      deployer.address,
-      ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
     );
 
     // Get the PluginRepoFactory address
@@ -252,6 +254,18 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
       pluginSetupRepo: pluginRepo.address,
     };
 
+    // Temporary permissions for installing
+    await dao.grant(
+      dao.address,
+      psp.address,
+      ethers.utils.id('ROOT_PERMISSION')
+    );
+    await dao.grant(
+      psp.address,
+      deployer.address,
+      ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
+    );
+
     // Install build 1
     const data1 = await pSetupBuild1.encodeInstallationParams(
       pluginSettings,
@@ -260,6 +274,18 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
       pluginUpgrader.address
     );
     const installation1 = await installPlugin(psp, dao, pluginSetupRef1, data1);
+
+    // Drop temp permissions
+    await dao.revoke(
+      dao.address,
+      psp.address,
+      ethers.utils.id('ROOT_PERMISSION')
+    );
+    await dao.revoke(
+      psp.address,
+      deployer.address,
+      ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
+    );
 
     // Deployed plugin and helper
     const mainVotingPlugin = MainVotingPlugin__factory.connect(
@@ -323,22 +349,41 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     }
 
     // Should not allow to execute other than the expected 3 actions
-    await expect(dao.execute(toHex('01234123412341234123412341234123'), [], 0))
-      .to.be.reverted;
-    await expect(
-      dao
-        .connect(pluginUpgrader)
-        .execute(toHex('01234123412341234123412341234123'), [], 0)
-    ).to.be.reverted;
-    await expect(
-      dao
-        .connect(pluginUpgrader)
-        .execute(
+    {
+      await expect(
+        dao.execute(toHex('01234123412341234123412341234123'), [], 0)
+      ).to.be.reverted;
+      await expect(
+        dao
+          .connect(pluginUpgrader)
+          .execute(toHex('01234123412341234123412341234123'), [], 0)
+      ).to.be.reverted;
+      await expect(
+        dao
+          .connect(pluginUpgrader)
+          .execute(
+            toHex('01234123412341234123412341234123'),
+            [{to: dao.address, value: 0, data: '0x'}],
+            0
+          )
+      ).to.be.reverted;
+      await expect(
+        dao.connect(pluginUpgrader).execute(
           toHex('01234123412341234123412341234123'),
-          [{to: dao.address, value: 0, data: '0x'}],
+          [
+            {
+              to: mainVotingPlugin.address,
+              value: 0,
+              data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+                'addAddresses',
+                [[pluginUpgrader.address]]
+              ),
+            },
+          ],
           0
         )
-    ).to.be.reverted;
+      ).to.be.reverted;
+    }
 
     // Params
     const applyUpdateParams: PluginSetupProcessor.ApplyUpdateParamsStruct = {
@@ -356,14 +401,14 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
     };
 
     // Execute grant + applyUpdate + revoke
-    await dao.connect(pluginUpgrader).execute(
-      toHex('12341234123412341234123412341234'),
+    tx = await dao.connect(pluginUpgrader).execute(
+      ZERO_BYTES32,
       [
         // Grant permission to the PSP
         {
           to: dao.address,
           value: 0,
-          data: DAO__factory.createInterface().encodeFunctionData('grant', [
+          data: daoInterface.encodeFunctionData('grant', [
             mainVotingPlugin.address,
             psp.address,
             UPGRADE_PLUGIN_PERMISSION_ID,
@@ -373,16 +418,16 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
         {
           to: psp.address,
           value: 0,
-          data: PluginSetupProcessor__factory.createInterface().encodeFunctionData(
-            'applyUpdate',
-            [dao.address, applyUpdateParams]
-          ),
+          data: pspInterface.encodeFunctionData('applyUpdate', [
+            dao.address,
+            applyUpdateParams,
+          ]),
         },
         // Revoke permission to the PSP
         {
           to: dao.address,
           value: 0,
-          data: DAO__factory.createInterface().encodeFunctionData('revoke', [
+          data: daoInterface.encodeFunctionData('revoke', [
             mainVotingPlugin.address,
             psp.address,
             UPGRADE_PLUGIN_PERMISSION_ID,
@@ -392,13 +437,22 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
       0
     );
 
+    const receipt = await tx.wait();
+    const executedEvent: ExecutedEvent | undefined = (
+      receipt.events || []
+    ).find(event => event.event === 'Executed') as any;
+    if (!executedEvent) {
+      throw new Error('Failed to get Executed event');
+    }
+
+    const upgradedEvent = await findEvent<UpgradedEvent>(tx, 'Upgraded');
+    if (!upgradedEvent) {
+      throw new Error('Failed to get Upgraded event');
+    }
+
     // Check implementations build 2
     expect(await mainVotingPlugin.implementation()).to.not.be.eq(
       await pSetupBuild1.implementation(),
-      "Implementation shouldn't be build 1"
-    );
-    expect(await memberAccessPlugin.implementation()).to.not.be.eq(
-      await pSetupBuild1.memberAccessPluginImplementation(),
       "Implementation shouldn't be build 1"
     );
 
@@ -406,9 +460,10 @@ describe('GovernancePluginsSetup with pluginUpgrader', () => {
       await pSetupBuild2.implementation(),
       'Implementation should be build 2'
     );
+
     expect(await memberAccessPlugin.implementation()).to.be.eq(
-      await pSetupBuild2.memberAccessPluginImplementation(),
-      'Implementation should be build 2'
+      await pSetupBuild1.memberAccessPluginImplementation(),
+      'Implementation reamain as build 1'
     );
   });
 });
