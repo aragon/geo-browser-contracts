@@ -31,8 +31,8 @@ import {
   PluginSetupProcessor__factory,
   PluginRepoFactory__factory,
   PluginRepoRegistry__factory,
-  DAO__factory,
   IDAO,
+  DAO__factory,
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
@@ -49,14 +49,12 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
 };
 const minMemberAccessProposalDuration = 60 * 60 * 24;
 const daoInterface = DAO__factory.createInterface();
-const pspInterface = PluginSetupProcessor__factory.createInterface();
 
 describe('Member Access Condition E2E', () => {
   let deployer: SignerWithAddress;
   let pluginUpgrader: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let carol: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
   let dao: DAO;
@@ -69,7 +67,7 @@ describe('Member Access Condition E2E', () => {
   let memberAccessPlugin: TestMemberAccessPlugin;
 
   before(async () => {
-    [deployer, pluginUpgrader, alice, bob, carol] = await ethers.getSigners();
+    [deployer, pluginUpgrader, alice, bob] = await ethers.getSigners();
 
     // Get the PluginRepoFactory address
     const pluginRepoFactoryAddr: string = getPluginRepoFactoryAddress(

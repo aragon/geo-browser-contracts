@@ -9,7 +9,6 @@ import {deployTestDao} from '../helpers/test-dao';
 import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
 import {
   abiCoder,
-  ADDRESS_ONE,
   ADDRESS_ZERO,
   EXECUTE_PERMISSION_ID,
   NO_CONDITION,
@@ -17,7 +16,6 @@ import {
   UPDATE_ADDRESSES_PERMISSION_ID,
   UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
   UPDATE_VOTING_SETTINGS_PERMISSION_ID,
-  UPGRADE_PLUGIN_PERMISSION_ID,
   VotingMode,
 } from './common';
 import {activeContractsList} from '@aragon/osx-ethers';

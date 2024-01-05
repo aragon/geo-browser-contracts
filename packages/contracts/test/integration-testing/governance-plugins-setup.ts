@@ -20,7 +20,6 @@ import {
   PluginRepo__factory,
   PluginSetupProcessor,
   PluginSetupProcessor__factory,
-  DAO__factory,
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
@@ -40,8 +39,6 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   votingMode: 0,
 };
 const minMemberAccessProposalDuration = 60 * 60 * 24;
-const daoInterface = DAO__factory.createInterface();
-const pspInterface = PluginSetupProcessor__factory.createInterface();
 
 describe('GovernancePluginsSetup processing', function () {
   let deployer: SignerWithAddress;
