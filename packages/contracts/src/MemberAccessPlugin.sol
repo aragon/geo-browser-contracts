@@ -133,7 +133,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     function initialize(
         IDAO _dao,
         MultisigSettings calldata _multisigSettings
-    ) external initializer {
+    ) external virtual initializer {
         __PluginUUPSUpgradeable_init(_dao);
 
         _updateMultisigSettings(_multisigSettings);
