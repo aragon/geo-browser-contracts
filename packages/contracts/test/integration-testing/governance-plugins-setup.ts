@@ -15,7 +15,6 @@ import {getPluginRepoInfo} from '../../utils/plugin-repo-info';
 import {installPlugin, uninstallPlugin} from '../helpers/setup';
 import {deployTestDao} from '../helpers/test-dao';
 import {ADDRESS_ZERO} from '../unit-testing/common';
-// import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
   DAO,
   PluginRepo__factory,
@@ -24,20 +23,28 @@ import {
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
-import {BigNumber} from 'ethers';
 import {ethers} from 'hardhat';
 
+const release = 1;
+const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
+const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
+  minDuration: 60 * 60 * 24,
+  minParticipation: 1,
+  supportThreshold: 1,
+  minProposerVotingPower: 0,
+  votingMode: 0,
+};
+const minMemberAccessProposalDuration = 60 * 60 * 24;
+
 describe('GovernancePluginsSetup processing', function () {
-  let alice: SignerWithAddress;
+  let deployer: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
   let dao: DAO;
   let pluginRepo: PluginRepo;
 
   before(async () => {
-    [alice] = await ethers.getSigners();
-
-    const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
+    [deployer] = await ethers.getSigners();
 
     const pluginRepoInfo = getPluginRepoInfo(
       GovernancePluginsSetupParams.PLUGIN_REPO_ENS_NAME,
@@ -50,11 +57,11 @@ describe('GovernancePluginsSetup processing', function () {
     // PSP
     psp = PluginSetupProcessor__factory.connect(
       osxContracts[hardhatForkNetwork]['PluginSetupProcessor'],
-      alice
+      deployer
     );
 
     // Deploy DAO.
-    dao = await deployTestDao(alice);
+    dao = await deployTestDao(deployer);
 
     await dao.grant(
       dao.address,
@@ -63,21 +70,21 @@ describe('GovernancePluginsSetup processing', function () {
     );
     await dao.grant(
       psp.address,
-      alice.address,
+      deployer.address,
       ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
-      alice.address,
+      deployer.address,
       ethers.utils.id('APPLY_UNINSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
-      alice.address,
+      deployer.address,
       ethers.utils.id('APPLY_UPDATE_PERMISSION')
     );
 
-    pluginRepo = PluginRepo__factory.connect(pluginRepoInfo.address, alice);
+    pluginRepo = PluginRepo__factory.connect(pluginRepoInfo.address, deployer);
   });
 
   context('Build 1', async () => {
@@ -88,49 +95,38 @@ describe('GovernancePluginsSetup processing', function () {
     const pluginUpgrader = ADDRESS_ZERO;
 
     before(async () => {
-      const release = 1;
-
       // Deploy setups.
       setup = GovernancePluginsSetup__factory.connect(
         (await pluginRepo['getLatestVersion(uint8)'](release)).pluginSetup,
-        alice
+        deployer
       );
 
       pluginSetupRef = {
         versionTag: {
-          release: BigNumber.from(release),
-          build: BigNumber.from(1),
+          release,
+          build: 1,
         },
         pluginSetupRepo: pluginRepo.address,
       };
     });
 
     beforeEach(async () => {
-      const settings: MajorityVotingBase.VotingSettingsStruct = {
-        minDuration: 60 * 60 * 24,
-        minParticipation: 1,
-        supportThreshold: 1,
-        minProposerVotingPower: 0,
-        votingMode: 0,
-      };
-      const minMemberAccessProposalDuration = 60 * 60 * 24;
-
       // Install build 1.
       const data = await setup.encodeInstallationParams(
-        settings,
-        [alice.address],
+        pluginSettings,
+        [deployer.address],
         minMemberAccessProposalDuration,
         pluginUpgrader
       );
       const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
-      const mvAddress = installation.preparedEvent.args.plugin;
-      mainVotingPlugin = MainVotingPlugin__factory.connect(mvAddress, alice);
-      const mapAddress =
-        installation.preparedEvent.args.preparedSetupData.helpers[0];
+      mainVotingPlugin = MainVotingPlugin__factory.connect(
+        installation.preparedEvent.args.plugin,
+        deployer
+      );
       memberAccessPlugin = MemberAccessPlugin__factory.connect(
-        mapAddress,
-        alice
+        installation.preparedEvent.args.preparedSetupData.helpers[0],
+        deployer
       );
     });
 

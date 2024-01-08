@@ -7,17 +7,16 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
-import {MemberAccessPlugin} from "./MemberAccessPlugin.sol";
-import {MemberAccessExecuteCondition} from "./MemberAccessExecuteCondition.sol";
-import {OnlyPluginUpgraderCondition} from "./OnlyPluginUpgraderCondition.sol";
-import {MainVotingPlugin} from "./MainVotingPlugin.sol";
+import {TestMemberAccessPlugin} from "./TestMemberAccessPlugin.sol";
+import {MemberAccessExecuteCondition} from "../MemberAccessExecuteCondition.sol";
+import {OnlyPluginUpgraderCondition} from "../OnlyPluginUpgraderCondition.sol";
+import {MainVotingPlugin} from "../MainVotingPlugin.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 
-/// @title GovernancePluginsSetup
-/// @dev Release 1, Build 1
-contract GovernancePluginsSetup is PluginSetup {
-    address private immutable mainVotingPluginImplementation;
-    address public immutable memberAccessPluginImplementation;
+// Not ideal, but to test this E2E, the contract needs to be cloned
+contract TestGovernancePluginsSetup is PluginSetup {
+    address private immutable mainVotingPluginImplementationAddr;
+    address public immutable memberAccessPluginImplementationAddr;
     address private immutable pluginSetupProcessor;
 
     /// @notice Thrown when the array of helpers does not have the correct size
@@ -27,8 +26,8 @@ contract GovernancePluginsSetup is PluginSetup {
     /// @param pluginSetupProcessorAddress The address of the PluginSetupProcessor contract deployed by Aragon on that chain
     constructor(PluginSetupProcessor pluginSetupProcessorAddress) {
         pluginSetupProcessor = address(pluginSetupProcessorAddress);
-        mainVotingPluginImplementation = address(new MainVotingPlugin());
-        memberAccessPluginImplementation = address(new MemberAccessPlugin());
+        mainVotingPluginImplementationAddr = address(new MainVotingPlugin());
+        memberAccessPluginImplementationAddr = address(new TestMemberAccessPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -47,7 +46,7 @@ contract GovernancePluginsSetup is PluginSetup {
 
         // Deploy the main voting plugin
         mainVotingPlugin = createERC1967Proxy(
-            mainVotingPluginImplementation,
+            mainVotingPluginImplementationAddr,
             abi.encodeCall(
                 MainVotingPlugin.initialize,
                 (IDAO(_dao), _votingSettings, _initialEditors)
@@ -55,13 +54,13 @@ contract GovernancePluginsSetup is PluginSetup {
         );
 
         // Deploy the member access plugin
-        MemberAccessPlugin.MultisigSettings memory _multisigSettings;
+        TestMemberAccessPlugin.MultisigSettings memory _multisigSettings;
         _multisigSettings.proposalDuration = _memberAccessProposalDuration;
         _multisigSettings.mainVotingPlugin = MainVotingPlugin(mainVotingPlugin);
 
         address _memberAccessPlugin = createERC1967Proxy(
-            memberAccessPluginImplementation,
-            abi.encodeCall(MemberAccessPlugin.initialize, (IDAO(_dao), _multisigSettings))
+            memberAccessPluginImplementation(),
+            abi.encodeCall(TestMemberAccessPlugin.initialize, (IDAO(_dao), _multisigSettings))
         );
 
         // Condition contract (member access plugin execute)
@@ -89,7 +88,7 @@ contract GovernancePluginsSetup is PluginSetup {
             where: mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: MainVotingPlugin(mainVotingPluginImplementation)
+            permissionId: MainVotingPlugin(mainVotingPluginImplementationAddr)
                 .UPDATE_VOTING_SETTINGS_PERMISSION_ID()
         });
         // The DAO can manage the list of addresses
@@ -98,7 +97,7 @@ contract GovernancePluginsSetup is PluginSetup {
             where: mainVotingPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: MainVotingPlugin(mainVotingPluginImplementation)
+            permissionId: MainVotingPlugin(mainVotingPluginImplementationAddr)
                 .UPDATE_ADDRESSES_PERMISSION_ID()
         });
 
@@ -116,7 +115,7 @@ contract GovernancePluginsSetup is PluginSetup {
             where: _memberAccessPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
+            permissionId: TestMemberAccessPlugin(_memberAccessPlugin)
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
 
@@ -181,7 +180,7 @@ contract GovernancePluginsSetup is PluginSetup {
             where: _payload.plugin,
             who: _dao,
             condition: address(0),
-            permissionId: MainVotingPlugin(mainVotingPluginImplementation)
+            permissionId: MainVotingPlugin(mainVotingPluginImplementationAddr)
                 .UPDATE_VOTING_SETTINGS_PERMISSION_ID()
         });
         // The DAO can no longer manage the list of addresses
@@ -190,7 +189,7 @@ contract GovernancePluginsSetup is PluginSetup {
             where: _payload.plugin,
             who: _dao,
             condition: address(0),
-            permissionId: MainVotingPlugin(mainVotingPluginImplementation)
+            permissionId: MainVotingPlugin(mainVotingPluginImplementationAddr)
                 .UPDATE_ADDRESSES_PERMISSION_ID()
         });
 
@@ -210,7 +209,7 @@ contract GovernancePluginsSetup is PluginSetup {
             where: _memberAccessPlugin,
             who: _dao,
             condition: address(0),
-            permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
+            permissionId: TestMemberAccessPlugin(memberAccessPluginImplementation())
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
 
@@ -228,8 +227,13 @@ contract GovernancePluginsSetup is PluginSetup {
     }
 
     /// @inheritdoc IPluginSetup
-    function implementation() external view returns (address) {
-        return mainVotingPluginImplementation;
+    function implementation() external view virtual returns (address) {
+        return mainVotingPluginImplementationAddr;
+    }
+
+    /// @notice Returns the address of the MemberAccessPlugin implementation
+    function memberAccessPluginImplementation() public view returns (address) {
+        return memberAccessPluginImplementationAddr;
     }
 
     /// @notice Encodes the given installation parameters into a byte array
