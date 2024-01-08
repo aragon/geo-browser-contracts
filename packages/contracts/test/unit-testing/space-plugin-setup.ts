@@ -137,7 +137,7 @@ describe('Space Plugin Setup', function () {
           SUBSPACE_PERMISSION_ID,
         ],
         [
-          Operation.Grant,
+          Operation.GrantWithCondition,
           dao.address,
           pluginUpgrader,
           anticipatedConditionAddress,

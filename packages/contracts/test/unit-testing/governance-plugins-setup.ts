@@ -120,7 +120,7 @@ describe('Governance Plugins Setup', function () {
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
-          Operation.Grant,
+          Operation.GrantWithCondition,
           dao.address,
           memberAccessPlugin,
           anticipatedMemberAccessConditionAddress,
@@ -226,7 +226,7 @@ describe('Governance Plugins Setup', function () {
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
-          Operation.Grant,
+          Operation.GrantWithCondition,
           dao.address,
           memberAccessPlugin,
           anticipatedMemberAccessConditionAddress,
@@ -240,7 +240,7 @@ describe('Governance Plugins Setup', function () {
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
         ],
         [
-          Operation.Grant,
+          Operation.GrantWithCondition,
           dao.address,
           pluginUpgrader,
           anticipatedOnlyPluginUpgraderConditionAddress,
