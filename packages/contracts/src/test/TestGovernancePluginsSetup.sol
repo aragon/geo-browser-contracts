@@ -147,6 +147,38 @@ contract TestGovernancePluginsSetup is PluginSetup {
         preparedSetupData.helpers[0] = _memberAccessPlugin;
     }
 
+    /// @notice WARNING: This test function is meant to revert when performed by the pluginUpgrader
+    function prepareUpdate(
+        address _dao,
+        uint16 _currentBuild,
+        SetupPayload calldata _payload
+    )
+        external
+        view
+        override
+        returns (bytes memory initData, PreparedSetupData memory preparedSetupData)
+    {
+        (_currentBuild, _payload, initData);
+        bool _requestSomeNewPermission = decodeUpdateParams(_payload.data);
+
+        if (_requestSomeNewPermission) {
+            PermissionLib.MultiTargetPermission[]
+                memory permissions = new PermissionLib.MultiTargetPermission[](1);
+
+            // This is here to make things revert
+            // when requested by pluginUpgrader
+            permissions[0] = PermissionLib.MultiTargetPermission({
+                operation: PermissionLib.Operation.Grant,
+                where: _dao,
+                who: _dao,
+                condition: PermissionLib.NO_CONDITION,
+                permissionId: DAO(payable(_dao)).SET_METADATA_PERMISSION_ID()
+            });
+
+            preparedSetupData.permissions = permissions;
+        }
+    }
+
     /// @inheritdoc IPluginSetup
     function prepareUninstallation(
         address _dao,
@@ -269,6 +301,18 @@ contract TestGovernancePluginsSetup is PluginSetup {
             _data,
             (MajorityVotingBase.VotingSettings, address[], uint64, address)
         );
+    }
+
+    /// @notice Encodes the given update parameters into a byte array
+    function encodeUpdateParams(bool _requestSomeNewPermission) public pure returns (bytes memory) {
+        return abi.encode(_requestSomeNewPermission);
+    }
+
+    /// @notice Decodes the given byte array into the original update parameters
+    function decodeUpdateParams(
+        bytes memory _data
+    ) public pure returns (bool requestSomeNewPermission) {
+        (requestSomeNewPermission) = abi.decode(_data, (bool));
     }
 
     /// @notice Encodes the given uninstallation parameters into a byte array

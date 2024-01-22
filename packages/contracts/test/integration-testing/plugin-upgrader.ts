@@ -8,6 +8,8 @@ import {
   SpacePluginSetup,
   SpacePluginSetup__factory,
   SpacePlugin__factory,
+  TestGovernancePluginsSetup,
+  TestGovernancePluginsSetup__factory,
 } from '../../typechain';
 import {
   ExecutedEvent,
@@ -68,7 +70,10 @@ describe('Plugin upgrader', () => {
 
   describe('GovernancePluginsSetup', () => {
     let pSetupBuild1: GovernancePluginsSetup;
+    let pSetupBuild2: TestGovernancePluginsSetup;
     let gpsFactory: GovernancePluginsSetup__factory;
+    let tgpsFactory: TestGovernancePluginsSetup__factory;
+    let installation1: Awaited<ReturnType<typeof installPlugin>>;
 
     before(async () => {
       [deployer, pluginUpgrader] = await ethers.getSigners();
@@ -77,16 +82,6 @@ describe('Plugin upgrader', () => {
       psp = PluginSetupProcessor__factory.connect(
         osxContracts[hardhatForkNetwork]['PluginSetupProcessor'],
         deployer
-      );
-
-      // Deploy DAO.
-      dao = await deployTestDao(deployer);
-
-      // The DAO is root on itself
-      await dao.grant(
-        dao.address,
-        dao.address,
-        ethers.utils.id('ROOT_PERMISSION')
       );
 
       // Get the PluginRepoFactory address
@@ -122,6 +117,10 @@ describe('Plugin upgrader', () => {
       gpsFactory = new GovernancePluginsSetup__factory().connect(deployer);
       pSetupBuild1 = await gpsFactory.deploy(psp.address);
 
+      // Deploy PluginSetup build 2
+      tgpsFactory = new TestGovernancePluginsSetup__factory().connect(deployer);
+      pSetupBuild2 = await tgpsFactory.deploy(psp.address);
+
       // Publish build 1
       tx = await pluginRepo.createVersion(
         1,
@@ -129,9 +128,27 @@ describe('Plugin upgrader', () => {
         toHex('build'),
         toHex('release')
       );
+      // Publish build 2
+      tx = await pluginRepo.createVersion(
+        1,
+        pSetupBuild2.address,
+        toHex('build'),
+        toHex('release')
+      );
+      await tx.wait();
     });
 
-    it('Allows pluginUpgrader to execute psp.applyUpdate()', async () => {
+    beforeEach(async () => {
+      // Deploy DAO.
+      dao = await deployTestDao(deployer);
+
+      // The DAO is root on itself
+      await dao.grant(
+        dao.address,
+        dao.address,
+        ethers.utils.id('ROOT_PERMISSION')
+      );
+
       const pluginSetupRef1: PluginSetupRefStruct = {
         versionTag: {
           release,
@@ -159,12 +176,7 @@ describe('Plugin upgrader', () => {
         minMemberAccessProposalDuration,
         pluginUpgrader.address
       );
-      const installation1 = await installPlugin(
-        psp,
-        dao,
-        pluginSetupRef1,
-        data1
-      );
+      installation1 = await installPlugin(psp, dao, pluginSetupRef1, data1);
 
       // Drop temp permissions
       await dao.revoke(
@@ -177,7 +189,9 @@ describe('Plugin upgrader', () => {
         deployer.address,
         ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
       );
+    });
 
+    it('Allows pluginUpgrader to execute psp.applyUpdate()', async () => {
       // Deployed plugin and helper
       const mainVotingPlugin = MainVotingPlugin__factory.connect(
         installation1.preparedEvent.args.plugin,
@@ -196,26 +210,15 @@ describe('Plugin upgrader', () => {
         await pSetupBuild1.memberAccessPluginImplementation()
       );
 
-      // Deploy PluginSetup build 2 (new instance, disregarding the lack of changes)
-      const pSetupBuild2 = await gpsFactory.deploy(psp.address);
-
       // Check
       expect(await pSetupBuild1.implementation()).to.not.be.eq(
         await pSetupBuild2.implementation(),
         'Builds 1-2 implementation should differ'
       );
 
-      // Publish build 2
-      let tx = await pluginRepo.createVersion(
-        1,
-        pSetupBuild2.address,
-        toHex('build'),
-        toHex('release')
-      );
-      await tx.wait();
-
       // Upgrade to build 2
-      tx = await psp.prepareUpdate(dao.address, {
+      const dat = await pSetupBuild2.encodeUpdateParams(false); // No new perms
+      let tx = await psp.prepareUpdate(dao.address, {
         currentVersionTag: {
           release: release,
           build: 1,
@@ -227,7 +230,7 @@ describe('Plugin upgrader', () => {
         pluginSetupRepo: pluginRepo.address,
         setupPayload: {
           currentHelpers: [memberAccessPlugin.address],
-          data: '0x',
+          data: dat,
           plugin: mainVotingPlugin.address,
         },
       });
@@ -354,7 +357,111 @@ describe('Plugin upgrader', () => {
 
       expect(await memberAccessPlugin.implementation()).to.be.eq(
         await pSetupBuild1.memberAccessPluginImplementation(),
-        'Implementation reamain as build 1'
+        'Implementation should remain as build 1'
+      );
+    });
+
+    it('Reverts if pluginUpgrader calling psp.applyUpdate() requests new permissions', async () => {
+      // Deployed plugin and helper
+      const mainVotingPlugin = MainVotingPlugin__factory.connect(
+        installation1.preparedEvent.args.plugin,
+        deployer
+      );
+      const memberAccessPlugin = MemberAccessPlugin__factory.connect(
+        installation1.preparedEvent.args.preparedSetupData.helpers[0],
+        deployer
+      );
+
+      // Prepare an update to build 2
+      const dat = await pSetupBuild2.encodeUpdateParams(true); // Request new perms
+      let tx = await psp.prepareUpdate(dao.address, {
+        currentVersionTag: {
+          release: release,
+          build: 1,
+        },
+        newVersionTag: {
+          release: release,
+          build: 2,
+        },
+        pluginSetupRepo: pluginRepo.address,
+        setupPayload: {
+          currentHelpers: [memberAccessPlugin.address],
+          data: dat,
+          plugin: mainVotingPlugin.address,
+        },
+      });
+      const preparedEvent = await findEvent<UpdatePreparedEvent>(
+        tx,
+        'UpdatePrepared'
+      );
+      if (!preparedEvent) {
+        throw new Error('Failed to get UpdatePrepared event');
+      }
+
+      // Params
+      const applyUpdateParams: PluginSetupProcessor.ApplyUpdateParamsStruct = {
+        plugin: mainVotingPlugin.address,
+        pluginSetupRef: {
+          pluginSetupRepo: pluginRepo.address,
+          versionTag: {
+            release,
+            build: 2,
+          },
+        },
+        initData: preparedEvent.args.initData,
+        permissions: preparedEvent.args.preparedSetupData.permissions,
+        helpersHash: hashHelpers(preparedEvent.args.preparedSetupData.helpers),
+      };
+
+      // Execute grant + applyUpdate + revoke
+      await expect(
+        dao.connect(pluginUpgrader).execute(
+          ZERO_BYTES32,
+          [
+            // Grant permission to the PSP
+            {
+              to: dao.address,
+              value: 0,
+              data: daoInterface.encodeFunctionData('grant', [
+                mainVotingPlugin.address,
+                psp.address,
+                UPGRADE_PLUGIN_PERMISSION_ID,
+              ]),
+            },
+            // Execute psp.applyUpdate() from the DAO to the plugin
+            {
+              to: psp.address,
+              value: 0,
+              data: pspInterface.encodeFunctionData('applyUpdate', [
+                dao.address,
+                applyUpdateParams,
+              ]),
+            },
+            // Revoke permission to the PSP
+            {
+              to: dao.address,
+              value: 0,
+              data: daoInterface.encodeFunctionData('revoke', [
+                mainVotingPlugin.address,
+                psp.address,
+                UPGRADE_PLUGIN_PERMISSION_ID,
+              ]),
+            },
+          ],
+          0
+        )
+        // The PSP lacking ROOT permission on the DAO should make this fail
+      ).to.revertedWithCustomError(dao, 'ActionFailed');
+
+      // Check implementations build 1
+      expect(await mainVotingPlugin.implementation()).to.be.eq(
+        await pSetupBuild1.implementation(),
+        'Implementation should be build 1'
+      );
+
+      expect(await memberAccessPlugin.implementation()).to.be.eq(
+        await pSetupBuild1.memberAccessPluginImplementation(),
+        'Implementation should remain as build 1'
       );
     });
   });
