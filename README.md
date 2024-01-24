@@ -33,6 +33,34 @@ The current repository provides the plugins necessary to cover two use cases:
    - Space plugin
    - Personal Space Admin plugin
 
+### Standard Space
+
+In standard spaces, _members_ can create proposals while _editors_ can vote whether they should pass. Proposals eventually approved can be executed by anyone and this will make the DAO call the predefined proposal actions.
+
+The most typical case will be telling the Space Plugin to emit the event of a proposal being processed.
+
+<img src="./img/std-1.svg">
+
+The Main Voting Plugin can also pass proposals that change its own settings.
+
+<img src="./img/std-2.svg">
+
+To add new members, the Member Access Plugin allows anyone to request the permission. Editors can approve or reject it.
+
+<img src="./img/std-3.svg">
+
+### Personal Space
+
+Personal spaces are a simplified version, where anyone defined as editor can immediatelly execute proposals. Typically to edit the contents of a space.
+
+<img src="./img/personal-1.svg">
+
+### Plugin Upgrader
+
+There's an optional case, where a predefined address can execute the actions to upgrade a plugin to the latest published version.
+
+<img src="./img/upgrader-1.svg">
+
 ## Global lifecycle
 
 ### Space genesis

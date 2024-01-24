@@ -28,14 +28,14 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     bytes32 public constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID =
         keccak256("UPDATE_MULTISIG_SETTINGS_PERMISSION");
 
-    /// @notice The minimum amount of approvals required for proposals created by a non-editor
-    uint16 internal constant MIN_APPROVALS_NON_EDITOR = uint16(1);
+    /// @notice The minimum total amount of approvals required for proposals created by a non-editor
+    uint16 internal constant MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR = uint16(1);
 
-    /// @notice The minimum amount of approvals required for proposals created by an editor (single)
-    uint16 internal constant MIN_APPROVALS_EDITOR_SINGLE = uint16(1);
+    /// @notice The minimum total amount of approvals required for proposals created by an editor (single)
+    uint16 internal constant MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR = uint16(1);
 
-    /// @notice The minimum amount of approvals required for proposals created by an editor (multiple)
-    uint16 internal constant MIN_APPROVALS_EDITOR_MANY = uint16(2);
+    /// @notice The minimum total amount of approvals required for proposals created by an editor (multiple)
+    uint16 internal constant MIN_APPROVALS_WHEN_CREATED_BY_EDITOR_OF_MANY = uint16(2);
 
     /// @notice A container for proposal-related information.
     /// @param executed Whether the proposal is executed or not.
@@ -223,15 +223,15 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
         if (isEditor(_msgSender())) {
             if (multisigSettings.mainVotingPlugin.addresslistLength() < 2) {
-                proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_SINGLE;
+                proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR;
             } else {
-                proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_MANY;
+                proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_EDITOR_OF_MANY;
             }
 
             // If the creator is an editor, we assume that the editor approves
             approve(proposalId, false);
         } else {
-            proposal_.parameters.minApprovals = MIN_APPROVALS_NON_EDITOR;
+            proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR;
         }
     }
 
