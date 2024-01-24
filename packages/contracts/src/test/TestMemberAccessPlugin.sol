@@ -3,7 +3,7 @@
 pragma solidity ^0.8.8;
 
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
-import {MemberAccessPlugin} from "../MemberAccessPlugin.sol";
+import {MemberAccessPlugin} from "../governance/MemberAccessPlugin.sol";
 
 /// @notice A clone of the MemberAccessPlugin contract, just to test
 contract TestMemberAccessPlugin is MemberAccessPlugin {

@@ -1,4 +1,4 @@
-import buildMetadata from '../../src/governance-build-metadata.json';
+import buildMetadata from '../../src/governance/governance-build-metadata.json';
 import {
   DAO,
   GovernancePluginsSetup,

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.8;
 
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
-import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "./constants.sol";
+import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "../constants.sol";
 
 bytes4 constant SPACE_INTERFACE_ID = SpacePlugin.initialize.selector ^
     SpacePlugin.processGeoProposal.selector ^

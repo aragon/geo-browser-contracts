@@ -8,8 +8,8 @@ import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {SpacePlugin} from "./SpacePlugin.sol";
-import {OnlyPluginUpgraderCondition} from "./OnlyPluginUpgraderCondition.sol";
-import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "./constants.sol";
+import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
+import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "../constants.sol";
 
 /// @title SpacePluginSetup
 /// @dev Release 1, Build 1

@@ -1,4 +1,4 @@
-import buildMetadata from '../../src/space-build-metadata.json';
+import buildMetadata from '../../src/space/space-build-metadata.json';
 import {
   DAO,
   SpacePlugin__factory,

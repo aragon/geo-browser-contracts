@@ -8,9 +8,9 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {TestMemberAccessPlugin} from "./TestMemberAccessPlugin.sol";
-import {MemberAccessExecuteCondition} from "../MemberAccessExecuteCondition.sol";
-import {OnlyPluginUpgraderCondition} from "../OnlyPluginUpgraderCondition.sol";
-import {MainVotingPlugin} from "../MainVotingPlugin.sol";
+import {MemberAccessExecuteCondition} from "../conditions/MemberAccessExecuteCondition.sol";
+import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
+import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
 
 // Not ideal, but to test this E2E, the contract needs to be cloned
