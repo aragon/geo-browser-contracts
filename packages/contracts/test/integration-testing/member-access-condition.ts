@@ -85,7 +85,7 @@ describe('Member Access Condition E2E', () => {
     );
 
     // Create a new PluginRepo
-    let tx = await pluginRepoFactory.createPluginRepo(
+    const tx = await pluginRepoFactory.createPluginRepo(
       'testing-governance-plugin-condition',
       deployer.address
     );

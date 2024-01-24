@@ -374,7 +374,7 @@ describe('Plugin upgrader', () => {
 
       // Prepare an update to build 2
       const dat = await pSetupBuild2.encodeUpdateParams(true); // Request new perms
-      let tx = await psp.prepareUpdate(dao.address, {
+      const tx = await psp.prepareUpdate(dao.address, {
         currentVersionTag: {
           release: release,
           build: 1,

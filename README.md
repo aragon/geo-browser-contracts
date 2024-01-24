@@ -489,7 +489,7 @@ function prepareInstallation(
 Convenience functions are provided within the plugin setup contracts:
 
 ```solidity
-// SpacePluginSetup.sol
+// governance/SpacePluginSetup.sol
 
 function encodeInstallationParams(
   string memory _firstBlockContentUri,
