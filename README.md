@@ -33,6 +33,34 @@ The current repository provides the plugins necessary to cover two use cases:
    - Space plugin
    - Personal Space Admin plugin
 
+### Standard Space
+
+In standard spaces, _members_ can create proposals while _editors_ can vote whether they should pass. Proposals eventually approved can be executed by anyone and this will make the DAO call the predefined proposal actions.
+
+The most typical case will be telling the Space Plugin to emit the event of a proposal being processed.
+
+<img src="./img/std-1.svg">
+
+The Main Voting Plugin can also pass proposals that change its own settings.
+
+<img src="./img/std-2.svg">
+
+To add new members, the Member Access Plugin allows anyone to request the permission. Editors can approve or reject it.
+
+<img src="./img/std-3.svg">
+
+### Personal Space
+
+Personal spaces are a simplified version, where anyone defined as editor can immediatelly execute proposals. Typically to edit the contents of a space.
+
+<img src="./img/personal-1.svg">
+
+### Plugin Upgrader
+
+There's an optional case, where a predefined address can execute the actions to upgrade a plugin to the latest published version.
+
+<img src="./img/upgrader-1.svg">
+
 ## Global lifecycle
 
 ### Space genesis
@@ -47,11 +75,11 @@ The current repository provides the plugins necessary to cover two use cases:
    - Calling `approve()` makes the proposal succeed
    - Calling `reject()` cancels the proposal
 3. A succeeded proposal is executed automatically
-   - This makes the DAO call `grant()` on itself to grant the `MEMBERSHIP_PERMISSION` to the intended address
+   - This makes the DAO call `grant()` on itself to grant the `MEMBER_PERMISSION_ID` to the intended address
 
 ### Creating proposals for a space
 
-1. An editor or a wallet with the `MEMBERSHIP_PERMISSION` granted, creates a proposal
+1. An editor or a wallet with the `MEMBER_PERMISSION_ID` granted, creates a proposal
 2. Editors can vote on it for a predefined amount of time
 3. If the proposal exceeds the required quorum and support, the proposal succeeds
 4. Succeeded proposals can be executed by anyone
@@ -243,7 +271,7 @@ Inherited:
 
 ### Member Access plugin
 
-Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to grant `MEMBERSHIP_PERMISSION` to an address on the main voting plugin and Editors can approve or reject it. Once approved, the permission allows to create proposals on the other plugin.
+Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to grant `MEMBER_PERMISSION_ID` to an address on the main voting plugin and Editors can approve or reject it. Once approved, the permission allows to create proposals on the other plugin.
 
 #### Methods
 
@@ -440,6 +468,10 @@ See `SpacePluginSetup`, `PersonalSpaceAdminPluginSetup`, `MemberAccessPluginSetu
 
 [Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
 
+### PluginSetup contracts
+
+(They need to receive the PSP Address)
+
 ### Plugin Setup install parameters
 
 In both of the cases described above, a call to `prepareInstallation()` will be made by the `PluginSetupProcessor` from OSx.
@@ -457,7 +489,7 @@ function prepareInstallation(
 Convenience functions are provided within the plugin setup contracts:
 
 ```solidity
-// SpacePluginSetup.sol
+// governance/SpacePluginSetup.sol
 
 function encodeInstallationParams(
   string memory _firstBlockContentUri,
@@ -561,9 +593,29 @@ The format of these settings is defined in the `packages/contracts/src/*-build.m
 
 ## Plugin upgradeability
 
-By default, only the DAO can upgrade plugins to newer versions. This requires passing a proposal. For the 3 upgradeable plugins, their plugin setup allows to pass an optional parameter to define a plugin upgrader address.
+The first step to upgrade a plugin is calling `ThePluginSetup.prepareUpdate()`, which will register an update request on the `PluginSetupProcessor`. See [Plugin Setup install parameters](#plugin-setup-install-parameters) above.
 
-When a zero address is passed, only the DAO can call `upgradeTo()` and `upgradeToAndCall()`. When a non-zero address is passed, the desired address will be able to upgrade to whatever newer version the developer has published.
+By default, only the DAO can upgrade plugins to newer versions. This requires passing a proposal with these 3 actions:
+
+Action 1:
+
+- Grant `UPGRADE_PLUGIN_PERMISSION_ID` to the PSP on the target plugin
+
+Action 2:
+
+- Make the DAO call `PSP.applyUpdate()` with the ID generated during `prepareUpdate()`
+
+Action 3:
+
+- Revoke `UPGRADE_PLUGIN_PERMISSION_ID` to the PSP on the target plugin
+
+The address of the `PluginSetupProcessor` depends on the chain. The existing deployments [can be checked here](https://github.com/aragon/osx/blob/develop/active_contracts.json).
+
+### Plugin Upgrader
+
+For the 3 upgradeable plugins, their plugin setup allows to pass an optional parameter to define a plugin upgrader address.
+
+When a zero address is passed, only a passed proposal can make the DAO call `PSP.applyUpdate()`. When a non-zero address is passed, the desired address will be able to execute the 3 actions abover to upgrade to whatever newer version the developer has published.
 
 Every new version needs to be published to the plugin's repository.
 

@@ -9,6 +9,8 @@ import {
   MainVotingPlugin__factory,
   MemberAccessPlugin,
   MemberAccessPlugin__factory,
+  MemberAccessExecuteCondition,
+  MemberAccessExecuteCondition__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from '../../typechain';
@@ -62,6 +64,7 @@ describe('Member Access Plugin', function () {
   let dave: SignerWithAddress;
   let dao: DAO;
   let memberAccessPlugin: MemberAccessPlugin;
+  let memberAccessExecuteCondition: MemberAccessExecuteCondition;
   let mainVotingPlugin: MainVotingPlugin;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -84,6 +87,11 @@ describe('Member Access Plugin', function () {
     spacePlugin = await deployWithProxy<SpacePlugin>(
       new SpacePlugin__factory(alice)
     );
+
+    memberAccessExecuteCondition =
+      await new MemberAccessExecuteCondition__factory(alice).deploy(
+        mainVotingPlugin.address
+      );
 
     // inits
     await memberAccessPlugin.initialize(dao.address, {
@@ -108,10 +116,11 @@ describe('Member Access Plugin', function () {
       MEMBER_PERMISSION_ID
     );
     // The plugin can execute on the DAO
-    await dao.grant(
+    await dao.grantWithCondition(
       dao.address,
       memberAccessPlugin.address,
-      EXECUTE_PERMISSION_ID
+      EXECUTE_PERMISSION_ID,
+      memberAccessExecuteCondition.address
     );
     // The main voting plugin can also execute on the DAO
     await dao.grant(
@@ -1143,20 +1152,16 @@ describe('Member Access Plugin', function () {
 
       await expect(dao.execute(ZERO_BYTES32, actionsWith(ADDRESS_ZERO), 0)).to
         .be.reverted;
-
       await expect(dao.execute(ZERO_BYTES32, actionsWith(ADDRESS_ONE), 0)).to.be
         .reverted;
-
       await expect(dao.execute(ZERO_BYTES32, actionsWith(ADDRESS_TWO), 0)).to.be
         .reverted;
-
       await expect(dao.execute(ZERO_BYTES32, actionsWith(bob.address), 0)).to.be
         .reverted;
 
       await expect(
         dao.execute(ZERO_BYTES32, actionsWith(memberAccessPlugin.address), 0)
       ).to.be.reverted;
-
       await expect(
         dao.execute(ZERO_BYTES32, actionsWith(mainVotingPlugin.address), 0)
       ).to.not.be.reverted;

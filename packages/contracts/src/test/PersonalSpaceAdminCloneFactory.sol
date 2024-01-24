@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import {PersonalSpaceAdminPlugin} from "../PersonalSpaceAdminPlugin.sol";
+import {PersonalSpaceAdminPlugin} from "../personal/PersonalSpaceAdminPlugin.sol";
 
 contract PersonalSpaceAdminCloneFactory {
     using Clones for address;

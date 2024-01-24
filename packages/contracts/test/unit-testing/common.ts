@@ -6,6 +6,8 @@ export const abiCoder = ethers.utils.defaultAbiCoder;
 export const EMPTY_DATA = '0x';
 export const ZERO_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000000';
+export const ONE_BYTES32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000001';
 
 export const DEPLOYER_PERMISSION_ID = ethers.utils.id('DEPLOYER_PERMISSION');
 export const EDITOR_PERMISSION_ID = ethers.utils.id('EDITOR_PERMISSION');
@@ -33,6 +35,7 @@ export const MAX_UINT64 = ethers.BigNumber.from(2).pow(64).sub(1);
 export const ADDRESS_ZERO = ethers.constants.AddressZero;
 export const ADDRESS_ONE = `0x${'0'.repeat(39)}1`;
 export const ADDRESS_TWO = `0x${'0'.repeat(39)}2`;
+export const ADDRESS_THREE = `0x${'0'.repeat(39)}3`;
 export const NO_CONDITION = ADDRESS_ZERO;
 
 export async function getTime(): Promise<number> {

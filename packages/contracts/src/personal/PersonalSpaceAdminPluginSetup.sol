@@ -9,10 +9,10 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PersonalSpaceAdminPlugin} from "./PersonalSpaceAdminPlugin.sol";
-import {EDITOR_PERMISSION_ID} from "./constants.sol";
+import {EDITOR_PERMISSION_ID} from "../constants.sol";
 
 /// @title PersonalSpaceAdminPluginSetup
-/// @author Aragon Association - 2022-2023
+/// @author Aragon - 2023
 /// @notice The setup contract of the `PersonalSpaceAdminPlugin` plugin.
 contract PersonalSpaceAdminPluginSetup is PluginSetup {
     using Clones for address;

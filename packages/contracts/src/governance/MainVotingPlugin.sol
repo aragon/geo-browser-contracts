@@ -9,7 +9,7 @@ import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
-import {MEMBER_PERMISSION_ID} from "./constants.sol";
+import {MEMBER_PERMISSION_ID} from "../constants.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
@@ -19,7 +19,7 @@ bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.sel
     MainVotingPlugin.isEditor.selector;
 
 /// @title MainVotingPlugin
-/// @author Aragon Association - 2021-2023.
+/// @author Aragon - 2023
 /// @notice The majority voting implementation using a list of member addresses.
 /// @dev This contract inherits from `MajorityVotingBase` and implements the `IMajorityVoting` interface.
 contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
@@ -274,5 +274,5 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
     /// https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }

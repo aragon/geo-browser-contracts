@@ -2,17 +2,25 @@
 
 pragma solidity ^0.8.8;
 
+import {DAO} from "@aragon/osx/core/dao/DAO.sol";
+import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
+import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {SpacePlugin} from "./SpacePlugin.sol";
-import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "./constants.sol";
+import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
+import {CONTENT_PERMISSION_ID, SUBSPACE_PERMISSION_ID} from "../constants.sol";
 
 /// @title SpacePluginSetup
 /// @dev Release 1, Build 1
 contract SpacePluginSetup is PluginSetup {
     address private immutable pluginImplementation;
+    address private immutable pluginSetupProcessor;
 
-    constructor() {
+    /// @notice Initializes the setup contract
+    /// @param pluginSetupProcessorAddress The address of the PluginSetupProcessor contract deployed by Aragon on that chain
+    constructor(PluginSetupProcessor pluginSetupProcessorAddress) {
+        pluginSetupProcessor = address(pluginSetupProcessorAddress);
         pluginImplementation = address(new SpacePlugin());
     }
 
@@ -31,17 +39,15 @@ contract SpacePluginSetup is PluginSetup {
         // Deploy new plugin instance
         plugin = createERC1967Proxy(
             pluginImplementation,
-            abi.encodeWithSelector(
-                SpacePlugin.initialize.selector,
-                _dao,
-                _firstBlockContentUri,
-                _predecessorAddress
+            abi.encodeCall(
+                SpacePlugin.initialize,
+                (IDAO(_dao), _firstBlockContentUri, _predecessorAddress)
             )
         );
 
         PermissionLib.MultiTargetPermission[]
             memory permissions = new PermissionLib.MultiTargetPermission[](
-                _pluginUpgrader == address(0x0) ? 3 : 4
+                _pluginUpgrader == address(0x0) ? 2 : 3
             );
 
         // The DAO can emit content
@@ -61,23 +67,23 @@ contract SpacePluginSetup is PluginSetup {
             permissionId: SUBSPACE_PERMISSION_ID
         });
 
-        // The DAO needs to be able to upgrade the plugin
-        permissions[2] = PermissionLib.MultiTargetPermission({
-            operation: PermissionLib.Operation.Grant,
-            where: plugin,
-            who: _dao,
-            condition: PermissionLib.NO_CONDITION,
-            permissionId: SpacePlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
-        });
-
-        // pluginUpgrader needs to be able to upgrade the plugin
+        // pluginUpgrader permissions
         if (_pluginUpgrader != address(0x0)) {
-            permissions[3] = PermissionLib.MultiTargetPermission({
-                operation: PermissionLib.Operation.Grant,
-                where: plugin,
+            // pluginUpgrader can make the DAO execute applyUpdate
+            // pluginUpgrader can make the DAO execute grant/revoke
+            address[] memory _targetPluginAddresses = new address[](2);
+            _targetPluginAddresses[0] = plugin;
+            OnlyPluginUpgraderCondition _onlyPluginUpgraderCondition = new OnlyPluginUpgraderCondition(
+                    DAO(payable(_dao)),
+                    PluginSetupProcessor(pluginSetupProcessor),
+                    _targetPluginAddresses
+                );
+            permissions[2] = PermissionLib.MultiTargetPermission({
+                operation: PermissionLib.Operation.GrantWithCondition,
+                where: _dao,
                 who: _pluginUpgrader,
-                condition: PermissionLib.NO_CONDITION,
-                permissionId: SpacePlugin(pluginImplementation).UPGRADE_PLUGIN_PERMISSION_ID()
+                condition: address(_onlyPluginUpgraderCondition),
+                permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
             });
         }
 
@@ -93,7 +99,7 @@ contract SpacePluginSetup is PluginSetup {
         address _pluginUpgrader = decodeUninstallationParams(_payload.data);
 
         permissionChanges = new PermissionLib.MultiTargetPermission[](
-            _pluginUpgrader == address(0x0) ? 3 : 4
+            _pluginUpgrader == address(0x0) ? 2 : 3
         );
 
         // The DAO can make it emit content
@@ -112,20 +118,16 @@ contract SpacePluginSetup is PluginSetup {
             condition: PermissionLib.NO_CONDITION,
             permissionId: SUBSPACE_PERMISSION_ID
         });
-        permissionChanges[2] = PermissionLib.MultiTargetPermission({
-            operation: PermissionLib.Operation.Revoke,
-            where: _payload.plugin,
-            who: _dao,
-            condition: PermissionLib.NO_CONDITION,
-            permissionId: SpacePlugin(_payload.plugin).UPGRADE_PLUGIN_PERMISSION_ID()
-        });
+
         if (_pluginUpgrader != address(0x0)) {
-            permissionChanges[3] = PermissionLib.MultiTargetPermission({
+            // pluginUpgrader can no longer make the DAO execute applyUpdate
+            // pluginUpgrader can no longer make the DAO execute grant/revoke
+            permissionChanges[2] = PermissionLib.MultiTargetPermission({
                 operation: PermissionLib.Operation.Revoke,
-                where: _payload.plugin,
+                where: _dao,
                 who: _pluginUpgrader,
-                condition: PermissionLib.NO_CONDITION,
-                permissionId: SpacePlugin(_payload.plugin).UPGRADE_PLUGIN_PERMISSION_ID()
+                condition: address(0),
+                permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
             });
         }
     }

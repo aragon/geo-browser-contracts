@@ -10,7 +10,7 @@ import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeab
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
 import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
-import {MEMBER_PERMISSION_ID} from "./constants.sol";
+import {MEMBER_PERMISSION_ID} from "../constants.sol";
 
 bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
     MemberAccessPlugin.updateMultisigSettings.selector ^
@@ -19,7 +19,7 @@ bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selec
     MemberAccessPlugin.getProposal.selector;
 
 /// @title Multisig - Release 1, Build 1
-/// @author Aragon Association - 2022-2023
+/// @author Aragon - 2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
 contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
@@ -28,14 +28,14 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     bytes32 public constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID =
         keccak256("UPDATE_MULTISIG_SETTINGS_PERMISSION");
 
-    /// @notice The minimum amount of approvals required for proposals created by a non-editor
-    uint16 internal constant MIN_APPROVALS_NON_EDITOR = uint16(1);
+    /// @notice The minimum total amount of approvals required for proposals created by a non-editor
+    uint16 internal constant MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR = uint16(1);
 
-    /// @notice The minimum amount of approvals required for proposals created by an editor (single)
-    uint16 internal constant MIN_APPROVALS_EDITOR_SINGLE = uint16(1);
+    /// @notice The minimum total amount of approvals required for proposals created by an editor (single)
+    uint16 internal constant MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR = uint16(1);
 
-    /// @notice The minimum amount of approvals required for proposals created by an editor (multiple)
-    uint16 internal constant MIN_APPROVALS_EDITOR_MANY = uint16(2);
+    /// @notice The minimum total amount of approvals required for proposals created by an editor (multiple)
+    uint16 internal constant MIN_APPROVALS_WHEN_CREATED_BY_EDITOR_OF_MANY = uint16(2);
 
     /// @notice A container for proposal-related information.
     /// @param executed Whether the proposal is executed or not.
@@ -133,7 +133,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     function initialize(
         IDAO _dao,
         MultisigSettings calldata _multisigSettings
-    ) external initializer {
+    ) external virtual initializer {
         __PluginUUPSUpgradeable_init(_dao);
 
         _updateMultisigSettings(_multisigSettings);
@@ -223,15 +223,15 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
         if (isEditor(_msgSender())) {
             if (multisigSettings.mainVotingPlugin.addresslistLength() < 2) {
-                proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_SINGLE;
+                proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR;
             } else {
-                proposal_.parameters.minApprovals = MIN_APPROVALS_EDITOR_MANY;
+                proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_EDITOR_OF_MANY;
             }
 
             // If the creator is an editor, we assume that the editor approves
             approve(proposalId, false);
         } else {
-            proposal_.parameters.minApprovals = MIN_APPROVALS_NON_EDITOR;
+            proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR;
         }
     }
 
@@ -253,11 +253,13 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _actions[0] = IDAO.Action({
             to: address(dao()),
             value: 0,
-            data: abi.encodeWithSelector(
-                PermissionManager.grant.selector, // grant()
-                address(multisigSettings.mainVotingPlugin), // where
-                _proposedMember, // who
-                MEMBER_PERMISSION_ID // permission ID
+            data: abi.encodeCall(
+                PermissionManager.grant,
+                (
+                    address(multisigSettings.mainVotingPlugin), // where
+                    _proposedMember, // who
+                    MEMBER_PERMISSION_ID // permission ID
+                )
             )
         });
 
@@ -282,11 +284,13 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _actions[0] = IDAO.Action({
             to: address(dao()),
             value: 0,
-            data: abi.encodeWithSelector(
-                PermissionManager.revoke.selector, // revoke()
-                address(multisigSettings.mainVotingPlugin), // where
-                _proposedMember, // who
-                MEMBER_PERMISSION_ID // permission ID
+            data: abi.encodeCall(
+                PermissionManager.revoke,
+                (
+                    address(multisigSettings.mainVotingPlugin), // where
+                    _proposedMember, // who
+                    MEMBER_PERMISSION_ID // permission ID
+                )
             )
         });
 
@@ -489,5 +493,5 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
     /// https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    uint256[50] private __gap;
+    uint256[47] private __gap;
 }

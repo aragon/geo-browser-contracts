@@ -1,9 +1,9 @@
-import governanceBuildMetadata from './src/governance-build-metadata.json';
-import governanceReleaseMetadata from './src/governance-release-metadata.json';
-import personalSpaceAdminBuildMetadata from './src/personal-space-admin-build-metadata.json';
-import personalSpaceAdminReleaseMetadata from './src/personal-space-admin-release-metadata.json';
-import spaceBuildMetadata from './src/space-build-metadata.json';
-import spaceReleaseMetadata from './src/space-release-metadata.json';
+import governanceBuildMetadata from './src/governance/governance-build-metadata.json';
+import governanceReleaseMetadata from './src/governance/governance-release-metadata.json';
+import personalSpaceAdminBuildMetadata from './src/personal/personal-space-admin-build-metadata.json';
+import personalSpaceAdminReleaseMetadata from './src/personal/personal-space-admin-release-metadata.json';
+import spaceBuildMetadata from './src/space/space-build-metadata.json';
+import spaceReleaseMetadata from './src/space/space-release-metadata.json';
 
 export const SpacePluginSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: 'geo-browser-space',

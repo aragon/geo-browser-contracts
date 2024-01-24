@@ -1,4 +1,4 @@
-import buildMetadata from '../../src/governance-build-metadata.json';
+import buildMetadata from '../../src/governance/governance-build-metadata.json';
 import {
   DAO,
   GovernancePluginsSetup,
@@ -9,7 +9,6 @@ import {deployTestDao} from '../helpers/test-dao';
 import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
 import {
   abiCoder,
-  ADDRESS_ONE,
   ADDRESS_ZERO,
   EXECUTE_PERMISSION_ID,
   NO_CONDITION,
@@ -17,9 +16,9 @@ import {
   UPDATE_ADDRESSES_PERMISSION_ID,
   UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
   UPDATE_VOTING_SETTINGS_PERMISSION_ID,
-  UPGRADE_PLUGIN_PERMISSION_ID,
   VotingMode,
 } from './common';
+import {activeContractsList} from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
@@ -34,9 +33,14 @@ describe('Governance Plugins Setup', function () {
     [alice, bob] = await ethers.getSigners();
     dao = await deployTestDao(alice);
 
+    const hardhatForkNetwork = (process.env.NETWORK_NAME ??
+      'mainnet') as keyof typeof activeContractsList;
+    const pspAddress =
+      activeContractsList[hardhatForkNetwork].PluginSetupProcessor;
+
     governancePluginsSetup = await new GovernancePluginsSetup__factory(
       alice
-    ).deploy();
+    ).deploy(pspAddress);
   });
 
   describe('prepareInstallation', async () => {
@@ -74,12 +78,11 @@ describe('Governance Plugins Setup', function () {
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedConditionPluginAddress = ethers.utils.getContractAddress(
-        {
+      const anticipatedMemberAccessConditionAddress =
+        ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 2,
-        }
-      );
+        });
 
       const {
         mainVotingPlugin,
@@ -93,7 +96,7 @@ describe('Governance Plugins Setup', function () {
       const [memberAccessPlugin] = helpers;
       expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
 
-      expect(permissions.length).to.be.equal(7);
+      expect(permissions.length).to.be.equal(5);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
@@ -117,17 +120,10 @@ describe('Governance Plugins Setup', function () {
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
-          Operation.Grant,
-          mainVotingPlugin,
-          dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Grant,
+          Operation.GrantWithCondition,
           dao.address,
           memberAccessPlugin,
-          anticipatedConditionPluginAddress,
+          anticipatedMemberAccessConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [
@@ -136,13 +132,6 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
-        ],
-        [
-          Operation.Grant,
-          memberAccessPlugin,
-          dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
         ],
       ]);
 
@@ -190,12 +179,16 @@ describe('Governance Plugins Setup', function () {
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedConditionPluginAddress = ethers.utils.getContractAddress(
-        {
+      const anticipatedMemberAccessConditionAddress =
+        ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 2,
-        }
-      );
+        });
+      const anticipatedOnlyPluginUpgraderConditionAddress =
+        ethers.utils.getContractAddress({
+          from: governancePluginsSetup.address,
+          nonce: nonce + 3,
+        });
 
       const {
         mainVotingPlugin,
@@ -209,7 +202,7 @@ describe('Governance Plugins Setup', function () {
       const [memberAccessPlugin] = helpers;
       expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
 
-      expect(permissions.length).to.be.equal(9);
+      expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
@@ -233,17 +226,10 @@ describe('Governance Plugins Setup', function () {
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
-          Operation.Grant,
-          mainVotingPlugin,
-          dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Grant,
+          Operation.GrantWithCondition,
           dao.address,
           memberAccessPlugin,
-          anticipatedConditionPluginAddress,
+          anticipatedMemberAccessConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [
@@ -254,25 +240,11 @@ describe('Governance Plugins Setup', function () {
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
         ],
         [
-          Operation.Grant,
-          memberAccessPlugin,
+          Operation.GrantWithCondition,
           dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Grant,
-          mainVotingPlugin,
           pluginUpgrader,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Grant,
-          memberAccessPlugin,
-          pluginUpgrader,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
+          anticipatedOnlyPluginUpgraderConditionAddress,
+          EXECUTE_PERMISSION_ID,
         ],
       ]);
 
@@ -313,7 +285,7 @@ describe('Governance Plugins Setup', function () {
           }
         );
 
-      expect(permissions.length).to.be.equal(7);
+      expect(permissions.length).to.be.equal(5);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
@@ -338,13 +310,6 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Revoke,
-          mainVotingPlugin.address,
-          dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Revoke,
           dao.address,
           memberAccessPlugin.address,
           NO_CONDITION,
@@ -356,13 +321,6 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
-        ],
-        [
-          Operation.Revoke,
-          memberAccessPlugin.address,
-          dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
         ],
       ]);
     });
@@ -392,7 +350,7 @@ describe('Governance Plugins Setup', function () {
           }
         );
 
-      expect(permissions.length).to.be.equal(9);
+      expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
@@ -417,13 +375,6 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Revoke,
-          mainVotingPlugin.address,
-          dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Revoke,
           dao.address,
           memberAccessPlugin.address,
           NO_CONDITION,
@@ -438,24 +389,10 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
           dao.address,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Revoke,
-          mainVotingPlugin.address,
           pluginUpgrader,
           NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ],
-        [
-          Operation.Revoke,
-          memberAccessPlugin.address,
-          pluginUpgrader,
-          NO_CONDITION,
-          UPGRADE_PLUGIN_PERMISSION_ID,
+          EXECUTE_PERMISSION_ID,
         ],
       ]);
     });

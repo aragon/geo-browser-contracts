@@ -5,10 +5,10 @@ import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/mat
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {PluginCloneable} from "@aragon/osx/core/plugin/PluginCloneable.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
-import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "./constants.sol";
+import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
 
 /// @title PersonalSpaceAdminPlugin
-/// @author Aragon Association - 2022-2023
+/// @author Aragon - 2023
 /// @notice The admin governance plugin giving execution permission on the DAO to a single address.
 contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;

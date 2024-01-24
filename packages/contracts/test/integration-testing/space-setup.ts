@@ -26,14 +26,14 @@ import {BigNumber} from 'ethers';
 import {ethers} from 'hardhat';
 
 describe('SpacePluginSetup processing', function () {
-  let alice: SignerWithAddress;
+  let deployer: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
   let dao: DAO;
   let pluginRepo: PluginRepo;
 
   before(async () => {
-    [alice] = await ethers.getSigners();
+    [deployer] = await ethers.getSigners();
 
     const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 
@@ -48,11 +48,11 @@ describe('SpacePluginSetup processing', function () {
     // PSP
     psp = PluginSetupProcessor__factory.connect(
       osxContracts[hardhatForkNetwork]['PluginSetupProcessor'],
-      alice
+      deployer
     );
 
     // Deploy DAO.
-    dao = await deployTestDao(alice);
+    dao = await deployTestDao(deployer);
 
     await dao.grant(
       dao.address,
@@ -61,21 +61,21 @@ describe('SpacePluginSetup processing', function () {
     );
     await dao.grant(
       psp.address,
-      alice.address,
+      deployer.address,
       ethers.utils.id('APPLY_INSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
-      alice.address,
+      deployer.address,
       ethers.utils.id('APPLY_UNINSTALLATION_PERMISSION')
     );
     await dao.grant(
       psp.address,
-      alice.address,
+      deployer.address,
       ethers.utils.id('APPLY_UPDATE_PERMISSION')
     );
 
-    pluginRepo = PluginRepo__factory.connect(pluginRepoInfo.address, alice);
+    pluginRepo = PluginRepo__factory.connect(pluginRepoInfo.address, deployer);
   });
 
   context('Build 1', async () => {
@@ -90,7 +90,7 @@ describe('SpacePluginSetup processing', function () {
       // Deploy setups.
       setup = SpacePluginSetup__factory.connect(
         (await pluginRepo['getLatestVersion(uint8)'](release)).pluginSetup,
-        alice
+        deployer
       );
 
       pluginSetupRef = {
@@ -113,7 +113,7 @@ describe('SpacePluginSetup processing', function () {
 
       plugin = SpacePlugin__factory.connect(
         results.preparedEvent.args.plugin,
-        alice
+        deployer
       );
     });
 

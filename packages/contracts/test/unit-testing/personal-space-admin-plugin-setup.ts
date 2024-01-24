@@ -1,4 +1,4 @@
-import metadata from '../../src/personal-space-admin-build-metadata.json';
+import metadata from '../../src/personal/personal-space-admin-build-metadata.json';
 import {
   PersonalSpaceAdminPlugin__factory,
   PersonalSpaceAdminPluginSetup,
