@@ -11,7 +11,7 @@ import {TestMemberAccessPlugin} from "./TestMemberAccessPlugin.sol";
 import {MemberAccessExecuteCondition} from "../conditions/MemberAccessExecuteCondition.sol";
 import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
 import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
-import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
+import {MajorityVotingBase} from "../governance/base/MajorityVotingBase.sol";
 
 // Not ideal, but to test this E2E, the contract needs to be cloned
 contract TestGovernancePluginsSetup is PluginSetup {

@@ -11,7 +11,7 @@ import {MemberAccessPlugin} from "./MemberAccessPlugin.sol";
 import {MemberAccessExecuteCondition} from "../conditions/MemberAccessExecuteCondition.sol";
 import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
 import {MainVotingPlugin} from "./MainVotingPlugin.sol";
-import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
+import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 
 /// @title GovernancePluginsSetup
 /// @dev Release 1, Build 1

@@ -8,9 +8,8 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
-import {IMultisig} from "@aragon/osx/plugins/governance/multisig/IMultisig.sol";
+import {IMultisig} from "./base/IMultisig.sol";
 import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
-import {MEMBER_PERMISSION_ID} from "../constants.sol";
 
 bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
     MemberAccessPlugin.updateMultisigSettings.selector ^
@@ -151,20 +150,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             super.supportsInterface(_interfaceId);
     }
 
-    /// @notice This function is kept for compatibility with the multisig base class, but will not produce any effect.
-    function addAddresses(
-        address[] calldata
-    ) external view auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
-        revert AddresslistDisabled();
-    }
-
-    /// @notice This function is kept for compatibility with the multisig base class, but will not produce any effect.
-    function removeAddresses(
-        address[] calldata
-    ) external view auth(UPDATE_MULTISIG_SETTINGS_PERMISSION_ID) {
-        revert AddresslistDisabled();
-    }
-
     /// @notice Updates the plugin settings.
     /// @param _multisigSettings The new settings.
     function updateMultisigSettings(
@@ -229,7 +214,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             }
 
             // If the creator is an editor, we assume that the editor approves
-            approve(proposalId, false);
+            approve(proposalId);
         } else {
             proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR;
         }
@@ -251,16 +236,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
         _actions[0] = IDAO.Action({
-            to: address(dao()),
+            to: address(multisigSettings.mainVotingPlugin),
             value: 0,
-            data: abi.encodeCall(
-                PermissionManager.grant,
-                (
-                    address(multisigSettings.mainVotingPlugin), // where
-                    _proposedMember, // who
-                    MEMBER_PERMISSION_ID // permission ID
-                )
-            )
+            data: abi.encodeCall(MainVotingPlugin.addSpaceMember, (_proposedMember))
         });
 
         return createProposal(_metadata, _actions);
@@ -282,16 +260,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
         _actions[0] = IDAO.Action({
-            to: address(dao()),
+            to: address(multisigSettings.mainVotingPlugin),
             value: 0,
-            data: abi.encodeCall(
-                PermissionManager.revoke,
-                (
-                    address(multisigSettings.mainVotingPlugin), // where
-                    _proposedMember, // who
-                    MEMBER_PERMISSION_ID // permission ID
-                )
-            )
+            data: abi.encodeCall(MainVotingPlugin.removeSpaceMember, (_proposedMember))
         });
 
         return createProposal(_metadata, _actions);
@@ -299,7 +270,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
     /// @inheritdoc IMultisig
     /// @dev The second parameter is left empty to keep compatibility with the existing multisig interface
-    function approve(uint256 _proposalId, bool) public {
+    function approve(uint256 _proposalId) public {
         address sender = _msgSender();
         if (!_canApprove(_proposalId, sender)) {
             revert ApprovalCastForbidden(_proposalId, sender);
@@ -393,14 +364,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @notice Returns whether the given address holds membership permission on the main voting plugin
     function isMember(address _account) public view returns (bool) {
         // Does the address hold the member or editor permission on the main voting plugin?
-        return
-            isEditor(_account) ||
-            dao().hasPermission(
-                address(multisigSettings.mainVotingPlugin),
-                _account,
-                MEMBER_PERMISSION_ID,
-                bytes("")
-            );
+        return multisigSettings.mainVotingPlugin.isMember(_account);
     }
 
     /// @notice Returns whether the given address holds editor permission on the main voting plugin

@@ -8,8 +8,7 @@ import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
 import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
-import {MajorityVotingBase} from "@aragon/osx/plugins/governance/majority-voting/MajorityVotingBase.sol";
-import {MEMBER_PERMISSION_ID} from "../constants.sol";
+import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
@@ -29,7 +28,11 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
     bytes32 public constant UPDATE_ADDRESSES_PERMISSION_ID =
         keccak256("UPDATE_ADDRESSES_PERMISSION");
 
+    /// @notice Who created each proposal
     mapping(uint256 => address) internal proposalCreators;
+
+    /// @notice Whether an address is considered as a space member (not editor)
+    mapping(address => bool) internal members;
 
     /// @notice Emitted when the creator cancels a proposal
     event ProposalCanceled(uint256 proposalId);
@@ -42,6 +45,12 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
 
     /// @notice Raised when a wallet who is not an editor or a member attempts to do something
     error NotAMember(address caller);
+
+    /// @notice Raised when an address is defined as a space member
+    event NewSpaceMember(address account);
+
+    /// @notice Raised when an address is removed as a space member
+    event RemovedSpaceMember(address account);
 
     /// @notice Raised when someone who didn't create a proposal attempts to cancel it
     error OnlyCreatorCanCancel();
@@ -82,28 +91,47 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
             super.supportsInterface(_interfaceId);
     }
 
-    /// @notice Adds new members to the address list.
-    /// @param _members The addresses of members to be added. NOTE: Only one member can be added at a time.
+    /// @notice Adds new editors to the address list.
+    /// @param _editors The addresses of the editors to be added. NOTE: Only one member can be added at a time.
     /// @dev This function is used during the plugin initialization.
     function addAddresses(
-        address[] calldata _members
+        address[] calldata _editors
     ) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        if (_members.length > 1) revert OnlyOneEditorPerCall(_members.length);
+        if (_editors.length > 1) revert OnlyOneEditorPerCall(_editors.length);
 
-        _addAddresses(_members);
-        emit MembersAdded({members: _members});
+        _addAddresses(_editors);
+        emit MembersAdded({members: _editors});
     }
 
-    /// @notice Removes existing members from the address list.
-    /// @param _members The addresses of the members to be removed. NOTE: Only one member can be removed at a time.
+    /// @notice Removes existing editors from the address list.
+    /// @param _editors The addresses of the editors to be removed. NOTE: Only one member can be removed at a time.
     function removeAddresses(
-        address[] calldata _members
+        address[] calldata _editors
     ) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        if (_members.length > 1) revert OnlyOneEditorPerCall(_members.length);
+        if (_editors.length > 1) revert OnlyOneEditorPerCall(_editors.length);
         else if (addresslistLength() <= 1) revert NoEditorsLeft();
 
-        _removeAddresses(_members);
-        emit MembersRemoved({members: _members});
+        _removeAddresses(_editors);
+        emit MembersRemoved({members: _editors});
+    }
+
+    /// @notice Defines the given address as a new space member that can create proposals.
+    /// @param _account The address of the space member to be added.
+    /// @dev This function is used during the plugin initialization.
+    function addSpaceMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+        if (members[_account]) return;
+
+        members[_account] = true;
+        emit NewSpaceMember({account: _account});
+    }
+
+    /// @notice Removes the given address as a proposal creator.
+    /// @param _account The address of the space member to be removed.
+    function removeSpaceMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+        if (!members[_account]) return;
+
+        members[_account] = false;
+        emit RemovedSpaceMember({account: _account});
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -113,9 +141,7 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
 
     /// @notice Returns whether the given address holds membership/editor permission on the main voting plugin
     function isMember(address _account) public view returns (bool) {
-        return
-            isEditor(_account) ||
-            dao().hasPermission(address(this), _account, MEMBER_PERMISSION_ID, bytes(""));
+        return members[_account] || isEditor(_account);
     }
 
     /// @notice Returns whether the given address is currently listed as an editor
@@ -128,8 +154,6 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         bytes calldata _metadata,
         IDAO.Action[] calldata _actions,
         uint256 _allowFailureMap,
-        uint64,
-        uint64,
         VoteOption _voteOption,
         bool _tryEarlyExecution
     ) external override onlyMembers returns (uint256 proposalId) {
