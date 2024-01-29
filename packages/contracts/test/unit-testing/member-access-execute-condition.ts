@@ -458,40 +458,5 @@ describe('Member Access Condition', function () {
         await memberAccessExecuteCondition.getSelector(actions[1].data)
       ).to.eq((actions[1].data as string).slice(0, 10));
     });
-
-    it('Should decode decodeGrantRevokeCalldata properly', async () => {
-      const calldataList = [
-        daoInterface.encodeFunctionData('grant', [
-          PLUGIN_ADDR_1,
-          pspAddress,
-          MEMBER_PERMISSION_ID,
-        ]),
-        daoInterface.encodeFunctionData('revoke', [
-          PLUGIN_ADDR_2,
-          bob.address,
-          ROOT_PERMISSION_ID,
-        ]),
-      ];
-
-      // 1
-      let [selector, where, who, permissionId] =
-        await memberAccessExecuteCondition.decodeGrantRevokeCalldata(
-          calldataList[0]
-        );
-      expect(selector).to.eq(calldataList[0].slice(0, 10));
-      expect(where).to.eq(PLUGIN_ADDR_1);
-      expect(who).to.eq(pspAddress);
-      expect(permissionId).to.eq(MEMBER_PERMISSION_ID);
-
-      // 2
-      [selector, where, who, permissionId] =
-        await memberAccessExecuteCondition.decodeGrantRevokeCalldata(
-          calldataList[1]
-        );
-      expect(selector).to.eq(calldataList[1].slice(0, 10));
-      expect(where).to.eq(PLUGIN_ADDR_2);
-      expect(who).to.eq(bob.address);
-      expect(permissionId).to.eq(ROOT_PERMISSION_ID);
-    });
   });
 });

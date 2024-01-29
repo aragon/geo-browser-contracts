@@ -17,7 +17,7 @@ import {
 import {
   ApprovedEvent,
   ProposalCreatedEvent,
-} from '../../typechain/src/MemberAccessPlugin';
+} from '../../typechain/src/governance/MemberAccessPlugin';
 import {deployWithProxy, findEvent} from '../../utils/helpers';
 import {getInterfaceID} from '../../utils/interfaces';
 import {deployTestDao} from '../helpers/test-dao';
@@ -336,15 +336,14 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
       // Approve it (Bob) => fail
-      await expect(memberAccessPlugin.connect(bob).approve(0, false)).to.be
-        .reverted;
+      await expect(memberAccessPlugin.connect(bob).approve(0)).to.be.reverted;
 
       // Still not a member
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
       // Approve it (Alice) => success
-      await expect(memberAccessPlugin.connect(alice).approve(0, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(0)).to.not.be
+        .reverted;
 
       // Now Carol is a member
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
@@ -405,8 +404,7 @@ describe('Member Access Plugin', function () {
       ).to.eq(false);
 
       // Try to approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(alice).approve(0, false)).to.be
-        .reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(0)).to.be.reverted;
     });
 
     it('Membership approvals are immediate', async () => {
@@ -419,15 +417,14 @@ describe('Member Access Plugin', function () {
       ).to.not.be.reverted;
 
       // Approve it (Alice) => success
-      await expect(memberAccessPlugin.connect(alice).approve(0, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(0)).to.not.be
+        .reverted;
 
       const proposal = await memberAccessPlugin.getProposal(0);
       expect(proposal.executed).to.eq(true);
 
       // Approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(alice).approve(0, false)).to.be
-        .reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(0)).to.be.reverted;
     });
 
     it('Membership rejections are immediate', async () => {
@@ -496,15 +493,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
 
       // Dave cannot
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
       await expect(memberAccessPlugin.connect(dave).execute(pid)).to.be
         .reverted;
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
 
       // Alice can
-      await expect(memberAccessPlugin.connect(alice).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+        .reverted;
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(true);
     });
   });
@@ -538,15 +535,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // Dave is still not a member
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
 
       // Approve it (Alice)
-      await expect(memberAccessPlugin.connect(alice).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+        .reverted;
 
       // Dave is now a member
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(true);
@@ -562,15 +559,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // ADDRESS_ONE is still not a member
       expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
 
       // Approve it (Bob)
-      await expect(memberAccessPlugin.connect(bob).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.not.be
+        .reverted;
 
       // ADDRESS_ONE is now a member
       expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(true);
@@ -586,15 +583,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // ADDRESS_TWO is still not a member
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
 
       // Approve it (Carol)
-      await expect(memberAccessPlugin.connect(carol).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(carol).approve(pid)).to.not.be
+        .reverted;
 
       // ADDRESS_TWO is now a member
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(true);
@@ -629,15 +626,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(true);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // Dave remains as a member
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(true);
 
       // Approve it (Alice)
-      await expect(memberAccessPlugin.connect(alice).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+        .reverted;
 
       // Dave is no longer a member
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
@@ -653,15 +650,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(true);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // ADDRESS_ONE remains as a member
       expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(true);
 
       // Approve it (Bob)
-      await expect(memberAccessPlugin.connect(bob).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.not.be
+        .reverted;
 
       // ADDRESS_ONE is no longer a member
       expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
@@ -677,15 +674,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(true);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // ADDRESS_TWO remains as a member
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(true);
 
       // Approve it (Carol)
-      await expect(memberAccessPlugin.connect(carol).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(carol).approve(pid)).to.not.be
+        .reverted;
 
       // ADDRESS_TWO is no longer a member
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
@@ -767,8 +764,7 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
 
       // Try to approve it (bob) => fail
-      await expect(memberAccessPlugin.connect(bob).approve(0, false)).to.be
-        .reverted;
+      await expect(memberAccessPlugin.connect(bob).approve(0)).to.be.reverted;
 
       expect((await memberAccessPlugin.getProposal(0)).executed).to.eq(false);
     });
@@ -803,8 +799,7 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(true);
 
       // Try to approve it (bob) => fail
-      await expect(memberAccessPlugin.connect(bob).approve(0, false)).to.be
-        .reverted;
+      await expect(memberAccessPlugin.connect(bob).approve(0)).to.be.reverted;
 
       expect((await memberAccessPlugin.getProposal(0)).executed).to.eq(false);
     });
@@ -827,15 +822,15 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
 
       // Dave cannot
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
       await expect(memberAccessPlugin.connect(dave).execute(pid)).to.be
         .reverted;
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(false);
 
       // Alice can
-      await expect(memberAccessPlugin.connect(alice).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+        .reverted;
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(true);
     });
 
@@ -870,16 +865,16 @@ describe('Member Access Plugin', function () {
       expect(proposal.executed).to.eq(false);
 
       // Approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(alice).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.be
         .reverted;
 
       // Approve it (Dave) => fail
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // Approve it (Bob) => succeed
-      await expect(memberAccessPlugin.connect(bob).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.not.be
+        .reverted;
 
       proposal = await memberAccessPlugin.getProposal(pid);
       expect(proposal.executed).to.eq(true);
@@ -900,19 +895,19 @@ describe('Member Access Plugin', function () {
       expect(proposal.executed).to.eq(false);
 
       // Approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(alice).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.be
         .reverted;
 
       // Approve it (Dave) => fail
-      await expect(memberAccessPlugin.connect(dave).approve(pid, false)).to.be
+      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
         .reverted;
 
       // Still a member
       expect(await memberAccessPlugin.isMember(dave.address)).to.eq(true);
 
       // Approve it (Bob) => succeed
-      await expect(memberAccessPlugin.connect(bob).approve(pid, false)).to.not
-        .be.reverted;
+      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.not.be
+        .reverted;
 
       proposal = await memberAccessPlugin.getProposal(pid);
       expect(proposal.executed).to.eq(true);
@@ -1051,8 +1046,8 @@ describe('Member Access Plugin', function () {
       ).to.not.be.reverted;
 
       const pid = 0;
-      await expect(memberAccessPlugin.approve(pid, false)).to.not.be.reverted;
-      await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
+      await expect(memberAccessPlugin.approve(pid)).to.not.be.reverted;
+      await expect(memberAccessPlugin.approve(pid)).to.be.reverted;
     });
 
     it('Attempting to reject twice fails', async () => {
@@ -1116,7 +1111,7 @@ describe('Member Access Plugin', function () {
 
       const pid = 0;
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
-      await expect(memberAccessPlugin.approve(pid, false)).to.be.reverted;
+      await expect(memberAccessPlugin.approve(pid)).to.be.reverted;
     });
 
     it('Rejected proposals cannot be executed', async () => {
@@ -1348,7 +1343,7 @@ describe('Member Access Plugin', function () {
           memberAccessPlugin.updateMultisigSettings(multisigSettings)
         )
           .to.emit(memberAccessPlugin, 'MultisigSettingsUpdated')
-          .withArgs(60 * 60 * 24 * 5, mainVotingPlugin.addAddresses);
+          .withArgs(60 * 60 * 24 * 5, mainVotingPlugin.address);
       });
     });
 
@@ -1450,7 +1445,7 @@ describe('Member Access Plugin', function () {
 
       it('returns `false` if the proposal is already executed', async () => {
         expect((await memberAccessPlugin.getProposal(id)).executed).to.be.false;
-        await memberAccessPlugin.connect(bob).approve(id, false);
+        await memberAccessPlugin.connect(bob).approve(id);
 
         expect((await memberAccessPlugin.getProposal(id)).executed).to.be.true;
         expect(await memberAccessPlugin.canApprove(id, signers[3].address)).to
@@ -1467,7 +1462,7 @@ describe('Member Access Plugin', function () {
 
       it('returns `false` if the approver has already approved', async () => {
         expect(await memberAccessPlugin.canApprove(id, bob.address)).to.be.true;
-        await memberAccessPlugin.connect(bob).approve(id, false);
+        await memberAccessPlugin.connect(bob).approve(id);
         expect(await memberAccessPlugin.canApprove(id, bob.address)).to.be
           .false;
       });
@@ -1482,7 +1477,7 @@ describe('Member Access Plugin', function () {
 
         expect(await memberAccessPlugin.canApprove(id, bob.address)).to.be.true;
 
-        await memberAccessPlugin.connect(bob).approve(id, false);
+        await memberAccessPlugin.connect(bob).approve(id);
 
         expect(await memberAccessPlugin.canApprove(id, bob.address)).to.be
           .false;
@@ -1506,7 +1501,7 @@ describe('Member Access Plugin', function () {
       });
 
       it('returns `true` if user has approved', async () => {
-        await memberAccessPlugin.connect(bob).approve(id, false);
+        await memberAccessPlugin.connect(bob).approve(id);
         expect(await memberAccessPlugin.hasApproved(id, bob.address)).to.be
           .true;
       });
@@ -1524,10 +1519,10 @@ describe('Member Access Plugin', function () {
       });
 
       it('reverts when approving multiple times', async () => {
-        await memberAccessPlugin.connect(bob).approve(id, true);
+        await memberAccessPlugin.connect(bob).approve(id);
 
         // Try to vote again
-        await expect(memberAccessPlugin.connect(bob).approve(id, true))
+        await expect(memberAccessPlugin.connect(bob).approve(id))
           .to.be.revertedWithCustomError(
             memberAccessPlugin,
             'ApprovalCastForbidden'
@@ -1551,7 +1546,7 @@ describe('Member Access Plugin', function () {
           1
         );
 
-        const tx = await memberAccessPlugin.connect(bob).approve(id, false);
+        const tx = await memberAccessPlugin.connect(bob).approve(id);
 
         const event = await findEvent<ApprovedEvent>(tx, 'Approved');
         expect(event!.args.proposalId).to.eq(id);
@@ -1592,7 +1587,7 @@ describe('Member Access Plugin', function () {
         );
 
         // Approve and execute
-        await memberAccessPlugin.connect(bob).approve(id, false);
+        await memberAccessPlugin.connect(bob).approve(id);
 
         expect((await memberAccessPlugin.getProposal(id)).executed).to.be.true;
 
@@ -1621,7 +1616,7 @@ describe('Member Access Plugin', function () {
       });
 
       it('emits the `Approved`, `ProposalExecuted`, and `Executed` events if execute is called inside the `approve` method', async () => {
-        await expect(memberAccessPlugin.connect(bob).approve(id, false))
+        await expect(memberAccessPlugin.connect(bob).approve(id))
           .to.emit(dao, 'Executed')
           .to.emit(memberAccessPlugin, 'ProposalExecuted')
           .to.emit(memberAccessPlugin, 'Approved');
@@ -1637,8 +1632,8 @@ describe('Member Access Plugin', function () {
         to: mainVotingPlugin.address,
         value: 0,
         data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
-          'addAddresses',
-          [[_editor]]
+          'addEditor',
+          [_editor]
         ),
       },
     ];
@@ -1649,8 +1644,6 @@ describe('Member Access Plugin', function () {
         toUtf8Bytes('ipfs://'),
         actions,
         0, // fail safe
-        0, // start date
-        0, // end date
         VoteOption.Yes,
         true // auto execute
       )

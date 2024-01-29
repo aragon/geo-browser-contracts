@@ -24,7 +24,7 @@
             },
             {
               "internalType": "uint64",
-              "name": "minDuration",
+              "name": "duration",
               "type": "uint64"
             },
             {

@@ -89,12 +89,12 @@ export type VotingSettings = {
   votingMode: number;
   supportThreshold: BigNumber;
   minParticipation: BigNumber;
-  minDuration: number;
+  duration: number;
   minProposerVotingPower: number;
 };
 
 export const defaultMainVotingSettings: VotingSettings = {
-  minDuration: 60 * 60, // 1 second
+  duration: 60 * 60, // 1 second
   minParticipation: pctToRatio(30), // 30%
   supportThreshold: pctToRatio(50), // 50% + 1
   minProposerVotingPower: 0,

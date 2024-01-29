@@ -609,3 +609,26 @@ When a zero address is passed, only a passed proposal can make the DAO call `PSP
 Every new version needs to be published to the plugin's repository.
 
 [Learn more about plugin upgrades](https://devs.aragon.org/docs/osx/how-to-guides/plugin-development/upgradeable-plugin/updating-versions).
+
+## Dependencies forked from Aragon
+
+The plugins from this repo are built on top of many contract primitives from Aragon. In some cases, certain parameters are not required or data types need to differ. For this reason, the `packages/contracts/src/governance/base` folder contains 5 forks of existing Aragon primitives.
+
+- `Addresslist.sol`
+  - Functions `addMembers` and `removeMembers` accepted an `address[] calldata` parameter
+  - However, the plugin needed to pass an `address[] memory`
+- `IEditors.sol` and `IMembers.sol`
+  - Originally from `IMembership.sol`
+  - Geo defines a concept of members with conflicted with how the address list interprets its "members" (which are editors)
+  - Using separate, explicit interfaces to clarify the difference between members and editors
+- `IMultisig.sol`
+  - The `accept()` function required 2 parameters, of which the second always has to be `true`.
+  - Changing the signature of `accept()` to only use relevant parameters
+- `MajorityVotingBase.sol`
+  - `createProposal()` originally had two parameters that didn't apply to the current specs.
+  - The forked version Omits these 2 parameters (start date and end date) and instead:
+    - Starts immediately
+    - Ends after the predefined duration
+  - `minDuration()` was confusing given that the setting is used as the final duration, so `duration()` is used instead
+
+The rest of dependencies are imported directly from Aragon or from OpenZeppelin.

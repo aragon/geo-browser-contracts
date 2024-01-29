@@ -1,7 +1,6 @@
 import {
   DAO,
   IERC165Upgradeable__factory,
-  IMembership__factory,
   PersonalSpaceAdminCloneFactory,
   PersonalSpaceAdminCloneFactory__factory,
   PersonalSpaceAdminPlugin,
@@ -10,7 +9,7 @@ import {
   SpacePlugin__factory,
 } from '../../typechain';
 import {ExecutedEvent} from '../../typechain/@aragon/osx/core/dao/IDAO';
-import {ProposalCreatedEvent} from '../../typechain/src/PersonalSpaceAdminPlugin';
+import {ProposalCreatedEvent} from '../../typechain/src/personal/PersonalSpaceAdminPlugin';
 import {
   deployWithProxy,
   findEvent,

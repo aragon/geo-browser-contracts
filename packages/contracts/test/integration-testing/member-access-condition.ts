@@ -41,10 +41,9 @@ import {ethers, network} from 'hardhat';
 const release = 1;
 const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
-  minDuration: 60 * 60 * 24,
+  duration: 60 * 60 * 24,
   minParticipation: 1,
   supportThreshold: 1,
-  minProposerVotingPower: 0,
   votingMode: 0,
 };
 const minMemberAccessProposalDuration = 60 * 60 * 24;
