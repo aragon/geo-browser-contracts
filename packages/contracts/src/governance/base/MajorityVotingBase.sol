@@ -117,12 +117,12 @@ abstract contract MajorityVotingBase is
     /// @param votingMode A parameter to select the vote mode. In standard mode (0), early execution and vote replacement are disabled. In early execution mode (1), a proposal can be executed early before the end date if the vote outcome cannot mathematically change by more voters voting. In vote replacement mode (2), voters can change their vote multiple times and only the latest vote option is tallied.
     /// @param supportThreshold The support threshold value. Its value has to be in the interval [0, 10^6] defined by `RATIO_BASE = 10**6`.
     /// @param minParticipation The minimum participation value. Its value has to be in the interval [0, 10^6] defined by `RATIO_BASE = 10**6`.
-    /// @param minDuration The minimum duration of the proposal vote in seconds.
+    /// @param duration The duration of proposals in seconds.
     struct VotingSettings {
         VotingMode votingMode;
         uint32 supportThreshold;
         uint32 minParticipation;
-        uint64 minDuration;
+        uint64 duration;
     }
 
     /// @notice A container for proposal-related information.
@@ -169,7 +169,7 @@ abstract contract MajorityVotingBase is
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 internal constant MAJORITY_VOTING_BASE_INTERFACE_ID =
-        this.minDuration.selector ^
+        this.duration.selector ^
             this.votingMode.selector ^
             this.totalVotingPower.selector ^
             this.getProposal.selector ^
@@ -194,7 +194,7 @@ abstract contract MajorityVotingBase is
     /// @notice Thrown if the minimal duration value is out of bounds (less than one hour or greater than 1 year).
     /// @param limit The limit value.
     /// @param actual The actual value.
-    error MinDurationOutOfBounds(uint64 limit, uint64 actual);
+    error DurationOutOfBounds(uint64 limit, uint64 actual);
 
     /// @notice Thrown when a sender is not allowed to create a proposal.
     /// @param sender The sender address.
@@ -218,12 +218,12 @@ abstract contract MajorityVotingBase is
     /// @param votingMode A parameter to select the vote mode.
     /// @param supportThreshold The support threshold value.
     /// @param minParticipation The minimum participation value.
-    /// @param minDuration The minimum duration of the proposal vote in seconds.
+    /// @param duration The minimum duration of the proposal vote in seconds.
     event VotingSettingsUpdated(
         VotingMode votingMode,
         uint32 supportThreshold,
         uint32 minParticipation,
-        uint64 minDuration
+        uint64 duration
     );
 
     /// @notice Initializes the component to be used by inheriting contracts.
@@ -355,8 +355,8 @@ abstract contract MajorityVotingBase is
 
     /// @notice Returns the minimum duration parameter stored in the voting settings.
     /// @return The minimum duration parameter.
-    function minDuration() public view virtual returns (uint64) {
-        return votingSettings.minDuration;
+    function duration() public view virtual returns (uint64) {
+        return votingSettings.duration;
     }
 
     /// @notice Returns the vote mode stored in the voting settings.
@@ -522,12 +522,12 @@ abstract contract MajorityVotingBase is
             revert RatioOutOfBounds({limit: RATIO_BASE, actual: _votingSettings.minParticipation});
         }
 
-        if (_votingSettings.minDuration < 60 minutes) {
-            revert MinDurationOutOfBounds({limit: 60 minutes, actual: _votingSettings.minDuration});
+        if (_votingSettings.duration < 60 minutes) {
+            revert DurationOutOfBounds({limit: 60 minutes, actual: _votingSettings.duration});
         }
 
-        if (_votingSettings.minDuration > 365 days) {
-            revert MinDurationOutOfBounds({limit: 365 days, actual: _votingSettings.minDuration});
+        if (_votingSettings.duration > 365 days) {
+            revert DurationOutOfBounds({limit: 365 days, actual: _votingSettings.duration});
         }
 
         votingSettings = _votingSettings;
@@ -536,13 +536,13 @@ abstract contract MajorityVotingBase is
             votingMode: _votingSettings.votingMode,
             supportThreshold: _votingSettings.supportThreshold,
             minParticipation: _votingSettings.minParticipation,
-            minDuration: _votingSettings.minDuration
+            duration: _votingSettings.duration
         });
     }
 
     /// @notice Validates and returns the proposal vote dates.
     /// @param _start The start date of the proposal vote. If 0, the current timestamp is used and the vote starts immediately.
-    /// @param _end The end date of the proposal vote. If 0, `_start + minDuration` is used.
+    /// @param _end The end date of the proposal vote. If 0, `_start + duration` is used.
     /// @return startDate The validated start date of the proposal vote.
     /// @return endDate The validated end date of the proposal vote.
     function _validateProposalDates(
@@ -561,7 +561,7 @@ abstract contract MajorityVotingBase is
             }
         }
 
-        uint64 earliestEndDate = startDate + votingSettings.minDuration; // Since `minDuration` is limited to 1 year, `startDate + minDuration` can only overflow if the `startDate` is after `type(uint64).max - minDuration`. In this case, the proposal creation will revert and another date can be picked.
+        uint64 earliestEndDate = startDate + votingSettings.duration; // Since `duration` is limited to 1 year, `startDate + duration` can only overflow if the `startDate` is after `type(uint64).max - duration`. In this case, the proposal creation will revert and another date can be picked.
 
         if (_end == 0) {
             endDate = earliestEndDate;

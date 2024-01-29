@@ -99,17 +99,6 @@ The alternative would be to fork these base contracts and include them as part o
 
 [Learn more about Aragon OSx](https://devs.aragon.org/docs/osx/how-it-works/framework/)
 
-### Quirks
-
-- The `minProposerVotingPower` setting is ignored. The requirement is just being a member.
-  - Leave it to just `0`
-- The second parameter of `approve()` is ignored on [MemberAccessPlugin](#member-access-plugin). It is assumed that an approval will trigger an early execution whenever possible.
-  - Leave it to just `false`
-- The 4th and 5th parameters on `createProposal()` (startDate and endDate) are ignored
-  - Leave them to just `0`
-- `minDuration` in `MainVotingSettings` defines the proposal duration, not the minimum duration.
-- The methods `addAddresses()` and `removeAddresses()` on the [MemberAccessPlugin](#member-access-plugin) are disabled
-
 ## How permissions work
 
 For each Space, an Aragon DAO is going to be created to act as the entry point. It will hold any assets and most importantly, manage the permission database which will govern all plugin interactions.
@@ -370,7 +359,7 @@ Inherited:
 - `function canExecute(uint256 _proposalId) returns (bool)`
 - `function supportThreshold() returns (uint32)`
 - `function minParticipation() returns (uint32)`
-- `function minDuration() returns (uint64)`
+- `function duration() returns (uint64)`
 - `function minProposerVotingPower() returns (uint256)`
 - `function votingMode() returns (VotingMode)`
 - `function totalVotingPower(uint256 _blockNumber) returns (uint256)`
@@ -385,7 +374,7 @@ Inherited:
 - `event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap)`
 - `event VoteCast(uint256 indexed proposalId, address indexed voter, VoteOption voteOption, uint256 votingPower)`
 - `event ProposalExecuted(uint256 indexed proposalId)`
-- `event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint32 minParticipation, uint64 minDuration, uint256 minProposerVotingPower)`
+- `event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint32 minParticipation, uint64 duration, uint256 minProposerVotingPower)`
 
 #### Permissions
 

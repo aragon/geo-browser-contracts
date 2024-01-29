@@ -17,7 +17,7 @@ bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selec
     MemberAccessPlugin.proposeRemoveMember.selector ^
     MemberAccessPlugin.getProposal.selector;
 
-/// @title Multisig - Release 1, Build 1
+/// @title Member access plugin (Multisig) - Release 1, Build 1
 /// @author Aragon - 2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
 contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
@@ -238,7 +238,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _actions[0] = IDAO.Action({
             to: address(multisigSettings.mainVotingPlugin),
             value: 0,
-            data: abi.encodeCall(MainVotingPlugin.addSpaceMember, (_proposedMember))
+            data: abi.encodeCall(MainVotingPlugin.addMember, (_proposedMember))
         });
 
         return createProposal(_metadata, _actions);
@@ -262,7 +262,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _actions[0] = IDAO.Action({
             to: address(multisigSettings.mainVotingPlugin),
             value: 0,
-            data: abi.encodeCall(MainVotingPlugin.removeSpaceMember, (_proposedMember))
+            data: abi.encodeCall(MainVotingPlugin.removeMember, (_proposedMember))
         });
 
         return createProposal(_metadata, _actions);

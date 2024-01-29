@@ -4,24 +4,23 @@ pragma solidity ^0.8.8;
 import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-import {IMembership} from "@aragon/osx/core/plugin/membership/IMembership.sol";
-import {Addresslist} from "@aragon/osx/plugins/utils/Addresslist.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
+import {IMembers} from "./base/IMembers.sol";
+import {IEditors} from "./base/IEditors.sol";
+import {Addresslist} from "./base/Addresslist.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
-    MainVotingPlugin.addAddresses.selector ^
-    MainVotingPlugin.removeAddresses.selector ^
-    MainVotingPlugin.isMember.selector ^
-    MainVotingPlugin.isEditor.selector;
+    MainVotingPlugin.createProposal.selector ^
+    MainVotingPlugin.cancelProposal.selector;
 
-/// @title MainVotingPlugin
+/// @title MainVotingPlugin (Address list)
 /// @author Aragon - 2023
 /// @notice The majority voting implementation using a list of member addresses.
 /// @dev This contract inherits from `MajorityVotingBase` and implements the `IMajorityVoting` interface.
-contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
+contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
@@ -45,12 +44,6 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
 
     /// @notice Raised when a wallet who is not an editor or a member attempts to do something
     error NotAMember(address caller);
-
-    /// @notice Raised when an address is defined as a space member
-    event NewSpaceMember(address account);
-
-    /// @notice Raised when an address is removed as a space member
-    event RemovedSpaceMember(address account);
 
     /// @notice Raised when someone who didn't create a proposal attempts to cancel it
     error OnlyCreatorCanCancel();
@@ -77,7 +70,7 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
         _addAddresses(_initialEditors);
-        emit MembersAdded({members: _initialEditors});
+        emit EditorsAdded(_initialEditors);
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -87,56 +80,59 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         return
             _interfaceId == MAIN_SPACE_VOTING_INTERFACE_ID ||
             _interfaceId == type(Addresslist).interfaceId ||
-            _interfaceId == type(IMembership).interfaceId ||
+            _interfaceId == type(MajorityVotingBase).interfaceId ||
+            _interfaceId == type(IMembers).interfaceId ||
+            _interfaceId == type(IEditors).interfaceId ||
             super.supportsInterface(_interfaceId);
     }
 
     /// @notice Adds new editors to the address list.
-    /// @param _editors The addresses of the editors to be added. NOTE: Only one member can be added at a time.
+    /// @param _account The address of the new editor.
     /// @dev This function is used during the plugin initialization.
-    function addAddresses(
-        address[] calldata _editors
-    ) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        if (_editors.length > 1) revert OnlyOneEditorPerCall(_editors.length);
+    function addEditor(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+        if (isEditor(_account)) return;
+
+        address[] memory _editors = new address[](1);
+        _editors[0] = _account;
 
         _addAddresses(_editors);
-        emit MembersAdded({members: _editors});
+        emit EditorAdded(_account);
     }
 
     /// @notice Removes existing editors from the address list.
-    /// @param _editors The addresses of the editors to be removed. NOTE: Only one member can be removed at a time.
-    function removeAddresses(
-        address[] calldata _editors
-    ) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
-        if (_editors.length > 1) revert OnlyOneEditorPerCall(_editors.length);
+    /// @param _account The addresses of the editors to be removed. NOTE: Only one member can be removed at a time.
+    function removeEditor(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+        if (!isEditor(_account)) return;
         else if (addresslistLength() <= 1) revert NoEditorsLeft();
 
+        address[] memory _editors = new address[](1);
+        _editors[0] = _account;
+
         _removeAddresses(_editors);
-        emit MembersRemoved({members: _editors});
+        emit EditorRemoved(_account);
     }
 
     /// @notice Defines the given address as a new space member that can create proposals.
     /// @param _account The address of the space member to be added.
-    /// @dev This function is used during the plugin initialization.
-    function addSpaceMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+    function addMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
         if (members[_account]) return;
 
         members[_account] = true;
-        emit NewSpaceMember({account: _account});
+        emit MemberAdded(_account);
     }
 
     /// @notice Removes the given address as a proposal creator.
     /// @param _account The address of the space member to be removed.
-    function removeSpaceMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
+    function removeMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
         if (!members[_account]) return;
 
         members[_account] = false;
-        emit RemovedSpaceMember({account: _account});
+        emit MemberRemoved(_account);
     }
 
-    /// @inheritdoc MajorityVotingBase
-    function totalVotingPower(uint256 _blockNumber) public view override returns (uint256) {
-        return addresslistLengthAtBlock(_blockNumber);
+    /// @notice Returns whether the given address is currently listed as an editor
+    function isEditor(address _account) public view returns (bool) {
+        return isListed(_account);
     }
 
     /// @notice Returns whether the given address holds membership/editor permission on the main voting plugin
@@ -144,9 +140,9 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         return members[_account] || isEditor(_account);
     }
 
-    /// @notice Returns whether the given address is currently listed as an editor
-    function isEditor(address _account) public view returns (bool) {
-        return isListed(_account);
+    /// @inheritdoc MajorityVotingBase
+    function totalVotingPower(uint256 _blockNumber) public view override returns (uint256) {
+        return addresslistLengthAtBlock(_blockNumber);
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -167,7 +163,7 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
             _creator: _msgSender(),
             _metadata: _metadata,
             _startDate: _startDate,
-            _endDate: _startDate + minDuration(),
+            _endDate: _startDate + duration(),
             _actions: _actions,
             _allowFailureMap: _allowFailureMap
         });
@@ -176,7 +172,7 @@ contract MainVotingPlugin is IMembership, Addresslist, MajorityVotingBase {
         Proposal storage proposal_ = proposals[proposalId];
 
         proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _startDate + minDuration();
+        proposal_.parameters.endDate = _startDate + duration();
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
