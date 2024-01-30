@@ -120,7 +120,7 @@ describe('PluginRepo Deployment', function () {
 
             case GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
               expect(receivedStriMetadata).to.equal(
-                'ipfs://QmNh5KHv167RKZgD8zb6d3CvRE7mNT8AZYZkwrmvyRt1YD'
+                'ipfs://QmUivtg6CD3XUvArRS1BqaPYUrKU7oyw8MU59oemL3zxLQ'
               );
               break;
 
