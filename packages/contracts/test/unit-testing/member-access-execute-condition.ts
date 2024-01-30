@@ -2,6 +2,7 @@ import {
   DAO,
   DAO__factory,
   IDAO,
+  MainVotingPlugin__factory,
   MemberAccessExecuteCondition,
   MemberAccessExecuteCondition__factory,
 } from '../../typechain';
@@ -29,6 +30,7 @@ const ONE_BYTES32 =
 const PLUGIN_ADDR_1 = ADDRESS_ONE;
 const PLUGIN_ADDR_2 = ADDRESS_TWO;
 const daoInterface = DAO__factory.createInterface();
+const mainVotingPluginInterface = MainVotingPlugin__factory.createInterface();
 
 describe('Member Access Condition', function () {
   const pspAddress = getPluginSetupProcessorAddress(network.name, true);
@@ -49,18 +51,17 @@ describe('Member Access Condition', function () {
     memberAccessExecuteCondition = await factory.deploy(SOME_CONTRACT_ADDRESS);
   });
 
-  describe('Executing grant/revoke MEMBER_PERMISSION_ID on a certain contract', () => {
-    it('Should only allow executing grant and revoke', async () => {
+  describe('Executing addMember and removeMember on a certain contract', () => {
+    it('Should only allow executing addMember and removeMember', async () => {
       const actions: IDAO.ActionStruct[] = [
-        {to: dao.address, value: 0, data: '0x'},
+        {to: SOME_CONTRACT_ADDRESS, value: 0, data: '0x'},
       ];
 
-      // Valid grant
-      actions[0].data = daoInterface.encodeFunctionData('grant', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        MEMBER_PERMISSION_ID,
-      ]);
+      // Valid add
+      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        'addMember',
+        [carol.address]
+      );
       expect(
         await memberAccessExecuteCondition.isGranted(
           ADDRESS_ONE, // where (used)
@@ -70,12 +71,11 @@ describe('Member Access Condition', function () {
         )
       ).to.eq(true);
 
-      // Valid revoke
-      actions[0].data = daoInterface.encodeFunctionData('revoke', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        MEMBER_PERMISSION_ID,
-      ]);
+      // Valid remove
+      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        'removeMember',
+        [carol.address]
+      );
       expect(
         await memberAccessExecuteCondition.isGranted(
           ADDRESS_ONE, // where (used)
@@ -126,140 +126,16 @@ describe('Member Access Condition', function () {
       ).to.eq(false);
     });
 
-    it('Should only allow MEMBER_PERMISSION_ID', async () => {
-      const actions: IDAO.ActionStruct[] = [
-        {to: dao.address, value: 0, data: '0x'},
-      ];
-
-      // Valid grant
-      actions[0].data = daoInterface.encodeFunctionData('grant', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        MEMBER_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(true);
-
-      // Valid revoke
-      actions[0].data = daoInterface.encodeFunctionData('revoke', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        MEMBER_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(true);
-
-      // Invalid
-      actions[0].data = daoInterface.encodeFunctionData('grant', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        EDITOR_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(false);
-
-      actions[0].data = daoInterface.encodeFunctionData('revoke', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        EDITOR_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(false);
-
-      // Invalid
-      actions[0].data = daoInterface.encodeFunctionData('grant', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        ROOT_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(false);
-
-      actions[0].data = daoInterface.encodeFunctionData('revoke', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        ROOT_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(false);
-
-      // Invalid
-      actions[0].data = daoInterface.encodeFunctionData('grant', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        DEPLOYER_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(false);
-
-      actions[0].data = daoInterface.encodeFunctionData('revoke', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        DEPLOYER_PERMISSION_ID,
-      ]);
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-        )
-      ).to.eq(false);
-    });
-
     it('Should only allow to target the intended plugin contract', async () => {
       const actions: IDAO.ActionStruct[] = [
-        {to: dao.address, value: 0, data: '0x'},
+        {to: SOME_CONTRACT_ADDRESS, value: 0, data: '0x'},
       ];
 
       // Valid grant
-      actions[0].data = daoInterface.encodeFunctionData('grant', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        MEMBER_PERMISSION_ID,
-      ]);
+      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        'addMember',
+        [carol.address]
+      );
       expect(
         await memberAccessExecuteCondition.isGranted(
           ADDRESS_ONE, // where (used)
@@ -270,11 +146,10 @@ describe('Member Access Condition', function () {
       ).to.eq(true);
 
       // Valid revoke
-      actions[0].data = daoInterface.encodeFunctionData('revoke', [
-        SOME_CONTRACT_ADDRESS,
-        carol.address,
-        MEMBER_PERMISSION_ID,
-      ]);
+      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        'removeMember',
+        [carol.address]
+      );
       expect(
         await memberAccessExecuteCondition.isGranted(
           ADDRESS_ONE, // where (used)
@@ -283,6 +158,34 @@ describe('Member Access Condition', function () {
           daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
         )
       ).to.eq(true);
+
+      // // Invalid
+      // actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      //   'removeEditor',
+      //   [carol.address]
+      // );
+      // expect(
+      //   await memberAccessExecuteCondition.isGranted(
+      //     ADDRESS_ONE, // where (used)
+      //     ADDRESS_TWO, // who (used)
+      //     EXECUTE_PERMISSION_ID, // permission (used)
+      //     daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
+      //   )
+      // ).to.eq(true);
+
+      // // Invalid
+      // actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      //   'addEditor',
+      //   [carol.address]
+      // );
+      // expect(
+      //   await memberAccessExecuteCondition.isGranted(
+      //     ADDRESS_ONE, // where (used)
+      //     ADDRESS_TWO, // who (used)
+      //     EXECUTE_PERMISSION_ID, // permission (used)
+      //     daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
+      //   )
+      // ).to.eq(true);
 
       // Invalid
       actions[0].data = daoInterface.encodeFunctionData('grant', [
@@ -343,9 +246,9 @@ describe('Member Access Condition', function () {
       ).to.eq(false);
     });
 
-    it("Should allow granting to whatever 'who' address", async () => {
+    it('Should allow adding/removing any address', async () => {
       const actions: IDAO.ActionStruct[] = [
-        {to: dao.address, value: 0, data: '0x'},
+        {to: SOME_CONTRACT_ADDRESS, value: 0, data: '0x'},
       ];
       for (const grantedToAddress of [
         SOME_CONTRACT_ADDRESS,
@@ -353,12 +256,11 @@ describe('Member Access Condition', function () {
         dao.address,
         ADDRESS_ONE,
       ]) {
-        // Valid grant
-        actions[0].data = daoInterface.encodeFunctionData('grant', [
-          SOME_CONTRACT_ADDRESS,
-          grantedToAddress,
-          MEMBER_PERMISSION_ID,
-        ]);
+        // Valid add
+        actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+          'addMember',
+          [grantedToAddress]
+        );
         expect(
           await memberAccessExecuteCondition.isGranted(
             ADDRESS_ONE, // where (used)
@@ -372,12 +274,11 @@ describe('Member Access Condition', function () {
           )
         ).to.eq(true);
 
-        // Valid revoke
-        actions[0].data = daoInterface.encodeFunctionData('revoke', [
-          SOME_CONTRACT_ADDRESS,
-          grantedToAddress,
-          MEMBER_PERMISSION_ID,
-        ]);
+        // Valid remove
+        actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+          'removeMember',
+          [grantedToAddress]
+        );
         expect(
           await memberAccessExecuteCondition.isGranted(
             ADDRESS_ONE, // where (used)
@@ -394,19 +295,16 @@ describe('Member Access Condition', function () {
     });
   });
 
-  describe('Direct grant and revoke are not allowed', () => {
-    it('Should reject granting and revoking directly', async () => {
+  describe('Direct add and remove are not allowed', () => {
+    it('Should reject adding and removing directly, rather than executing', async () => {
       // Valid
       expect(
         await memberAccessExecuteCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
-          DAO__factory.createInterface().encodeFunctionData('grant', [
-            // call
-            SOME_CONTRACT_ADDRESS,
+          mainVotingPluginInterface.encodeFunctionData('addMember', [
             carol.address,
-            MEMBER_PERMISSION_ID,
           ])
         )
       ).to.eq(false);
@@ -416,11 +314,8 @@ describe('Member Access Condition', function () {
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
-          DAO__factory.createInterface().encodeFunctionData('revoke', [
-            // call
-            SOME_CONTRACT_ADDRESS,
+          mainVotingPluginInterface.encodeFunctionData('removeMember', [
             carol.address,
-            MEMBER_PERMISSION_ID,
           ])
         )
       ).to.eq(false);
@@ -433,19 +328,15 @@ describe('Member Access Condition', function () {
         {
           to: dao.address,
           value: 0,
-          data: daoInterface.encodeFunctionData('grant', [
-            PLUGIN_ADDR_1,
+          data: mainVotingPluginInterface.encodeFunctionData('addMember', [
             pspAddress,
-            MEMBER_PERMISSION_ID,
           ]),
         },
         {
           to: dao.address,
           value: 0,
-          data: daoInterface.encodeFunctionData('revoke', [
-            PLUGIN_ADDR_1,
+          data: mainVotingPluginInterface.encodeFunctionData('removeMember', [
             pspAddress,
-            MEMBER_PERMISSION_ID,
           ]),
         },
       ];
@@ -457,6 +348,31 @@ describe('Member Access Condition', function () {
       expect(
         await memberAccessExecuteCondition.getSelector(actions[1].data)
       ).to.eq((actions[1].data as string).slice(0, 10));
+    });
+
+    it('Should decode decodeGrantRevokeCalldata properly', async () => {
+      const calldataList = [
+        mainVotingPluginInterface.encodeFunctionData('addMember', [pspAddress]),
+        mainVotingPluginInterface.encodeFunctionData('removeMember', [
+          bob.address,
+        ]),
+      ];
+
+      // 1
+      let [selector, who] =
+        await memberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
+          calldataList[0]
+        );
+      expect(selector).to.eq(calldataList[0].slice(0, 10));
+      expect(who).to.eq(pspAddress);
+
+      // 2
+      [selector, who] =
+        await memberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
+          calldataList[1]
+        );
+      expect(selector).to.eq(calldataList[1].slice(0, 10));
+      expect(who).to.eq(bob.address);
     });
   });
 });
