@@ -30,7 +30,6 @@ import {
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   getTime, // MAX_UINT64,
-  MEMBER_PERMISSION_ID,
   mineBlock,
   pctToRatio,
   ROOT_PERMISSION_ID,
@@ -49,6 +48,7 @@ import {toUtf8Bytes} from 'ethers/lib/utils';
 import {ethers} from 'hardhat';
 
 type InitData = {contentUri: string};
+const mainVotingPluginInterface = MainVotingPlugin__factory.createInterface();
 
 describe('Main Voting Plugin', function () {
   let signers: SignerWithAddress[];
@@ -95,23 +95,16 @@ describe('Main Voting Plugin', function () {
       ADDRESS_ZERO
     );
 
-    // Alice is already an editor (see initialize)
-
-    await dao.grant(
-      mainVotingPlugin.address,
-      bob.address,
-      MEMBER_PERMISSION_ID
-    );
-    // Bob is a member
-    await dao.grant(
-      mainVotingPlugin.address,
-      bob.address,
-      MEMBER_PERMISSION_ID
-    );
     // The plugin can execute on the DAO
     await dao.grant(
       dao.address,
       mainVotingPlugin.address,
+      EXECUTE_PERMISSION_ID
+    );
+    // MemberAccessPlugin can execute on the DAO
+    await dao.grant(
+      dao.address,
+      memberAccessPlugin.address,
       EXECUTE_PERMISSION_ID
     );
     // The DAO can add/remove editors
@@ -136,6 +129,11 @@ describe('Main Voting Plugin', function () {
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
     // Alice can make the DAO execute arbitrary stuff (test)
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
+
+    // Alice is already an editor (see initialize)
+
+    // Bob is a member
+    await memberAccessPlugin.proposeNewMember('0x', bob.address);
   });
 
   describe('initialize', async () => {
@@ -351,20 +349,10 @@ describe('Main Voting Plugin', function () {
 
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
-      await dao.grant(
-        mainVotingPlugin.address,
-        carol.address,
-        MEMBER_PERMISSION_ID
-      );
-
+      await memberAccessPlugin.proposeNewMember('0x', carol.address);
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
 
-      await dao.revoke(
-        mainVotingPlugin.address,
-        carol.address,
-        MEMBER_PERMISSION_ID
-      );
-
+      await memberAccessPlugin.proposeRemoveMember('0x', carol.address);
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
       await makeEditor(carol.address);
@@ -426,14 +414,10 @@ describe('Main Voting Plugin', function () {
   context('Multiple editors', () => {
     it('Proposals created by a member require editor votes', async () => {
       let pid = 0;
+      // Carol member
+      await memberAccessPlugin.proposeNewMember('0x', carol.address);
       // Bob editor
       await proposeNewEditor(bob.address);
-      // Carol member
-      await dao.grant(
-        mainVotingPlugin.address,
-        carol.address,
-        MEMBER_PERMISSION_ID
-      );
 
       await expect(createDummyProposal(carol, false)).to.not.be.reverted;
       pid++;
@@ -1030,7 +1014,7 @@ describe('Main Voting Plugin', function () {
             {
               to: mainVotingPlugin.address,
               value: 0,
-              data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+              data: mainVotingPluginInterface.encodeFunctionData(
                 'updateVotingSettings',
                 [
                   {
@@ -1049,7 +1033,7 @@ describe('Main Voting Plugin', function () {
         )
       )
         .to.emit(mainVotingPlugin, 'VotingSettingsUpdated')
-        .withArgs(0, 12345, 23456, 60 * 60 * 3, 0);
+        .withArgs(0, 12345, 23456, 60 * 60 * 3);
     });
 
     it('The DAO can add editors', async () => {
@@ -1068,7 +1052,7 @@ describe('Main Voting Plugin', function () {
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          data: mainVotingPluginInterface.encodeFunctionData(
             'addEditor',
             [dave.address]
           ),
@@ -1096,7 +1080,7 @@ describe('Main Voting Plugin', function () {
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          data: mainVotingPluginInterface.encodeFunctionData(
             'removeEditor',
             [bob.address]
           ),
@@ -1130,7 +1114,7 @@ describe('Main Voting Plugin', function () {
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          data: mainVotingPluginInterface.encodeFunctionData(
             'upgradeTo',
             [await mainVotingPlugin.implementation()]
           ),
@@ -1138,7 +1122,7 @@ describe('Main Voting Plugin', function () {
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          data: mainVotingPluginInterface.encodeFunctionData(
             'supportsInterface',
             ['0x12345678']
           ),
@@ -1176,7 +1160,7 @@ describe('Main Voting Plugin', function () {
       {
         to: mainVotingPlugin.address,
         value: 0,
-        data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+        data: mainVotingPluginInterface.encodeFunctionData(
           'addEditor',
           [_editor]
         ),
@@ -1200,7 +1184,7 @@ describe('Main Voting Plugin', function () {
       {
         to: mainVotingPlugin.address,
         value: 0,
-        data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+        data: mainVotingPluginInterface.encodeFunctionData(
           'removeEditor',
           [_editor]
         ),

@@ -11,12 +11,8 @@ import {deployTestDao} from '../helpers/test-dao';
 import {
   ADDRESS_ONE,
   ADDRESS_TWO,
-  ADDRESS_ZERO,
-  DEPLOYER_PERMISSION_ID,
-  EDITOR_PERMISSION_ID,
-  EXECUTE_PERMISSION_ID,
   MEMBER_PERMISSION_ID,
-  ROOT_PERMISSION_ID,
+  EXECUTE_PERMISSION_ID,
 } from './common';
 import {hexlify} from '@ethersproject/bytes';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
@@ -159,33 +155,33 @@ describe('Member Access Condition', function () {
         )
       ).to.eq(true);
 
-      // // Invalid
-      // actions[0].data = mainVotingPluginInterface.encodeFunctionData(
-      //   'removeEditor',
-      //   [carol.address]
-      // );
-      // expect(
-      //   await memberAccessExecuteCondition.isGranted(
-      //     ADDRESS_ONE, // where (used)
-      //     ADDRESS_TWO, // who (used)
-      //     EXECUTE_PERMISSION_ID, // permission (used)
-      //     daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-      //   )
-      // ).to.eq(true);
+      // Invalid
+      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        'addEditor',
+        [carol.address]
+      );
+      expect(
+        await memberAccessExecuteCondition.isGranted(
+          ADDRESS_ONE, // where (used)
+          ADDRESS_TWO, // who (used)
+          EXECUTE_PERMISSION_ID, // permission (used)
+          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
+        )
+      ).to.eq(true);
 
-      // // Invalid
-      // actions[0].data = mainVotingPluginInterface.encodeFunctionData(
-      //   'addEditor',
-      //   [carol.address]
-      // );
-      // expect(
-      //   await memberAccessExecuteCondition.isGranted(
-      //     ADDRESS_ONE, // where (used)
-      //     ADDRESS_TWO, // who (used)
-      //     EXECUTE_PERMISSION_ID, // permission (used)
-      //     daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
-      //   )
-      // ).to.eq(true);
+      // Invalid
+      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        'removeEditor',
+        [carol.address]
+      );
+      expect(
+        await memberAccessExecuteCondition.isGranted(
+          ADDRESS_ONE, // where (used)
+          ADDRESS_TWO, // who (used)
+          EXECUTE_PERMISSION_ID, // permission (used)
+          daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
+        )
+      ).to.eq(true);
 
       // Invalid
       actions[0].data = daoInterface.encodeFunctionData('grant', [

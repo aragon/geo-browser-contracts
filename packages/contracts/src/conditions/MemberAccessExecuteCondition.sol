@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionCondition} from "@aragon/osx/core/permission/PermissionCondition.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-import {MEMBER_PERMISSION_ID} from "../constants.sol";
 import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
 
 /// @notice The condition associated with `TestSharedPlugin`

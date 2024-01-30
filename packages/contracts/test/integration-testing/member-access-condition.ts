@@ -19,7 +19,6 @@ import {installPlugin} from '../helpers/setup';
 import {deployTestDao} from '../helpers/test-dao';
 import {
   EXECUTE_PERMISSION_ID,
-  MEMBER_PERMISSION_ID,
   ROOT_PERMISSION_ID,
   UPGRADE_PLUGIN_PERMISSION_ID,
   ONE_BYTES32,

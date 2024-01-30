@@ -107,14 +107,6 @@ describe('Member Access Plugin', function () {
       ADDRESS_ZERO
     );
 
-    // Alice is an editor (see mainVotingPlugin initialize)
-
-    // Bob is a member
-    await dao.grant(
-      mainVotingPlugin.address,
-      bob.address,
-      MEMBER_PERMISSION_ID
-    );
     // The plugin can execute on the DAO
     await dao.grantWithCondition(
       dao.address,
@@ -150,6 +142,11 @@ describe('Member Access Plugin', function () {
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
     // Alice can make the DAO execute arbitrary stuff (test)
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
+
+    // Alice is an editor (see mainVotingPlugin initialize)
+
+    // Bob is a member
+    memberAccessPlugin.proposeNewMember('0x', bob.address);
   });
 
   describe('initialize', () => {
@@ -265,19 +262,20 @@ describe('Member Access Plugin', function () {
         hexlify(toUtf8Bytes('ipfs://2345'))
       );
       expect(event!.args.actions.length).to.equal(1);
-      expect(event!.args.actions[0].to).to.equal(dao.address);
+      expect(event!.args.actions[0].to).to.equal(mainVotingPlugin.address);
       expect(event!.args.actions[0].value).to.equal(0);
       expect(event!.args.actions[0].data).to.equal(
-        DAO__factory.createInterface().encodeFunctionData('grant', [
-          mainVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID,
-        ])
+        MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          'addMember',
+          [carol.address]
+        )
       );
       expect(event!.args.allowFailureMap).to.equal(0);
     });
 
     it('isMember() returns true when appropriate', async () => {
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+
       expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
       expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
@@ -287,20 +285,10 @@ describe('Member Access Plugin', function () {
 
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
-      await dao.grant(
-        mainVotingPlugin.address,
-        carol.address,
-        MEMBER_PERMISSION_ID
-      );
-
+      await memberAccessPlugin.proposeNewMember('0x', carol.address);
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
 
-      await dao.revoke(
-        mainVotingPlugin.address,
-        carol.address,
-        MEMBER_PERMISSION_ID
-      );
-
+      await memberAccessPlugin.proposeRemoveMember('0x', carol.address);
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
       await proposeNewEditor(carol.address);
@@ -309,6 +297,8 @@ describe('Member Access Plugin', function () {
     });
 
     it('isEditor() returns true when appropriate', async () => {
+      expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
+
       expect(await memberAccessPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
       expect(await memberAccessPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
       expect(await memberAccessPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
@@ -352,14 +342,7 @@ describe('Member Access Plugin', function () {
     it('Only the editor can reject memberships', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
-      expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes('')
-        )
-      ).to.eq(false);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       await expect(
         memberAccessPlugin
@@ -367,41 +350,20 @@ describe('Member Access Plugin', function () {
           .proposeNewMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes('')
-        )
-      ).to.eq(false);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Reject it (Bob) => fail
       await expect(memberAccessPlugin.connect(bob).reject(0)).to.be.reverted;
 
       // Still not a member
-      expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes('')
-        )
-      ).to.eq(false);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Reject it (Alice) => success
       await expect(memberAccessPlugin.connect(alice).reject(0)).to.not.be
         .reverted;
 
       // Carol is not a member
-      expect(
-        await dao.hasPermission(
-          mainVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID,
-          toUtf8Bytes('')
-        )
-      ).to.eq(false);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Try to approve it (Alice) => fail
       await expect(memberAccessPlugin.connect(alice).approve(0)).to.be.reverted;
@@ -521,7 +483,7 @@ describe('Member Access Plugin', function () {
         .vote(pidMainVoting, VoteOption.Yes, true);
     });
 
-    it('Only editors can approve new memberships', async () => {
+    it('Only editors can approve adding members', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Requesting membership for Dave
@@ -597,7 +559,7 @@ describe('Member Access Plugin', function () {
       expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(true);
     });
 
-    it('Only editors can approve removing memberships', async () => {
+    it('Only editors can approve removing members', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
       await dao.grant(
         mainVotingPlugin.address,
@@ -999,42 +961,42 @@ describe('Member Access Plugin', function () {
     // Bob: member
 
     it('proposeNewMember should generate the right action list', async () => {
+      const proposalCount = await memberAccessPlugin.proposalCount();
       await expect(
         memberAccessPlugin
           .connect(carol)
           .proposeNewMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(0);
+      const proposal = await memberAccessPlugin.getProposal(proposalCount);
       expect(proposal.actions.length).to.eq(1);
-      expect(proposal.actions[0].to).to.eq(dao.address);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
       expect(proposal.actions[0].value).to.eq(0);
       expect(proposal.actions[0].data).to.eq(
-        DAO__factory.createInterface().encodeFunctionData('grant', [
-          mainVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID,
-        ])
+        MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          'addMember',
+          [carol.address]
+        )
       );
     });
 
     it('proposeRemoveMember should generate the right action list', async () => {
+      const proposalCount = await memberAccessPlugin.proposalCount();
       await expect(
         memberAccessPlugin
           .connect(bob)
           .proposeRemoveMember(toUtf8Bytes('ipfs://1234'), bob.address)
       ).to.not.be.reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(0);
+      const proposal = await memberAccessPlugin.getProposal(proposalCount);
       expect(proposal.actions.length).to.eq(1);
-      expect(proposal.actions[0].to).to.eq(dao.address);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
       expect(proposal.actions[0].value).to.eq(0);
       expect(proposal.actions[0].data).to.eq(
-        DAO__factory.createInterface().encodeFunctionData('revoke', [
-          mainVotingPlugin.address,
-          bob.address,
-          MEMBER_PERMISSION_ID,
-        ])
+        MainVotingPlugin__factory.createInterface().encodeFunctionData(
+          'removeMember',
+          [bob.address]
+        )
       );
     });
 
