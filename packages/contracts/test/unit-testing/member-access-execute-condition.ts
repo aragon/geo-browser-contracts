@@ -122,7 +122,7 @@ describe('Member Access Condition', function () {
         {to: SOME_CONTRACT_ADDRESS, value: 0, data: '0x'},
       ];
 
-      // Valid grant
+      // Valid member add
       actions[0].data = mainVotingPluginInterface.encodeFunctionData(
         'addMember',
         [carol.address]
@@ -136,7 +136,7 @@ describe('Member Access Condition', function () {
         )
       ).to.eq(true);
 
-      // Valid revoke
+      // Valid membe remove
       actions[0].data = mainVotingPluginInterface.encodeFunctionData(
         'removeMember',
         [carol.address]
@@ -150,7 +150,7 @@ describe('Member Access Condition', function () {
         )
       ).to.eq(true);
 
-      // Invalid
+      // Invalid (editor)
       actions[0].data = mainVotingPluginInterface.encodeFunctionData(
         'addEditor',
         [carol.address]
@@ -162,9 +162,9 @@ describe('Member Access Condition', function () {
           EXECUTE_PERMISSION_ID, // permission (used)
           daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
         )
-      ).to.eq(true);
+      ).to.eq(false);
 
-      // Invalid
+      // Invalid (editor)
       actions[0].data = mainVotingPluginInterface.encodeFunctionData(
         'removeEditor',
         [carol.address]
@@ -176,7 +176,7 @@ describe('Member Access Condition', function () {
           EXECUTE_PERMISSION_ID, // permission (used)
           daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
         )
-      ).to.eq(true);
+      ).to.eq(false);
 
       // Invalid
       actions[0].data = daoInterface.encodeFunctionData('grant', [
