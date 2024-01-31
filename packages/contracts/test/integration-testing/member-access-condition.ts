@@ -31,6 +31,7 @@ import {
   PluginRepoFactory__factory,
   PluginRepoRegistry__factory,
   DAO__factory,
+  IDAO,
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
@@ -151,6 +152,7 @@ describe('Member Access Condition E2E', () => {
       memberAccessProposalDuration,
       pluginUpgrader.address
     );
+    // Internally call prepareInstallation, which deploys the condition
     const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
     mainVotingPlugin = MainVotingPlugin__factory.connect(
@@ -166,31 +168,29 @@ describe('Member Access Condition E2E', () => {
   it('Executing a proposal to add membership works', async () => {
     expect(await mainVotingPlugin.isMember(alice.address)).to.eq(false);
 
-    await memberAccessPlugin.proposeNewMember('0x', alice.address);
-
     await expect(memberAccessPlugin.proposeNewMember('0x', alice.address)).to
       .not.be.reverted;
 
     expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
 
-    // // Valid addition
-    // const actions: IDAO.ActionStruct[] = [
-    //   {
-    //     to: mainVotingPlugin.address,
-    //     value: 0,
-    //     data: mainVotingInterface.encodeFunctionData('addMember', [
-    //       bob.address,
-    //     ]),
-    //   },
-    // ];
+    // Valid addition
+    const actions: IDAO.ActionStruct[] = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: mainVotingInterface.encodeFunctionData('addMember', [
+          bob.address,
+        ]),
+      },
+    ];
 
-    // // Via direct create proposal
-    // expect(await mainVotingPlugin.isMember(bob.address)).to.eq(false);
+    // Via direct create proposal
+    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(false);
 
-    // await expect(memberAccessPlugin.createArbitraryProposal('0x', actions)).to
-    //   .not.be.reverted;
+    await expect(memberAccessPlugin.createArbitraryProposal('0x', actions)).to
+      .not.be.reverted;
 
-    // expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
+    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
   });
 
   it('Executing a proposal to remove membership works', async () => {

@@ -8,12 +8,7 @@ import {
 } from '../../typechain';
 import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
-import {
-  ADDRESS_ONE,
-  ADDRESS_TWO,
-  MEMBER_PERMISSION_ID,
-  EXECUTE_PERMISSION_ID,
-} from './common';
+import {ADDRESS_ONE, ADDRESS_TWO, EXECUTE_PERMISSION_ID} from './common';
 import {hexlify} from '@ethersproject/bytes';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
@@ -187,7 +182,7 @@ describe('Member Access Condition', function () {
       actions[0].data = daoInterface.encodeFunctionData('grant', [
         ADDRESS_TWO,
         carol.address,
-        MEMBER_PERMISSION_ID,
+        ONE_BYTES32,
       ]);
       expect(
         await memberAccessExecuteCondition.isGranted(
@@ -201,7 +196,7 @@ describe('Member Access Condition', function () {
       actions[0].data = daoInterface.encodeFunctionData('revoke', [
         ADDRESS_TWO,
         carol.address,
-        MEMBER_PERMISSION_ID,
+        ONE_BYTES32,
       ]);
       expect(
         await memberAccessExecuteCondition.isGranted(
@@ -216,7 +211,7 @@ describe('Member Access Condition', function () {
       actions[0].data = daoInterface.encodeFunctionData('grant', [
         dao.address,
         carol.address,
-        MEMBER_PERMISSION_ID,
+        ONE_BYTES32,
       ]);
       expect(
         await memberAccessExecuteCondition.isGranted(
@@ -230,7 +225,7 @@ describe('Member Access Condition', function () {
       actions[0].data = daoInterface.encodeFunctionData('revoke', [
         dao.address,
         carol.address,
-        MEMBER_PERMISSION_ID,
+        ONE_BYTES32,
       ]);
       expect(
         await memberAccessExecuteCondition.isGranted(

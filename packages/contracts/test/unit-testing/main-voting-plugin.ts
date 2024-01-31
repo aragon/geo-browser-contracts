@@ -1052,10 +1052,9 @@ describe('Main Voting Plugin', function () {
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: mainVotingPluginInterface.encodeFunctionData(
-            'addEditor',
-            [dave.address]
-          ),
+          data: mainVotingPluginInterface.encodeFunctionData('addEditor', [
+            dave.address,
+          ]),
         },
       ];
 
@@ -1080,10 +1079,9 @@ describe('Main Voting Plugin', function () {
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: mainVotingPluginInterface.encodeFunctionData(
-            'removeEditor',
-            [bob.address]
-          ),
+          data: mainVotingPluginInterface.encodeFunctionData('removeEditor', [
+            bob.address,
+          ]),
         },
       ];
 
@@ -1114,10 +1112,9 @@ describe('Main Voting Plugin', function () {
         {
           to: mainVotingPlugin.address,
           value: 0,
-          data: mainVotingPluginInterface.encodeFunctionData(
-            'upgradeTo',
-            [await mainVotingPlugin.implementation()]
-          ),
+          data: mainVotingPluginInterface.encodeFunctionData('upgradeTo', [
+            await mainVotingPlugin.implementation(),
+          ]),
         },
         {
           to: mainVotingPlugin.address,
@@ -1160,10 +1157,9 @@ describe('Main Voting Plugin', function () {
       {
         to: mainVotingPlugin.address,
         value: 0,
-        data: mainVotingPluginInterface.encodeFunctionData(
-          'addEditor',
-          [_editor]
-        ),
+        data: mainVotingPluginInterface.encodeFunctionData('addEditor', [
+          _editor,
+        ]),
       },
     ];
 
@@ -1184,10 +1180,9 @@ describe('Main Voting Plugin', function () {
       {
         to: mainVotingPlugin.address,
         value: 0,
-        data: mainVotingPluginInterface.encodeFunctionData(
-          'removeEditor',
-          [_editor]
-        ),
+        data: mainVotingPluginInterface.encodeFunctionData('removeEditor', [
+          _editor,
+        ]),
       },
     ];
 
@@ -1248,6 +1243,7 @@ describe('Tests replicated from the original AddressList plugin', async () => {
   let signers: SignerWithAddress[];
   let dao: DAO;
   let mainVotingPlugin: MainVotingPlugin;
+  let memberAccessPlugin: MemberAccessPlugin;
 
   let votingSettings: VotingSettings;
   let id = 0;
@@ -1255,7 +1251,7 @@ describe('Tests replicated from the original AddressList plugin', async () => {
   let endDate: number;
   let dummyMetadata: string;
   let dummyActions: IDAO.ActionStruct[];
-  const startOffset = 0;
+  const startOffset = 10;
 
   before(async () => {
     signers = (await ethers.getSigners()).slice(0, 10);
@@ -1266,21 +1262,20 @@ describe('Tests replicated from the original AddressList plugin', async () => {
     mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
       new MainVotingPlugin__factory(signers[0])
     );
-
-    // 10 members
-    await Promise.all(
-      signers.map(signer => {
-        return dao.grant(
-          mainVotingPlugin.address,
-          signer.address,
-          MEMBER_PERMISSION_ID
-        );
-      })
+    memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
+      new MemberAccessPlugin__factory(signers[0])
     );
+
     // The plugin can execute on the DAO
     await dao.grant(
       dao.address,
       mainVotingPlugin.address,
+      EXECUTE_PERMISSION_ID
+    );
+    // MemberAccessPlugin can execute on the DAO
+    await dao.grant(
+      dao.address,
+      memberAccessPlugin.address,
       EXECUTE_PERMISSION_ID
     );
     // The DAO can update the plugin addresses
@@ -1327,10 +1322,16 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await mainVotingPlugin.initialize(dao.address, votingSettings, [
           signers[0].address,
         ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers);
         await makeEditors(signers.slice(1)); // editors 2-10
+        await mineBlock();
 
         startDate = (await getTime()) + startOffset;
-        endDate = startDate + votingSettings.duration;
+        endDate = startDate + votingSettings.duration + startOffset;
 
         await mainVotingPlugin.createProposal(
           dummyMetadata,
@@ -1343,6 +1344,12 @@ describe('Tests replicated from the original AddressList plugin', async () => {
 
       it('reverts on voting None', async () => {
         await advanceIntoVoteTime(startDate, endDate);
+        const block = await ethers.provider.getBlockNumber();
+        expect(await mainVotingPlugin.isEditor(signers[0].address)).to.eq(true);
+        expect(await mainVotingPlugin.isListed(signers[0].address)).to.eq(true);
+        expect(
+          await mainVotingPlugin.isListedAtBlock(signers[0].address, block - 1)
+        ).to.eq(true);
 
         // Check that voting is possible but don't vote using `callStatic`
         await expect(
@@ -1405,6 +1412,13 @@ describe('Tests replicated from the original AddressList plugin', async () => {
 
         await advanceAfterVoteEnd(endDate);
 
+        const proposal = await mainVotingPlugin.getProposal(id);
+        expect(proposal.open).to.be.false;
+        expect(proposal.tally.yes.toNumber()).to.eq(3);
+        expect(proposal.tally.no.toNumber()).to.eq(2);
+        expect(proposal.tally.abstain.toNumber()).to.eq(2);
+        expect(proposal.executed).to.be.false;
+
         expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
         expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
 
@@ -1466,6 +1480,11 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await mainVotingPlugin.initialize(dao.address, votingSettings, [
           signers[0].address,
         ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers);
         await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
@@ -1521,6 +1540,12 @@ describe('Tests replicated from the original AddressList plugin', async () => {
 
       it('reverts on voting None', async () => {
         await advanceIntoVoteTime(startDate, endDate);
+        const block = await ethers.provider.getBlockNumber();
+        expect(await mainVotingPlugin.isEditor(signers[0].address)).to.eq(true);
+        expect(await mainVotingPlugin.isListed(signers[0].address)).to.eq(true);
+        expect(
+          await mainVotingPlugin.isListedAtBlock(signers[0].address, block - 1)
+        ).to.eq(true);
 
         // Check that voting is possible but don't vote using `callStatic`
         await expect(
@@ -1583,6 +1608,13 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         expect(await mainVotingPlugin.canExecute(id)).to.be.false;
 
         await advanceAfterVoteEnd(endDate);
+
+        const proposal = await mainVotingPlugin.getProposal(id);
+        expect(proposal.open).to.be.false;
+        expect(proposal.tally.yes.toNumber()).to.eq(3);
+        expect(proposal.tally.no.toNumber()).to.eq(2);
+        expect(proposal.tally.abstain.toNumber()).to.eq(2);
+        expect(proposal.executed).to.be.false;
 
         expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
         expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
@@ -1672,6 +1704,11 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await mainVotingPlugin.initialize(dao.address, votingSettings, [
           signers[0].address,
         ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers);
         await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
@@ -1688,6 +1725,12 @@ describe('Tests replicated from the original AddressList plugin', async () => {
 
       it('reverts on voting None', async () => {
         await advanceIntoVoteTime(startDate, endDate);
+        const block = await ethers.provider.getBlockNumber();
+        expect(await mainVotingPlugin.isEditor(signers[0].address)).to.eq(true);
+        expect(await mainVotingPlugin.isListed(signers[0].address)).to.eq(true);
+        expect(
+          await mainVotingPlugin.isListedAtBlock(signers[0].address, block - 1)
+        ).to.eq(true);
 
         // Check that voting is possible but don't vote using `callStatic`
         await expect(
@@ -1762,6 +1805,13 @@ describe('Tests replicated from the original AddressList plugin', async () => {
 
         await advanceAfterVoteEnd(endDate);
 
+        const proposal = await mainVotingPlugin.getProposal(id);
+        expect(proposal.open).to.be.false;
+        expect(proposal.tally.yes.toNumber()).to.eq(3);
+        expect(proposal.tally.no.toNumber()).to.eq(2);
+        expect(proposal.tally.abstain.toNumber()).to.eq(2);
+        expect(proposal.executed).to.be.false;
+
         expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
         expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
 
@@ -1822,6 +1872,11 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await mainVotingPlugin.initialize(dao.address, votingSettings, [
           signers[0].address,
         ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers);
         await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
@@ -1943,6 +1998,11 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await mainVotingPlugin.initialize(dao.address, votingSettings, [
           signers[0].address,
         ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers);
         await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
@@ -2100,6 +2160,11 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await mainVotingPlugin.initialize(dao.address, votingSettings, [
           signers[0].address,
         ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers);
         await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
@@ -2162,6 +2227,11 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await mainVotingPlugin.initialize(dao.address, votingSettings, [
           signers[0].address,
         ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers);
         await makeEditors(signers.slice(1)); // editors 2-10
 
         startDate = (await getTime()) + startOffset;
@@ -2260,7 +2330,7 @@ describe('Tests replicated from the original AddressList plugin', async () => {
     return Promise.all(promises);
   }
 
-  function makeEditors(targetAddress: SignerWithAddress[]) {
+  function makeMembers(targetAddresses: SignerWithAddress[]) {
     return dao
       .grant(
         mainVotingPlugin.address,
@@ -2270,10 +2340,43 @@ describe('Tests replicated from the original AddressList plugin', async () => {
       .then(tx => tx.wait())
       .then(() =>
         Promise.all(
-          targetAddress.map(targetAddress =>
+          targetAddresses.map(targetAddress =>
+            mainVotingPlugin
+              .addMember(targetAddress.address)
+              .then(tx => tx.wait())
+              .then(() => mainVotingPlugin.isMember(targetAddress.address))
+              .then(isMember => expect(isMember).to.eq(true))
+          )
+        )
+      )
+      .then(() =>
+        dao.revoke(
+          mainVotingPlugin.address,
+          signers[0].address,
+          UPDATE_ADDRESSES_PERMISSION_ID
+        )
+      )
+      .then(tx => tx.wait());
+  }
+
+  function makeEditors(targetAddresses: SignerWithAddress[]) {
+    return dao
+      .grant(
+        mainVotingPlugin.address,
+        signers[0].address,
+        UPDATE_ADDRESSES_PERMISSION_ID
+      )
+      .then(tx => tx.wait())
+      .then(() =>
+        Promise.all(
+          targetAddresses.map(targetAddress =>
             mainVotingPlugin
               .addEditor(targetAddress.address)
               .then(tx => tx.wait())
+              .then(() => mainVotingPlugin.isMember(targetAddress.address))
+              .then(isMember => expect(isMember).to.eq(true))
+              .then(() => mainVotingPlugin.isEditor(targetAddress.address))
+              .then(isEditor => expect(isEditor).to.eq(true))
           )
         )
       )
