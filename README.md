@@ -402,9 +402,13 @@ function initialize(
   address[] calldata _initialEditors
 );
 
-function addAddresses(address[]);
+function addEditor(address);
 
-function removeAddresses(address[]);
+function removeEditor(address);
+
+function addMember(address);
+
+function removeMember(address);
 
 function createProposal(
   bytes calldata metadata,
