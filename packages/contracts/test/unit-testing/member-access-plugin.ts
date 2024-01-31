@@ -147,7 +147,7 @@ describe('Member Access Plugin', function () {
     // Alice is an editor (see mainVotingPlugin initialize)
 
     // Bob is a member
-    memberAccessPlugin.proposeNewMember('0x', bob.address);
+    await memberAccessPlugin.proposeNewMember('0x', bob.address);
   });
 
   describe('initialize', () => {
