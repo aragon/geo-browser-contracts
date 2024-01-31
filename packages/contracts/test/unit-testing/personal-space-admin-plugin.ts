@@ -25,7 +25,6 @@ import {
   CONTENT_PERMISSION_ID,
   EDITOR_PERMISSION_ID,
   EXECUTE_PERMISSION_ID,
-  MEMBER_PERMISSION_ID,
   SUBSPACE_PERMISSION_ID,
 } from './common';
 import {
@@ -113,12 +112,6 @@ describe('Personal Space Admin Plugin', function () {
       personalSpaceVotingPlugin.address,
       alice.address,
       EDITOR_PERMISSION_ID
-    );
-    // Bob is a member
-    await dao.grant(
-      personalSpaceVotingPlugin.address,
-      bob.address,
-      MEMBER_PERMISSION_ID
     );
     // The plugin can execute on the DAO
     await dao.grant(
