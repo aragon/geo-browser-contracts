@@ -52,7 +52,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         return true;
     }
 
-    function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
+    function getSelector(bytes memory _data) internal pure returns (bytes4 selector) {
         // Slices are only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
@@ -62,7 +62,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
 
     function decodeAddRemoveMemberCalldata(
         bytes memory _data
-    ) public pure returns (bytes4 sig, address account) {
+    ) internal pure returns (bytes4 sig, address account) {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {

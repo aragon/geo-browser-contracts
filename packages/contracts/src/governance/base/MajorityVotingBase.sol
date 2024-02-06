@@ -14,7 +14,7 @@ import {RATIO_BASE, RatioOutOfBounds} from "@aragon/osx/plugins/utils/Ratio.sol"
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 
 /// @title MajorityVotingBase
-/// @author Aragon Association - 2022-2023
+/// @author Aragon X - 2022-2023
 /// @notice The abstract implementation of majority voting plugins.
 /// @notice Adapted to only make use of the required parameters and methods.
 ///

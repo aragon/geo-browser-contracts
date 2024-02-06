@@ -3,7 +3,7 @@
 pragma solidity ^0.8.8;
 
 /// @title IEditors
-/// @author Aragon Association - 2024
+/// @author Aragon X - 2024
 interface IEditors {
     /// @notice Emitted when an editors are added to the DAO plugin.
     /// @param editors The addresses of the new editors.

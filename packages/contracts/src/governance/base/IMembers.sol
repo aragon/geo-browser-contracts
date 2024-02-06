@@ -3,7 +3,7 @@
 pragma solidity ^0.8.8;
 
 /// @title IMembers
-/// @author Aragon Association - 2024
+/// @author Aragon X - 2024
 /// @notice An interface to be implemented by DAO plugins that define membership.
 interface IMembers {
     /// @notice Emitted when a member is added to the DAO plugin.
