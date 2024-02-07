@@ -28,7 +28,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         (_where, _who, _permissionId);
 
         // Is it execute()?
-        if (getSelector(_data) != IDAO.execute.selector) {
+        if (_getSelector(_data) != IDAO.execute.selector) {
             return false;
         }
 
@@ -42,7 +42,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         else if (_actions[0].to != targetContract) return false;
 
         // Decode the call being requested (both have the same parameters)
-        (bytes4 _requestedSelector, ) = decodeAddRemoveMemberCalldata(_actions[0].data);
+        (bytes4 _requestedSelector, ) = _decodeAddRemoveMemberCalldata(_actions[0].data);
 
         if (
             _requestedSelector != MainVotingPlugin.addMember.selector &&
@@ -52,7 +52,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         return true;
     }
 
-    function getSelector(bytes memory _data) internal pure returns (bytes4 selector) {
+    function _getSelector(bytes memory _data) internal pure returns (bytes4 selector) {
         // Slices are only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
@@ -60,7 +60,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         }
     }
 
-    function decodeAddRemoveMemberCalldata(
+    function _decodeAddRemoveMemberCalldata(
         bytes memory _data
     ) internal pure returns (bytes4 sig, address account) {
         // Slicing is only supported for bytes calldata, not bytes memory

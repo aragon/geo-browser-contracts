@@ -6,6 +6,8 @@ import {
   IDAO,
   OnlyPluginUpgraderCondition,
   OnlyPluginUpgraderCondition__factory,
+  TestOnlyPluginUpgraderCondition__factory,
+  TestOnlyPluginUpgraderCondition,
 } from '../../typechain';
 import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
@@ -1192,7 +1194,18 @@ describe('Only Plugin Upgrader Condition', function () {
     });
   });
 
-  describe('Decoders', () => {
+  describe('Decoders (internal)', () => {
+    let testMemberAccessExecuteCondition: TestOnlyPluginUpgraderCondition;
+
+    beforeEach(async () => {
+      const factory = new TestOnlyPluginUpgraderCondition__factory(alice);
+      testMemberAccessExecuteCondition = await factory.deploy(
+        dao.address,
+        pspAddress,
+        [ALLOWED_PLUGIN_ADDRESS_1, ALLOWED_PLUGIN_ADDRESS_2]
+      );
+    });
+
     it('Should decode getSelector properly', async () => {
       const actions: IDAO.ActionStruct[] = [
         {
@@ -1224,15 +1237,15 @@ describe('Only Plugin Upgrader Condition', function () {
       ];
 
       expect(
-        await onlyPluginUpgraderCondition.getSelector(actions[0].data)
+        await testMemberAccessExecuteCondition.getSelector(actions[0].data)
       ).to.eq((actions[0].data as string).slice(0, 10));
 
       expect(
-        await onlyPluginUpgraderCondition.getSelector(actions[1].data)
+        await testMemberAccessExecuteCondition.getSelector(actions[1].data)
       ).to.eq((actions[1].data as string).slice(0, 10));
 
       expect(
-        await onlyPluginUpgraderCondition.getSelector(actions[2].data)
+        await testMemberAccessExecuteCondition.getSelector(actions[2].data)
       ).to.eq((actions[2].data as string).slice(0, 10));
     });
 
@@ -1252,7 +1265,7 @@ describe('Only Plugin Upgrader Condition', function () {
 
       // 1
       let [selector, where, who, permissionId] =
-        await onlyPluginUpgraderCondition.decodeGrantRevokeCalldata(
+        await testMemberAccessExecuteCondition.decodeGrantRevokeCalldata(
           calldataList[0]
         );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
@@ -1262,7 +1275,7 @@ describe('Only Plugin Upgrader Condition', function () {
 
       // 2
       [selector, where, who, permissionId] =
-        await onlyPluginUpgraderCondition.decodeGrantRevokeCalldata(
+        await testMemberAccessExecuteCondition.decodeGrantRevokeCalldata(
           calldataList[1]
         );
       expect(selector).to.eq(calldataList[1].slice(0, 10));
@@ -1289,7 +1302,7 @@ describe('Only Plugin Upgrader Condition', function () {
 
       // 1
       let [selector, decodedDaoAddress, pluginAddress] =
-        await onlyPluginUpgraderCondition.decodeApplyUpdateCalldata(
+        await testMemberAccessExecuteCondition.decodeApplyUpdateCalldata(
           calldataList[0]
         );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
@@ -1298,7 +1311,7 @@ describe('Only Plugin Upgrader Condition', function () {
 
       // 2
       [selector, decodedDaoAddress, pluginAddress] =
-        await onlyPluginUpgraderCondition.decodeApplyUpdateCalldata(
+        await testMemberAccessExecuteCondition.decodeApplyUpdateCalldata(
           calldataList[1]
         );
       expect(selector).to.eq(calldataList[1].slice(0, 10));

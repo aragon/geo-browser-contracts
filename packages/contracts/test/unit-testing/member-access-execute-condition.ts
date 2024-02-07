@@ -5,6 +5,8 @@ import {
   MainVotingPlugin__factory,
   MemberAccessExecuteCondition,
   MemberAccessExecuteCondition__factory,
+  TestMemberAccessExecuteCondition__factory,
+  TestMemberAccessExecuteCondition,
 } from '../../typechain';
 import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
@@ -313,7 +315,16 @@ describe('Member Access Condition', function () {
     });
   });
 
-  describe('Decoders', () => {
+  describe('Decoders (internal)', () => {
+    let testMemberAccessExecuteCondition: TestMemberAccessExecuteCondition;
+
+    beforeEach(async () => {
+      const factory = new TestMemberAccessExecuteCondition__factory(alice);
+      testMemberAccessExecuteCondition = await factory.deploy(
+        SOME_CONTRACT_ADDRESS
+      );
+    });
+
     it('Should decode getSelector properly', async () => {
       const actions: IDAO.ActionStruct[] = [
         {
@@ -333,15 +344,20 @@ describe('Member Access Condition', function () {
       ];
 
       expect(
-        await memberAccessExecuteCondition.getSelector(actions[0].data)
+        await testMemberAccessExecuteCondition.getSelector(actions[0].data)
       ).to.eq((actions[0].data as string).slice(0, 10));
 
       expect(
-        await memberAccessExecuteCondition.getSelector(actions[1].data)
+        await testMemberAccessExecuteCondition.getSelector(actions[1].data)
       ).to.eq((actions[1].data as string).slice(0, 10));
     });
 
     it('Should decode decodeGrantRevokeCalldata properly', async () => {
+      const factory = new TestMemberAccessExecuteCondition__factory(alice);
+      const testMemberAccessExecuteCondition = await factory.deploy(
+        SOME_CONTRACT_ADDRESS
+      );
+
       const calldataList = [
         mainVotingPluginInterface.encodeFunctionData('addMember', [pspAddress]),
         mainVotingPluginInterface.encodeFunctionData('removeMember', [
@@ -351,7 +367,7 @@ describe('Member Access Condition', function () {
 
       // 1
       let [selector, who] =
-        await memberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
+        await testMemberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
           calldataList[0]
         );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
@@ -359,7 +375,7 @@ describe('Member Access Condition', function () {
 
       // 2
       [selector, who] =
-        await memberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
+        await testMemberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
           calldataList[1]
         );
       expect(selector).to.eq(calldataList[1].slice(0, 10));

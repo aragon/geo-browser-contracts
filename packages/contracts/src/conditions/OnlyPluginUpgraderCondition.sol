@@ -53,7 +53,7 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
     ) external view returns (bool) {
         (_where, _who, _permissionId);
 
-        bytes4 _requestedFuncSig = getSelector(_data);
+        bytes4 _requestedFuncSig = _getSelector(_data);
         if (_requestedFuncSig != IDAO.execute.selector) {
             return false;
         }
@@ -69,16 +69,18 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
 
         // Action 1/3: GRANT/REVOKE UPGRADE_PLUGIN_PERMISSION_ID to the PSP on targetPlugis[]
         if (_actions[0].to != dao || _actions[2].to != dao) return false;
-        else if (!isValidGrantRevokeCalldata(_actions[0].data, _actions[2].data)) return false;
+        else if (!_isValidGrantRevokeCalldata(_actions[0].data, _actions[2].data)) return false;
 
         // Action 2: CALL PSP.applyUpdate() onto targetPlugins[]
         if (_actions[1].to != psp) return false;
-        else if (!isValidApplyUpdateCalldata(_actions[1].data)) return false;
+        else if (!_isValidApplyUpdateCalldata(_actions[1].data)) return false;
 
         return true;
     }
 
-    function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
+    // Internal helpers
+
+    function _getSelector(bytes memory _data) internal pure returns (bytes4 selector) {
         // Slices are only supported for bytes calldata
         // Bytes memory requires an assembly block
         assembly {
@@ -86,9 +88,9 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         }
     }
 
-    function decodeGrantRevokeCalldata(
+    function _decodeGrantRevokeCalldata(
         bytes memory _data
-    ) public pure returns (bytes4 selector, address where, address who, bytes32 permissionId) {
+    ) internal pure returns (bytes4 selector, address where, address who, bytes32 permissionId) {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
@@ -99,9 +101,9 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         }
     }
 
-    function decodeApplyUpdateCalldata(
+    function _decodeApplyUpdateCalldata(
         bytes memory _data
-    ) public pure returns (bytes4 selector, address daoAddress, address targetPluginAddress) {
+    ) internal pure returns (bytes4 selector, address daoAddress, address targetPluginAddress) {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
@@ -124,19 +126,17 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         }
     }
 
-    // Internal helpers
-
-    function isValidGrantRevokeCalldata(
+    function _isValidGrantRevokeCalldata(
         bytes memory _grantData,
         bytes memory _revokeData
-    ) private view returns (bool) {
+    ) internal view returns (bool) {
         // Grant checks
         (
             bytes4 _grantSelector,
             address _grantWhere,
             address _grantWho,
             bytes32 _grantPermission
-        ) = decodeGrantRevokeCalldata(_grantData);
+        ) = _decodeGrantRevokeCalldata(_grantData);
 
         if (_grantSelector != PermissionManager.grant.selector) return false;
         else if (!allowedPluginAddresses[_grantWhere]) return false;
@@ -149,7 +149,7 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
             address _revokeWhere,
             address _revokeWho,
             bytes32 _revokePermission
-        ) = decodeGrantRevokeCalldata(_revokeData);
+        ) = _decodeGrantRevokeCalldata(_revokeData);
 
         if (_revokeSelector != PermissionManager.revoke.selector) return false;
         else if (!allowedPluginAddresses[_revokeWhere]) return false;
@@ -162,8 +162,8 @@ contract OnlyPluginUpgraderCondition is PermissionCondition {
         return true;
     }
 
-    function isValidApplyUpdateCalldata(bytes memory _data) private view returns (bool) {
-        (bytes4 _selector, address _dao, address _targetPluginAddress) = decodeApplyUpdateCalldata(
+    function _isValidApplyUpdateCalldata(bytes memory _data) internal view returns (bool) {
+        (bytes4 _selector, address _dao, address _targetPluginAddress) = _decodeApplyUpdateCalldata(
             _data
         );
 
