@@ -24,13 +24,8 @@
             },
             {
               "internalType": "uint64",
-              "name": "minDuration",
+              "name": "duration",
               "type": "uint64"
-            },
-            {
-              "internalType": "uint256",
-              "name": "minProposerVotingPower",
-              "type": "uint256"
             }
           ],
           "internalType": "struct MajorityVotingBase.VotingSettings",

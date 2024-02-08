@@ -11,7 +11,6 @@ export const ONE_BYTES32 =
 
 export const DEPLOYER_PERMISSION_ID = ethers.utils.id('DEPLOYER_PERMISSION');
 export const EDITOR_PERMISSION_ID = ethers.utils.id('EDITOR_PERMISSION');
-export const MEMBER_PERMISSION_ID = ethers.utils.id('MEMBER_PERMISSION');
 
 export const CONTENT_PERMISSION_ID = ethers.utils.id('CONTENT_PERMISSION');
 export const SUBSPACE_PERMISSION_ID = ethers.utils.id('SUBSPACE_PERMISSION');
@@ -89,14 +88,12 @@ export type VotingSettings = {
   votingMode: number;
   supportThreshold: BigNumber;
   minParticipation: BigNumber;
-  minDuration: number;
-  minProposerVotingPower: number;
+  duration: number;
 };
 
 export const defaultMainVotingSettings: VotingSettings = {
-  minDuration: 60 * 60, // 1 second
+  duration: 60 * 60, // 1 second
   minParticipation: pctToRatio(30), // 30%
   supportThreshold: pctToRatio(50), // 50% + 1
-  minProposerVotingPower: 0,
   votingMode: VotingMode.EarlyExecution,
 };

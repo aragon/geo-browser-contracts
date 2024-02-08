@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionCondition} from "@aragon/osx/core/permission/PermissionCondition.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-import {MEMBER_PERMISSION_ID} from "../constants.sol";
+import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
 
 /// @notice The condition associated with `TestSharedPlugin`
 contract MemberAccessExecuteCondition is PermissionCondition {
@@ -18,7 +18,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         targetContract = _targetContract;
     }
 
-    /// @notice Checks whether the current action wants to grant membership on the predefined address
+    /// @notice Checks whether the current action attempts to add or remove members
     function isGranted(
         address _where,
         address _who,
@@ -27,8 +27,8 @@ contract MemberAccessExecuteCondition is PermissionCondition {
     ) external view returns (bool) {
         (_where, _who, _permissionId);
 
-        // Is execute()?
-        if (getSelector(_data) != IDAO.execute.selector) {
+        // Is it execute()?
+        if (_getSelector(_data) != IDAO.execute.selector) {
             return false;
         }
 
@@ -39,27 +39,20 @@ contract MemberAccessExecuteCondition is PermissionCondition {
 
         // Check actions
         if (_actions.length != 1) return false;
+        else if (_actions[0].to != targetContract) return false;
 
         // Decode the call being requested (both have the same parameters)
-        (
-            bytes4 _requestedSelector,
-            address _requestedWhere,
-            ,
-            bytes32 _requestedPermission
-        ) = decodeGrantRevokeCalldata(_actions[0].data);
+        (bytes4 _requestedSelector, ) = _decodeAddRemoveMemberCalldata(_actions[0].data);
 
         if (
-            _requestedSelector != PermissionManager.grant.selector &&
-            _requestedSelector != PermissionManager.revoke.selector
+            _requestedSelector != MainVotingPlugin.addMember.selector &&
+            _requestedSelector != MainVotingPlugin.removeMember.selector
         ) return false;
-
-        if (_requestedWhere != targetContract) return false;
-        else if (_requestedPermission != MEMBER_PERMISSION_ID) return false;
 
         return true;
     }
 
-    function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
+    function _getSelector(bytes memory _data) internal pure returns (bytes4 selector) {
         // Slices are only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
@@ -67,16 +60,14 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         }
     }
 
-    function decodeGrantRevokeCalldata(
+    function _decodeAddRemoveMemberCalldata(
         bytes memory _data
-    ) public pure returns (bytes4 sig, address where, address who, bytes32 permissionId) {
+    ) internal pure returns (bytes4 sig, address account) {
         // Slicing is only supported for bytes calldata, not bytes memory
         // Bytes memory requires an assembly block
         assembly {
             sig := mload(add(_data, 0x20)) // 32
-            where := mload(add(_data, 0x24)) // 32 + 4
-            who := mload(add(_data, 0x44)) // 32 + 4 + 32
-            permissionId := mload(add(_data, 0x64)) // 32 + 4 + 32 + 32
+            account := mload(add(_data, 0x24)) // 32 + 4
         }
     }
 }

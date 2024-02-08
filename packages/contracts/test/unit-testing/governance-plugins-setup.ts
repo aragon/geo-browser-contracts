@@ -47,7 +47,7 @@ describe('Governance Plugins Setup', function () {
     it('returns the plugin, helpers, and permissions (no pluginUpgrader)', async () => {
       const pluginUpgrader = ADDRESS_ZERO;
 
-      // Params: (MajorityVotingBase.VotingSettings, address, address)
+      // Params: (MajorityVotingBase.VotingSettings, address[], uint64, address)
       const initData = abiCoder.encode(
         getNamedTypesFromMetadata(
           buildMetadata.pluginSetup.prepareInstallation.inputs
@@ -57,8 +57,7 @@ describe('Governance Plugins Setup', function () {
             votingMode: VotingMode.EarlyExecution,
             supportThreshold: pctToRatio(25),
             minParticipation: pctToRatio(50),
-            minDuration: 60 * 60 * 24 * 5,
-            minProposerVotingPower: 0,
+            duration: 60 * 60 * 24 * 5,
           },
           [alice.address],
           60 * 60 * 24,
@@ -158,8 +157,7 @@ describe('Governance Plugins Setup', function () {
             votingMode: VotingMode.EarlyExecution,
             supportThreshold: pctToRatio(25),
             minParticipation: pctToRatio(50),
-            minDuration: 60 * 60 * 24 * 5,
-            minProposerVotingPower: 0,
+            duration: 60 * 60 * 24 * 5,
           },
           [alice.address],
           60 * 60 * 24,

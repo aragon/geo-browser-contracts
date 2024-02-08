@@ -19,9 +19,9 @@ yarn test
 
 ## Overview
 
-A Space is composed by a DAO and several plugins installed on it. The [DAO](https://github.com/aragon/osx/blob/develop/packages/contracts/src/core/dao/DAO.sol) contract holds all the assets and rights, while plugins are custom, opt-in pieces of logic that can perform certain actions governed by the DAO's permission database.
+A Space is composed by a DAO and several plugins installed on it. The [DAO](https://github.com/aragon/osx/blob/develop/packages/contracts/src/core/dao/DAO.sol) contract holds all the assets and rights to act on external components, while plugins are custom, composable, opt-in pieces of logic that can perform certain actions governed by the DAO's permission database.
 
-The DAO contract can be deployed by using Aragon's DAOFactory contract. This will deploy a new DAO with the desired plugins and settings.
+The DAO contract can be deployed by using Aragon's DAOFactory contract. This will deploy a new DAO with the desired plugins and their respective settings.
 
 The current repository provides the plugins necessary to cover two use cases:
 
@@ -35,9 +35,9 @@ The current repository provides the plugins necessary to cover two use cases:
 
 ### Standard Space
 
-In standard spaces, _members_ can create proposals while _editors_ can vote whether they should pass. Proposals eventually approved can be executed by anyone and this will make the DAO call the predefined proposal actions.
+In standard spaces, _members_ can create proposals while _editors_ can vote on them. Approved proposals can be executed by anyone and this will make the DAO call the predefined proposal actions.
 
-The most typical case will be telling the Space Plugin to emit the event of a proposal being processed.
+The most typical case will be telling the Space Plugin to emit the event of a proposal being processed. It can include emitting a new hash for the contents or accepting a subspace.
 
 <img src="./img/std-1.svg">
 
@@ -45,7 +45,7 @@ The Main Voting Plugin can also pass proposals that change its own settings.
 
 <img src="./img/std-2.svg">
 
-To add new members, the Member Access Plugin allows anyone to request the permission. Editors can approve or reject it.
+To manage who can create proposals, the Member Access Plugin allows anyone to request becoming a member. Editors can approve or reject incoming proposals.
 
 <img src="./img/std-3.svg">
 
@@ -55,9 +55,13 @@ Personal spaces are a simplified version, where anyone defined as editor can imm
 
 <img src="./img/personal-1.svg">
 
+Editors may also execute proposals who define new editors.
+
+<img src="./img/personal-2.svg">
+
 ### Plugin Upgrader
 
-There's an optional case, where a predefined address can execute the actions to upgrade a plugin to the latest published version.
+There's an optional feature, where a predefined address can execute the actions to upgrade a plugin to the latest published version.
 
 <img src="./img/upgrader-1.svg">
 
@@ -69,17 +73,17 @@ There's an optional case, where a predefined address can execute the actions to 
 
 ### Joining a space
 
-1. An address calls `proposeNewMember()` on the `MemberAccessPlugin`
-   - If the wallet is the only editor, the proposal succeeds immediately
+1. Someone calls `proposeNewMember()` on the `MemberAccessPlugin`
+   - If the caller is the only editor, the proposal succeeds immediately
 2. One of the editors calls `approve()` or `reject()`
    - Calling `approve()` makes the proposal succeed
    - Calling `reject()` cancels the proposal
 3. A succeeded proposal is executed automatically
-   - This makes the DAO call `grant()` on itself to grant the `MEMBER_PERMISSION_ID` to the intended address
+   - This makes the DAO call `addMember()` on the main voting plugin
 
 ### Creating proposals for a space
 
-1. An editor or a wallet with the `MEMBER_PERMISSION_ID` granted, creates a proposal
+1. An editor or a member creates a proposal
 2. Editors can vote on it for a predefined amount of time
 3. If the proposal exceeds the required quorum and support, the proposal succeeds
 4. Succeeded proposals can be executed by anyone
@@ -93,32 +97,21 @@ There's an optional case, where a predefined address can execute the actions to 
 
 ## General notice
 
-The implementation of the four plugins is built on top of existing and thoroughly autited plugins from Aragon OSx. The base contracts used highly align with the requirements of Geo. However, there is some cases in which certain parameters may not be relevant or may need to be kept for compatibility.
+The implementation of the four plugins is built on top of existing and thoroughly autited plugins from Aragon OSx. In order to fully accomodate to Geo's design, some functions and interfaces needed a few tweaks, which made it necessary to fork and adapt these contracts in-place.
 
-The alternative would be to fork these base contracts and include them as part of this repository. Given the pro's of getting OSx updates from Aragon for free vs the con's of keeping a few redundant parameters, we have decided to avoid forking any base contract.
+They can be found on `packages/contracts/src/governance/base`
 
 [Learn more about Aragon OSx](https://devs.aragon.org/docs/osx/how-it-works/framework/)
 
-### Quirks
-
-- The `minProposerVotingPower` setting is ignored. The requirement is just being a member.
-  - Leave it to just `0`
-- The second parameter of `approve()` is ignored on [MemberAccessPlugin](#member-access-plugin). It is assumed that an approval will trigger an early execution whenever possible.
-  - Leave it to just `false`
-- The 4th and 5th parameters on `createProposal()` (startDate and endDate) are ignored
-  - Leave them to just `0`
-- `minDuration` in `MainVotingSettings` defines the proposal duration, not the minimum duration.
-- The methods `addAddresses()` and `removeAddresses()` on the [MemberAccessPlugin](#member-access-plugin) are disabled
-
 ## How permissions work
 
-For each Space, an Aragon DAO is going to be created to act as the entry point. It will hold any assets and most importantly, manage the permission database which will govern all plugin interactions.
+Each Space created is an Aragon DAO. It holds any assets and most importantly, it manages the permission database that governs all plugin interactions.
 
 A permission looks like:
 
 - An address `who` holds `MY_PERMISSION_ID` on a target contract `where`
 
-New DAO's are deployed with a `ROOT_PERMISSION` assigned to its creator, but the DAO will typically deployed by the DAO factory, which will install all the requested plugins and drop the ROOT permission after the set up is done.
+New DAO's deployed manyally will grant `ROOT_PERMISSION` to its creator. However, most DAO's are typically deployed via Aragon's DAO factory, which will deploy a new contract with safe defaults, install all the requested plugins and drop the ROOT permission when the set up is done.
 
 Managing permissions is made via two functions that are called on the DAO:
 
@@ -155,25 +148,42 @@ See the `MemberAccessExecuteCondition` contract. It restricts what the [MemberAc
 
 Below are all the permissions that a [PluginSetup](#plugin-setup-contracts) contract may want to request:
 
-- `MEMBER_PERMISSION` is required to create proposals on the [MainVotingPlugin](#main-voting-plugin)
+Proposal:
+
 - `EDITOR_PERMISSION` is required to execute proposals on the [PersonalSpaceAdminPlugin](#personal-space-admin-plugin)
 - `EXECUTE_PERMISSION` is required to make the DAO `execute` a set of actions
   - Only plugins should have this permission
   - Some plugins should restrict it with a condition
-- `ROOT_PERMISSION` is required to make the DAO `grant` or `revoke` permissions
-  - The DAO needs to be ROOT on itself (it is by default)
-  - Nobody else should be ROOT on the DAO
-- `UPGRADE_PLUGIN_PERMISSION` is required for an address to be able to upgrade a plugin to a newer version published by the developer
-  - Typically called by the DAO via proposal
-  - Optionally granted to an additional address for convenience
+
+Spaces:
+
 - `CONTENT_PERMISSION_ID` is required to call the function that emits new content events on the [SpacePlugin](#space-plugin)
   - Typically called by the DAO via proposal
 - `SUBSPACE_PERMISSION_ID` is required to call the functions that emit new subspace accept/reject events on the [SpacePlugin](#space-plugin)
   - Typically called by the DAO via proposal
+
+Governance settings:
+
+- `UPDATE_VOTING_SETTINGS_PERMISSION_ID` is required to change the settings of the [MainVotingPlugin](#main-voting-plugin)
+- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove members or editors on the [MainVotingPlugin](#main-voting-plugin)
+  - Typically called by the DAO via proposal
 - `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [MemberAccessPlugin](#member-access-plugin)
   - Typically called by the DAO via proposal
-- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove editors on the [MainVotingPlugin](#main-voting-plugin)
-  - Typically called by the DAO via proposal
+
+Permission management:
+
+- `ROOT_PERMISSION` is required to make the DAO `grant` or `revoke` permissions
+  - If the DAO is executing a set of actions, it needs to be ROOT on itself (it is by default)
+  - The PluginSetupProcessor may be granted ROOT permission temporarily
+  - Nobody else should be ROOT on a DAO
+
+Plugin versioning:
+
+- `UPGRADE_PLUGIN_PERMISSION` is required to be able to call `upgradeTo()` or `upgradeToAndCall()` on a plugin
+  - Called by the PSP via proposal on the DAO
+- `APPLY_UPDATE_PERMISSION` is needed to call `applyUpdate()` on the PluginSetupProcessor
+  - Optionally granted to an additional address, for convenience
+  - Correspondingly, `APPLY_INSTALLATION_PERMISSION` and `APPLY_UNINSTALLATION_PERMISSION` allow to call `applyInstallation()` or `applyUninstallation()`
 
 Other DAO permissions:
 
@@ -194,7 +204,7 @@ See `packages/contracts/typechain` for all the generated JS/TS wrappers to inter
 
 ## Encoding and decoding actions
 
-Making calls to the DAO is straightforward, however making execute arbitrary actions requires them to be encoded, stored on chain and be approved before they can be executed.
+Making calls to the DAO is straightforward, however executing arbitrary actions requires them to be encoded, stored on chain and be approved before they can be executed.
 
 To this end, the DAO has a struct called `Action { to, value, data }`, which will make the DAO call the `to` address, with `value` ether and call the given calldata (if any).
 
@@ -208,17 +218,19 @@ On Spaces with the standard governance, a [MemberAccessPlugin](#member-access-pl
 
 - Send a transaction to call `proposeNewMember()`
 - Have an editor (different to the proposer) calling `approve()` for this proposal
-- This will grant `MEMBER_PERMISSION` to the requested address on the main voting contract
+- This will add the requested address to the members list on the main voting contract
+
+The same applies to remove members with `proposeRemoveMember()`
 
 ### Editors
 
 - A member or editor creates a proposal
-- The proposal should have an action to make the DAO `execute()` a call to `addAddresses()` on the plugin
+- The proposal should have an action to make the DAO `execute()` a call to `addEditor()` on the plugin
 - A majority of editors call `vote()` and approve it
 - Someone calls `plugin.execute()` so that the DAO executes the requested action on the plugin
 - The new editor will be able to vote on proposals created from then on
 
-The same procedure applies to removing members and editors.
+The same procedure applies to removing editors with `removeEditor()`
 
 ## Adding editors (personal spaces)
 
@@ -239,95 +251,139 @@ This plugin is upgradeable.
 
 #### Methods
 
-- `function initialize(IDAO _dao, string _firstBlockContentUri, address predecessorSpace)`
-- `function processGeoProposal(uint32 _blockIndex, uint32 _itemIndex, string _contentUri)`
-- `function acceptSubspace(address _dao)`
-- `function removeSubspace(address _dao)`
+```solidity
+function initialize(IDAO _dao, string _firstBlockContentUri, address predecessorSpace);
+
+function processGeoProposal(uint32 _blockIndex, uint32 _itemIndex, string _contentUri);
+
+function acceptSubspace(address _dao);
+
+function removeSubspace(address _dao);
+```
 
 Inherited:
 
-- `function upgradeTo(address newImplementation)`
-- `function upgradeToAndCall(address newImplementation, bytes data)`
+```solidity
+function upgradeTo(address newImplementation);
+
+function upgradeToAndCall(address newImplementation, bytes data);
+```
 
 #### Getters
 
 Inherited:
 
-- `function implementation() returns (address)`
+```solidity
+function implementation() returns (address);
+```
 
 #### Events
 
-- `event GeoProposalProcessed(uint32 blockIndex, uint32 itemIndex, string contentUri)`
-- `event SuccessorSpaceCreated(address predecessorSpace)`
-- `event SubspaceAccepted(address dao)`
-- `event SubspaceRemoved(address dao)`
+```solidity
+event GeoProposalProcessed(uint32 blockIndex, uint32 itemIndex, string contentUri);
+event SuccessorSpaceCreated(address predecessorSpace);
+event SubspaceAccepted(address dao);
+event SubspaceRemoved(address dao);
+```
 
 #### Permissions
 
 - The DAO can call `processGeoProposal()` on the plugin
 - The DAO can accept/remove a subspace on the plugin
 - The DAO can upgrade the plugin
-- Optionally, a given pluginUpgrader can upgrade the plugin
+- See [Plugin upgrader](#plugin-upgrader) (optional)
 
 ### Member Access plugin
 
-Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to grant `MEMBER_PERMISSION_ID` to an address on the main voting plugin and Editors can approve or reject it. Once approved, the permission allows to create proposals on the other plugin.
+Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to `addMember()` on the main voting plugin and Editors can approve or reject it. Once approved, the member create proposals on the main voting plugin.
 
 #### Methods
 
-- `function initialize(IDAO _dao, MultisigSettings _multisigSettings)`
-- ~~`function addAddresses(address[])`~~
-  - This method remains for compatibility with the base interface
-- ~~`function removeAddresses(address[])`~~
-  - This method remains for compatibility with the base interface
-- `function updateMultisigSettings(MultisigSettings _multisigSettings)`
-- `function proposeNewMember(bytes _metadata,address _proposedMember)`
-- `function proposeRemoveMember(bytes _metadata,address _proposedMember)`
-- `function approve(uint256 _proposalId, bool)`
-  - The second parameter remains for compatibility with the base interface. However, early execution will always be made
-- `function reject(uint256 _proposalId)`
-- `function execute(uint256 _proposalId)`
-  - This method is redundant since early execution will always trigger first
+```solidity
+function initialize(IDAO _dao, MultisigSettings _multisigSettings);
+
+function updateMultisigSettings(MultisigSettings _multisigSettings);
+
+function proposeNewMember(bytes _metadata, address _proposedMember);
+
+function proposeRemoveMember(bytes _metadata, address _proposedMember);
+
+function approve(uint256 _proposalId);
+
+function reject(uint256 _proposalId);
+
+function execute(uint256 _proposalId);
+```
 
 Inherited:
 
-- `function upgradeTo(address newImplementation)`
-- `function upgradeToAndCall(address newImplementation, bytes data)`
+```solidity
+function upgradeTo(address newImplementation);
+
+function upgradeToAndCall(address newImplementation, bytes data);
+```
 
 #### Getters
 
-- `function supportsInterface(bytes4 _interfaceId) returns (bool)`
-- `function canApprove(uint256 _proposalId, address _account) returns (bool)`
-- `function canExecute(uint256 _proposalId) returns (bool)`
-- `function getProposal(uint256 _proposalId) returns (bool executed, uint16 approvals, ProposalParameters parameters, IDAO.Action[] actions, uint256 failsafeActionMap)`
-- `function hasApproved(uint256 _proposalId, address _account) returns (bool)`
-- `function isMember(address _account) returns (bool)`
-- `function isEditor(address _account) returns (bool)`
+```solidity
+function supportsInterface(bytes4 _interfaceId) returns (bool);
+
+function canApprove(uint256 _proposalId, address _account) returns (bool);
+
+function canExecute(uint256 _proposalId) returns (bool);
+
+function getProposal(
+  uint256 _proposalId
+)
+  returns (
+    bool executed,
+    uint16 approvals,
+    ProposalParameters parameters,
+    IDAO.Action[] actions,
+    uint256 failsafeActionMap
+  );
+
+function hasApproved(uint256 _proposalId, address _account) returns (bool);
+
+function isMember(address _account) returns (bool);
+
+function isEditor(address _account) returns (bool);
+```
 
 Inherited:
 
-- `function proposalCount() external view returns (uint256)`
-- `function implementation() returns (address)`
+```solidity
+function proposalCount() external view returns (uint256);
+
+function implementation() returns (address);
+```
 
 #### Events
 
-- `event Approved(uint256 indexed proposalId, address indexed editor)`
-- `event Rejected(uint256 indexed proposalId, address indexed editor)`
-- `event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin)`
+```solidity
+event Approved(uint256 indexed proposalId, address indexed editor);
+
+event Rejected(uint256 indexed proposalId, address indexed editor);
+
+event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
+```
 
 Inherited:
 
-- `event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap)`
-- `event ProposalExecuted(uint256 indexed proposalId)`
+```solidity
+event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap);
+
+event ProposalExecuted(uint256 indexed proposalId);
+```
 
 #### Permissions
 
-- Anyone can create proposals
+- Anyone can create membership proposals
 - Editors can approve and reject proposals
-- The plugin can execute on the DAO
+- The plugin can execute on the DAO (with a condition)
 - The DAO can update the plugin settings
 - The DAO can upgrade the plugin
-- Optionally, a given pluginUpgrader can upgrade the plugin
+- See [Plugin upgrader](#plugin-upgrader) (optional)
 
 ### Main Voting plugin
 
@@ -339,53 +395,113 @@ The governance settings need to be defined when the plugin is deployed but the D
 
 #### Methods
 
-- `function initialize(IDAO _dao, VotingSettings calldata _votingSettings, address[] calldata _initialEditors)`
-- `function addAddresses(address[])`
-- `function removeAddresses(address[])`
-- `function createProposal(bytes calldata metadata, IDAO.Action[] calldata actions, uint256 allowFailureMap, uint64, uint64, VoteOption voteOption, bool tryEarlyExecution)`
-- `function cancelProposal(uint256 _proposalId)`
+```solidity
+function initialize(
+  IDAO _dao,
+  VotingSettings calldata _votingSettings,
+  address[] calldata _initialEditors
+);
+
+function addEditor(address);
+
+function removeEditor(address);
+
+function addMember(address);
+
+function removeMember(address);
+
+function createProposal(
+  bytes calldata metadata,
+  IDAO.Action[] calldata actions,
+  uint256 allowFailureMap,
+  VoteOption voteOption,
+  bool tryEarlyExecution
+);
+
+function cancelProposal(uint256 _proposalId);
+```
 
 Inherited:
 
-- `function vote(uint256 _proposalId, VoteOption _voteOption, bool _tryEarlyExecution)`
-- `function execute(uint256 _proposalId)`
-- `function updateVotingSettings(VotingSettings calldata _votingSettings)`
-- `function upgradeTo(address newImplementation)`
-- `function upgradeToAndCall(address newImplementation, bytes data)`
+```solidity
+function vote(uint256 _proposalId, VoteOption _voteOption, bool _tryEarlyExecution);
+
+function execute(uint256 _proposalId);
+
+function updateVotingSettings(VotingSettings calldata _votingSettings);
+
+function upgradeTo(address newImplementation);
+
+function upgradeToAndCall(address newImplementation, bytes data);
+```
 
 #### Getters
 
-- `function isMember(address _account) returns (bool)`
-- `function isEditor(address _account) returns (bool)`
-- `function supportsInterface(bytes4 _interfaceId) returns (bool)`
+```solidity
+function isMember(address _account) returns (bool);
+
+function isEditor(address _account) returns (bool);
+
+function supportsInterface(bytes4 _interfaceId) returns (bool);
+```
 
 Inherited:
 
-- `function canVote(uint256 _proposalId, address _voter, VoteOption _voteOption)`
-- `function getProposal(uint256 _proposalId) returns (bool open, bool executed, ProposalParameters parameters, Tally tally, IDAO.Action[] actions, uint256 allowFailureMap)`
-- `function getVoteOption(uint256 _proposalId, address _voter)`
-- `function isSupportThresholdReached(uint256 _proposalId) returns (bool)`
-- `function isSupportThresholdReachedEarly(uint256 _proposalId)`
-- `function isMinParticipationReached(uint256 _proposalId) returns (bool)`
-- `function canExecute(uint256 _proposalId) returns (bool)`
-- `function supportThreshold() returns (uint32)`
-- `function minParticipation() returns (uint32)`
-- `function minDuration() returns (uint64)`
-- `function minProposerVotingPower() returns (uint256)`
-- `function votingMode() returns (VotingMode)`
-- `function totalVotingPower(uint256 _blockNumber) returns (uint256)`
-- `function implementation() returns (address)`
+```solidity
+function canVote(uint256 _proposalId, address _voter, VoteOption _voteOption);
+
+function getProposal(
+  uint256 _proposalId
+)
+  returns (
+    bool open,
+    bool executed,
+    ProposalParameters parameters,
+    Tally tally,
+    IDAO.Action[] actions,
+    uint256 allowFailureMap
+  );
+
+function getVoteOption(uint256 _proposalId, address _voter);
+
+function isSupportThresholdReached(uint256 _proposalId) returns (bool);
+
+function isSupportThresholdReachedEarly(uint256 _proposalId);
+
+function isMinParticipationReached(uint256 _proposalId) returns (bool);
+
+function canExecute(uint256 _proposalId) returns (bool);
+
+function supportThreshold() returns (uint32);
+
+function minParticipation() returns (uint32);
+
+function duration() returns (uint64);
+
+function votingMode() returns (VotingMode);
+
+function totalVotingPower(uint256 _blockNumber) returns (uint256);
+
+function implementation() returns (address);
+```
 
 #### Events
 
-- `event ProposalCanceled(uint256 proposalId)`
+```solidity
+event ProposalCanceled(uint256 proposalId);
+```
 
 Inherited:
 
-- `event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap)`
-- `event VoteCast(uint256 indexed proposalId, address indexed voter, VoteOption voteOption, uint256 votingPower)`
-- `event ProposalExecuted(uint256 indexed proposalId)`
-- `event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint32 minParticipation, uint64 minDuration, uint256 minProposerVotingPower)`
+```solidity
+event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap);
+
+event VoteCast(uint256 indexed proposalId, address indexed voter, VoteOption voteOption, uint256 votingPower);
+
+event ProposalExecuted(uint256 indexed proposalId);
+
+event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint32 minParticipation, uint64 duration);
+```
 
 #### Permissions
 
@@ -395,7 +511,7 @@ Inherited:
 - The DAO can update the plugin settings
 - The DAO can manage the list of addresses
 - The DAO can upgrade the plugin
-- Optionally, a given pluginUpgrader can upgrade the plugin
+- See [Plugin upgrader](#plugin-upgrader) (optional)
 
 ### Personal Space Admin Plugin
 
@@ -405,30 +521,46 @@ Since this plugin has the power to unilaterally perform actions, it is not upgra
 
 #### Methods
 
-- `function initialize(IDAO _dao)`
-- `function executeProposal(bytes calldata _metadata, IDAO.Action[] calldata _actions, uint256 _allowFailureMap)`
+```solidity
+function initialize(IDAO _dao);
+
+function executeProposal(
+  bytes calldata _metadata,
+  IDAO.Action[] calldata _actions,
+  uint256 _allowFailureMap
+);
+```
 
 #### Getters
 
-- `function isEditor(address _account) returns (bool)`
-- `function supportsInterface(bytes4 _interfaceId) returns (bool)`
+```solidity
+function isEditor(address _account) returns (bool);
+
+function supportsInterface(bytes4 _interfaceId) returns (bool);
+```
 
 Inherited:
 
-- `function proposalCount() external view returns (uint256)`
-- `function implementation() returns (address)`
+```solidity
+function proposalCount() external view returns (uint256);
+
+function implementation() returns (address);
+```
 
 #### Events
 
 Inherited:
 
-- `event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap)`
-- `event ProposalExecuted(uint256 indexed proposalId)`
+```solidity
+event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap);
+
+event ProposalExecuted(uint256 indexed proposalId);
+```
 
 #### Permissions
 
 - Editors can execute proposals right away
-- The plugin can execute on the DAO
+- The plugin can execute actions on the DAO
 
 ## Plugin Setup contracts
 
@@ -458,19 +590,15 @@ This is taken care by the `DAOFactory`. The DAO creator calls `daoFactory.create
 
 Plugin changes need a proposal to be passed when the DAO already exists.
 
-1. Calling `pluginSetupProcessor.prepareInstallation()` which will call `prepareInstallation()` on the plugin's setup contract
+1. Calling `pluginSetupProcessor.prepareInstallation()` which calls `prepareInstallation()` on the plugin's setup contract
    - A new plugin instance is deployed with the desired settings
    - The call returns a set of requested permissions to be applied by the DAO
 2. Editors pass a proposal to make the DAO call `applyInstallation()` on the [PluginSetupProcessor](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/)
    - This applies the requested permissions and the plugin becomes installed
 
-See `SpacePluginSetup`, `PersonalSpaceAdminPluginSetup`, `MemberAccessPluginSetup` and `MainVotingPluginSetup`.
-
-[Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
-
 ### PluginSetup contracts
 
-(They need to receive the PSP Address)
+[Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
 
 ### Plugin Setup install parameters
 
@@ -483,10 +611,10 @@ function prepareInstallation(
 ) external returns (address plugin, PreparedSetupData memory preparedSetupData)
 ```
 
-- The first parameter (dao address) will be provided by the PSP.
-- The second parameter contains an arbitrary array of bytes, with the ABI encoded custom settings that the plugin setup needs to operate.
+- The first parameter (dao address) is provided by the PSP.
+- The second parameter contains the ABI-encoded custom settings that the plugin setup needs to operate.
 
-Convenience functions are provided within the plugin setup contracts:
+You can use these convenience functions from the plugin setup contracts:
 
 ```solidity
 // governance/SpacePluginSetup.sol
@@ -502,7 +630,7 @@ function encodeUninstallationParams(
 ) public pure returns (bytes memory)
 ```
 
-The JSON encoded ABI definition can also be found at the corresponding `<name>-build-metadata.json` file:
+The JSON encoded ABI definition can also be found at the corresponding `src/<folder>/<name>-build-metadata.json` file:
 
 ```json
 {
@@ -537,14 +665,11 @@ The same also applies to `prepareUpdate` (if present) and to `prepareUninstallat
 
 #### GovernancePluginsSetup
 
-This contracts implements the deployment script for:
+[This contract](./packages/contracts/src/governance/GovernancePluginsSetup.sol) handles the install/update/uninstall scripts for `MainVotingPlugin` and `MemberAccessPlugin`
 
-- `MainVotingPlugin`
-- `MemberAccessPlugin`
+The second plugin needs to know the address of the first one, therefore the setup deploys them together.
 
-The second plugin needs to know the address of the first one, therefore the contract deploys them together.
-
-##### Note
+Note:
 
 When preparing the installation, an `InstallationPrepared` event is emitted. Using Typechain with Ethers:
 
@@ -553,11 +678,11 @@ When preparing the installation, an `InstallationPrepared` event is emitted. Usi
 
 #### SpacePluginSetup
 
-This contract implements the deployment script for the `SpacePlugin` contract.
+[This contract](./packages/contracts/src/space/SpacePluginSetup.sol) implements the deployment script for the `SpacePlugin` contract.
 
 #### PersonalSpaceAdminPluginSetup
 
-This contract implements the deployment script for the `PersonalSpaceAdminPlugin` contract.
+[This contract](./packages/contracts/src/personal/PersonalSpaceAdminPluginSetup.sol) implements the deployment script for the `PersonalSpaceAdminPlugin` contract.
 
 ## Deploying a DAO
 
@@ -613,10 +738,35 @@ The address of the `PluginSetupProcessor` depends on the chain. The existing dep
 
 ### Plugin Upgrader
 
-For the 3 upgradeable plugins, their plugin setup allows to pass an optional parameter to define a plugin upgrader address.
+For the 3 upgradeable plugins, their plugin setup allows to pass an optional parameter to define an address that can perform upgrades without the need for a proposal.
 
-When a zero address is passed, only a passed proposal can make the DAO call `PSP.applyUpdate()`. When a non-zero address is passed, the desired address will be able to execute the 3 actions abover to upgrade to whatever newer version the developer has published.
+- When a zero address is passed, only a proposal can make the DAO call `PSP.applyUpdate()`.
+- When a non-zero address is passed, the given address will be able to execute the 3 actions abover to upgrade to any new version the developer has published.
 
 Every new version needs to be published to the plugin's repository.
 
 [Learn more about plugin upgrades](https://devs.aragon.org/docs/osx/how-to-guides/plugin-development/upgradeable-plugin/updating-versions).
+
+## Dependencies forked from Aragon
+
+The plugins from this repo are built on top of many contract primitives from Aragon. In some cases, certain parameters are not required or data types need to differ. For this reason, the `packages/contracts/src/governance/base` folder contains 5 forks of existing Aragon primitives.
+
+- `Addresslist.sol`
+  - Functions `addMembers` and `removeMembers` accepted an `address[] calldata` parameter
+  - However, the plugin needed to pass an `address[] memory`
+- `IEditors.sol` and `IMembers.sol`
+  - Originally from `IMembership.sol`
+  - Geo defines a concept of members with conflicted with how the address list interprets its "members" (which are editors)
+  - Using separate, explicit interfaces to clarify the difference between members and editors
+- `IMultisig.sol`
+  - The `accept()` function required 2 parameters, of which the second always has to be `true`.
+  - Changing the signature of `accept()` to only use relevant parameters
+- `MajorityVotingBase.sol`
+  - `createProposal()` originally had two parameters that didn't apply to the current specs.
+  - The forked version Omits these 2 parameters (start date and end date) and instead:
+    - Starts immediately
+    - Ends after the predefined duration
+  - `minDuration()` was confusing given that the setting is used as the final duration, so `duration()` is used instead
+  - `minProposerVotingPower` wasn't used
+
+The rest of dependencies are imported directly from Aragon or from OpenZeppelin.

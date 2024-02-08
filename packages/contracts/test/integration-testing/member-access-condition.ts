@@ -19,7 +19,6 @@ import {installPlugin} from '../helpers/setup';
 import {deployTestDao} from '../helpers/test-dao';
 import {
   EXECUTE_PERMISSION_ID,
-  MEMBER_PERMISSION_ID,
   ROOT_PERMISSION_ID,
   UPGRADE_PLUGIN_PERMISSION_ID,
   ONE_BYTES32,
@@ -31,8 +30,8 @@ import {
   PluginSetupProcessor__factory,
   PluginRepoFactory__factory,
   PluginRepoRegistry__factory,
-  IDAO,
   DAO__factory,
+  IDAO,
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
@@ -41,14 +40,14 @@ import {ethers, network} from 'hardhat';
 const release = 1;
 const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
-  minDuration: 60 * 60 * 24,
+  duration: 60 * 60 * 24,
   minParticipation: 1,
   supportThreshold: 1,
-  minProposerVotingPower: 0,
   votingMode: 0,
 };
-const minMemberAccessProposalDuration = 60 * 60 * 24;
+const memberAccessProposalDuration = 60 * 60 * 24;
 const daoInterface = DAO__factory.createInterface();
+const mainVotingInterface = MainVotingPlugin__factory.createInterface();
 
 describe('Member Access Condition E2E', () => {
   let deployer: SignerWithAddress;
@@ -150,9 +149,10 @@ describe('Member Access Condition E2E', () => {
     const data = await pluginSetup.encodeInstallationParams(
       pluginSettings,
       [deployer.address],
-      minMemberAccessProposalDuration,
+      memberAccessProposalDuration,
       pluginUpgrader.address
     );
+    // Internally call prepareInstallation, which deploys the condition
     const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
     mainVotingPlugin = MainVotingPlugin__factory.connect(
@@ -166,61 +166,31 @@ describe('Member Access Condition E2E', () => {
   });
 
   it('Executing a proposal to add membership works', async () => {
-    expect(
-      await dao.isGranted(
-        mainVotingPlugin.address, // where
-        alice.address, // who
-        MEMBER_PERMISSION_ID, // permission
-        '0x'
-      )
-    ).to.eq(false);
+    expect(await mainVotingPlugin.isMember(alice.address)).to.eq(false);
 
     await expect(memberAccessPlugin.proposeNewMember('0x', alice.address)).to
       .not.be.reverted;
 
-    expect(
-      await dao.isGranted(
-        mainVotingPlugin.address, // where
-        alice.address, // who
-        MEMBER_PERMISSION_ID, // permission
-        '0x'
-      )
-    ).to.eq(true);
+    expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
 
-    // Valid grant
+    // Valid addition
     const actions: IDAO.ActionStruct[] = [
       {
-        to: dao.address,
+        to: mainVotingPlugin.address,
         value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          mainVotingPlugin.address,
+        data: mainVotingInterface.encodeFunctionData('addMember', [
           bob.address,
-          MEMBER_PERMISSION_ID,
         ]),
       },
     ];
 
     // Via direct create proposal
-    expect(
-      await dao.isGranted(
-        mainVotingPlugin.address, // where
-        bob.address, // who
-        MEMBER_PERMISSION_ID, // permission
-        '0x'
-      )
-    ).to.eq(false);
+    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(false);
 
     await expect(memberAccessPlugin.createArbitraryProposal('0x', actions)).to
       .not.be.reverted;
 
-    expect(
-      await dao.isGranted(
-        mainVotingPlugin.address, // where
-        bob.address, // who
-        MEMBER_PERMISSION_ID, // permission
-        '0x'
-      )
-    ).to.eq(true);
+    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
   });
 
   it('Executing a proposal to remove membership works', async () => {
@@ -228,32 +198,19 @@ describe('Member Access Condition E2E', () => {
       .not.be.reverted;
     await expect(memberAccessPlugin.proposeRemoveMember('0x', alice.address)).to
       .not.be.reverted;
-    expect(
-      await dao.isGranted(
-        mainVotingPlugin.address, // where
-        alice.address, // who
-        MEMBER_PERMISSION_ID, // permission
-        '0x'
-      )
-    ).to.eq(false);
+    expect(await mainVotingPlugin.isMember(alice.address)).to.eq(false);
 
     // Valid revoke
     const grantAction = {
-      to: dao.address,
+      to: mainVotingPlugin.address,
       value: 0,
-      data: daoInterface.encodeFunctionData('grant', [
-        mainVotingPlugin.address,
-        bob.address,
-        MEMBER_PERMISSION_ID,
-      ]),
+      data: mainVotingInterface.encodeFunctionData('addMember', [bob.address]),
     };
     const revokeAction = {
-      to: dao.address,
+      to: mainVotingPlugin.address,
       value: 0,
-      data: daoInterface.encodeFunctionData('revoke', [
-        mainVotingPlugin.address,
+      data: mainVotingInterface.encodeFunctionData('removeMember', [
         bob.address,
-        MEMBER_PERMISSION_ID,
       ]),
     };
 
@@ -261,38 +218,29 @@ describe('Member Access Condition E2E', () => {
     await expect(
       memberAccessPlugin.createArbitraryProposal('0x', [grantAction])
     ).to.not.be.reverted;
+    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
+
     await expect(
       memberAccessPlugin.createArbitraryProposal('0x', [revokeAction])
     ).to.not.be.reverted;
 
-    expect(
-      await dao.isGranted(
-        mainVotingPlugin.address, // where
-        bob.address, // who
-        MEMBER_PERMISSION_ID, // permission
-        '0x'
-      )
-    ).to.eq(false);
+    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(false);
   });
 
   it('Executing a proposal to do something else reverts', async () => {
     const validActions = [
       {
-        to: dao.address,
+        to: mainVotingPlugin.address,
         value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          mainVotingPlugin.address,
+        data: mainVotingInterface.encodeFunctionData('addMember', [
           bob.address,
-          MEMBER_PERMISSION_ID,
         ]),
       },
       {
-        to: dao.address,
+        to: mainVotingPlugin.address,
         value: 0,
-        data: daoInterface.encodeFunctionData('revoke', [
-          mainVotingPlugin.address,
+        data: mainVotingInterface.encodeFunctionData('removeMember', [
           bob.address,
-          MEMBER_PERMISSION_ID,
         ]),
       },
     ];

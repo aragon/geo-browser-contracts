@@ -5,7 +5,7 @@ import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/mat
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {PluginCloneable} from "@aragon/osx/core/plugin/PluginCloneable.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
-import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
+import {EDITOR_PERMISSION_ID} from "../constants.sol";
 
 /// @title PersonalSpaceAdminPlugin
 /// @author Aragon - 2023
