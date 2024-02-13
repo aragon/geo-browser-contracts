@@ -713,6 +713,8 @@ The format of these settings is defined in the `packages/contracts/src/*-build.m
 - Never uninstall all plugins, as this would brick your DAO
 - Ensure that there is at least always one plugin with `EXECUTE_PERMISSION` on the DAO
 - Ensure that the DAO is ROOT on itself
+  - If you create it manually, you should eventually grant ROOT to the DAO and revoke it to yourself as the creator.
+  - The DAO factory will automatically do this for you
 - Use the `_gap[]` variable for upgradeable plugins, as a way to reserve storage slots for future plugin implementations
   - Decrement the `_gap` number for every new variable you add in the future
 
