@@ -24,7 +24,7 @@ export const osxContracts: ContractList = activeContractsList;
 
 export const networkNameMapping: NetworkNameMapping = {
   mainnet: 'mainnet',
-  goerli: 'goerli',
+  sepolia: 'sepolia',
   polygon: 'polygon',
   polygonMumbai: 'mumbai',
   baseGoerli: 'baseGoerli',
