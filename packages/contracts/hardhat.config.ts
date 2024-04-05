@@ -22,7 +22,7 @@ if (!process.env.INFURA_API_KEY) {
 
 const apiUrls: NetworkNameMapping = {
   mainnet: 'https://mainnet.infura.io/v3/',
-  goerli: 'https://goerli.infura.io/v3/',
+  sepolia: 'https://sepolia.infura.io/v3/',
   polygon: 'https://polygon-mainnet.infura.io/v3/',
   polygonMumbai: 'https://polygon-mumbai.infura.io/v3/',
   baseGoerli: 'https://goerli.base.org',
@@ -41,9 +41,9 @@ export const networks: {[index: string]: NetworkUserConfig} = {
     chainId: 1,
     url: `${apiUrls.mainnet}${process.env.INFURA_API_KEY}`,
   },
-  goerli: {
-    chainId: 5,
-    url: `${apiUrls.goerli}${process.env.INFURA_API_KEY}`,
+  sepolia: {
+    chainId: 11155111,
+    url: `${apiUrls.sepolia}${process.env.INFURA_API_KEY}`,
   },
   polygon: {
     chainId: 137,
@@ -86,7 +86,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: process.env.ETHERSCAN_API_KEY || '',
-      goerli: process.env.ETHERSCAN_API_KEY || '',
+      sepolia: process.env.ETHERSCAN_API_KEY || '',
       polygon: process.env.POLYGONSCAN_API_KEY || '',
       polygonMumbai: process.env.POLYGONSCAN_API_KEY || '',
       baseGoerli: process.env.BASESCAN_API_KEY || '',
