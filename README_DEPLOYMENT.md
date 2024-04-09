@@ -77,6 +77,7 @@ Back to this repository:
 - Edit the `packages/contracts/plugin-setup-params.ts` to define the details of the plugins to depoy
   - If you try to deploy the same plugin repo twice, you will encounter an ENS collision
   - In such case, either define a new unique ENS subdomain or consider rerunning the step 1 and trying again
+- Review the Management DAO's plugin settings under `.env`
 
 ```sh
 cd packages/contracts

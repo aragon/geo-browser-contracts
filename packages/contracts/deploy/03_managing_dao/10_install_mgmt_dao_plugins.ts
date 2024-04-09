@@ -26,6 +26,9 @@ const MGMT_DAO_MIN_PROPOSAL_PARTICIPATION =
 const MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD =
   parseInt(process.env.MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD ?? '500000') ||
   500_000; // 50%
+const MGMT_DAO_INITIAL_EDITORS = process.env.MGMT_DAO_INITIAL_EDITORS
+  ? process.env.MGMT_DAO_INITIAL_EDITORS.split(',')
+  : ([] as string[]);
 
 // Main function
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -48,12 +51,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     supportThreshold: MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD,
     votingMode: 1, // Early execution
   };
-  const initialEditors = [] as string[];
   const memberAccessProposalDuration = MGMT_DAO_PROPOSAL_DURATION * 3; // Time before expired
   const pluginUpgrader = '0x0000000000000000000000000000000000000000'; // Only the DAO
   const installData = await pluginSetup.encodeInstallationParams(
     settings,
-    initialEditors,
+    MGMT_DAO_INITIAL_EDITORS,
     memberAccessProposalDuration,
     pluginUpgrader
   );
