@@ -26,6 +26,7 @@ const apiUrls: NetworkNameMapping = {
   polygon: 'https://polygon-mainnet.infura.io/v3/',
   polygonMumbai: 'https://polygon-mumbai.infura.io/v3/',
   baseGoerli: 'https://goerli.base.org',
+  custom: process.env.DEPLOYMENT_RPC_ENDPOINT ?? '',
 };
 
 export const networks: {[index: string]: NetworkUserConfig} = {
@@ -58,6 +59,11 @@ export const networks: {[index: string]: NetworkUserConfig} = {
     url: `${apiUrls.baseGoerli}`,
     gasPrice: 20000000000,
   },
+  custom: {
+    chainId: 100000,
+    url: apiUrls.custom,
+    // gasPrice: 20000000000,
+  },
 };
 
 // Uses hardhats private key if none is set. DON'T USE THIS ACCOUNT FOR DEPLOYMENTS
@@ -79,6 +85,10 @@ for (const network in networks) {
 // Extend HardhatRuntimeEnvironment
 extendEnvironment((hre: HardhatRuntimeEnvironment) => {
   hre.aragonToVerifyContracts = [];
+  hre.managingDao = {
+    address: '',
+    governancePlugin: '',
+  };
 });
 
 const config: HardhatUserConfig = {

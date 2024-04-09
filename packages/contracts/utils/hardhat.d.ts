@@ -6,5 +6,9 @@ export type VerifyEntry = {
 declare module 'hardhat/types' {
   interface HardhatRuntimeEnvironment {
     aragonToVerifyContracts: VerifyEntry[];
+    managingDao: {
+      address: string;
+      governancePlugin: string;
+    };
   }
 }
