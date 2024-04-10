@@ -84,8 +84,8 @@ for (const network in networks) {
 
 // Extend HardhatRuntimeEnvironment
 extendEnvironment((hre: HardhatRuntimeEnvironment) => {
-  hre.aragonToVerifyContracts = [];
-  hre.managingDao = {
+  (hre as any).aragonToVerifyContracts = [];
+  (hre as any).managingDao = {
     address: '',
     governancePlugin: '',
   };
@@ -108,6 +108,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: 'https://api-goerli.basescan.org/api',
           browserURL: 'https://goerli.basescan.org',
+        },
+      },
+      {
+        network: 'custom',
+        chainId: networks.custom.chainId!,
+        urls: {
+          apiURL: apiUrls.custom,
+          browserURL: '',
         },
       },
     ],
