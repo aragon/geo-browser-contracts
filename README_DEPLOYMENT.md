@@ -19,12 +19,11 @@ In the case of specific blockchains where OSx support is not officially availabl
 1. Deploy OSx
    1. This will create a Managing DAO, where the deployer wallet can `execute()` actions
 2. Deploy the plugins of this project
-3. Install the plugin that will control the Managing DAO
-4. Revoke the `ROOT_PERMISSION` from the deployment wallet on the DAO
+3. Install the plugin that will control the Managing DAO and revoke the `ROOT_PERMISSION` from the deployment wallet
 
 #### 1) Deploy OSx
 
-Clone [https://github.com/aragon/osx](the OSx repo) into a separate folder.
+Clone [the OSx repo](https://github.com/aragon/osx) into a separate folder.
 
 ```sh
 yarn
