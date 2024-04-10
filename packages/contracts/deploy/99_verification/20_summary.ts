@@ -12,26 +12,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (!pluginRepoInfo)
     throw new Error('Could not read the address of the deployed contract');
 
-  console.log('\nSummary');
-  console.log(
-    'If you wish to configure the Managing DAO, update the .env file:'
-  );
+  console.log(`
+If you wish to configure the Managing DAO:
 
-  console.log(`GOVERNANCE_PLUGIN_REPO_ADDRESS="${pluginRepoInfo.address}"`);
+1) Update the .env file with this value:
 
-  console.log('');
-  console.log('Also, make sure to define the following values:');
-  console.log(
-    `MGMT_DAO_PROPOSAL_DURATION="604800"   # 60 * 60 * 24 * 7 (seconds)`
-  );
-  console.log(`MGMT_DAO_MIN_PROPOSAL_PARTICIPATION="500000"   # 50%`);
-  console.log(`MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD="500000"   # 50%`);
-  console.log(
-    `MGMT_DAO_INITIAL_EDITORS="0x1234,0x2345,0x3456,0x4567..." # Comma separated addresses`
-  );
+GOVERNANCE_PLUGIN_REPO_ADDRESS="${pluginRepoInfo.address}"
 
-  console.log('');
-  console.log('Done');
+2) Define the following values:
+MGMT_DAO_PROPOSAL_DURATION="604800"   # 60 * 60 * 24 * 7 (seconds)
+MGMT_DAO_MIN_PROPOSAL_PARTICIPATION="500000"   # 50%
+MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD="500000"   # 50%
+MGMT_DAO_INITIAL_EDITORS="0x1234,0x2345,0x3456,0x4567..." # Comma separated addresses
+
+3) Run the following command:
+$ npx ts-node scripts/managing-dao-setup.ts
+`);
 };
 
 export default func;

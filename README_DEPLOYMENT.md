@@ -8,7 +8,7 @@ If the current contracts are meant to be deployed on a blockchain like Mainnet, 
 
 ```sh
 cd packages/contracts
-npx hardhat deploy --network <replace-the-name>
+npx hardhat deploy --network <the-network-name>
 ```
 
 ### On a custom blockchain
@@ -82,10 +82,8 @@ Back to this repository:
 ```sh
 cd packages/contracts
 yarn build
-npx hardhat deploy --network <replace-the-name>
+npx hardhat deploy --network <the-network-name>
 ```
-
-In addition to deploying the plugins, the script will internally perform two more things:
 
 #### 3) Install a governance plugin to the Managing DAO
 
@@ -98,12 +96,28 @@ The Managing DAO will be created with the following permissions:
 
 Among the plugins deployed [in the step above](#2-deploy-your-plugins), one of them should be installed to the Managing DAO.
 
-The script takes care of:
+When the script from step 2 finishes, you will be prompted with a message like this:
 
-1. Use the same deployment wallet as before
-2. Call `prepareInstallation()` on the Plugin Setup Processor deployed during the [Deploy OSX](#1-deploy-osx) step
-3. Ask the Managing DAO to `execute()` an action that calls `applyInstallation()` of the new plugin
+```
+If you wish to configure the Managing DAO:
 
-#### 4) Revoke the EXECUTE permission granted to the deployer wallet
+1) Update the .env file with this value:
 
-The script calls `execute()` on the Managing DAO, with an action that calls `revoke(dao, deploymentWalletAddr, ROOT_PERMISSION_ID)` on the DAO itself
+GOVERNANCE_PLUGIN_REPO_ADDRESS="0xeC91F7Fa3BcFB208c679d2d7de18E7bd9d7cC40B"
+
+2) Define the following values:
+MGMT_DAO_PROPOSAL_DURATION="604800"   # 60 * 60 * 24 * 7 (seconds)
+MGMT_DAO_MIN_PROPOSAL_PARTICIPATION="500000"   # 50%
+MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD="500000"   # 50%
+MGMT_DAO_INITIAL_EDITORS="0x1234,0x2345,0x3456,0x4567..." # Comma separated addresses
+
+3) Run the following command:
+$ npx ts-node scripts/managing-dao-setup.ts
+```
+
+By running the `managing-dao-setup.ts` script, you will be:
+
+1. Asking the [PSP from OSx](#1-deploy-osx) to run `prepareInstallation()` and deploy a new Governance plugin instance
+2. Ask the Managing DAO to `execute()` an action that calls `applyInstallation()` of the deployed plugin
+3. Calling `execute()` on the Managing DAO so that the deployment wallet can no longer execute actions on the DAO
+4. Checking that the Managing DAO's permissions are correctly configured
