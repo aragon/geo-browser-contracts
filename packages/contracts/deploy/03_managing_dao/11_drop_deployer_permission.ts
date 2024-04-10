@@ -1,3 +1,4 @@
+import {isLocalChain} from '../../utils/hardhat';
 import {DAO__factory, IDAO} from '@aragon/osx-ethers';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
@@ -36,3 +37,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ['ManagingDAO'];
+func.skip = (hre: HardhatRuntimeEnvironment) =>
+  Promise.resolve(isLocalChain(hre.network.name));

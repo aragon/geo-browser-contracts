@@ -3,6 +3,7 @@ import {
   PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
+import {isLocalChain} from '../../utils/hardhat';
 import {
   findEventTopicLog,
   getPluginRepoFactoryAddress,
@@ -33,19 +34,25 @@ async function deployRepo(
   const {network} = hre;
   let pluginRepoFactoryAddr: string;
 
-  if (!process.env.PLUGIN_REPO_FACTORY_ADDRESS) {
+  if (
+    process.env.PLUGIN_REPO_FACTORY_ADDRESS &&
+    !isLocalChain(hre.network.name)
+  ) {
+    // Use the given value when deploying to a live network
+    pluginRepoFactoryAddr = process.env.PLUGIN_REPO_FACTORY_ADDRESS;
+  } else {
+    // Use the well-known OSx addresses when in test/fork mode
     pluginRepoFactoryAddr = getPluginRepoFactoryAddress(network.name);
-    if (!pluginRepoFactoryAddr)
+    if (!pluginRepoFactoryAddr) {
       throw new Error(
         'PLUGIN_REPO_FACTORY_ADDRESS is empty and no default value is available for ' +
           network.name
       );
+    }
 
     console.log(
       'Using the default Plugin Repo Factory address (PLUGIN_REPO_FACTORY_ADDRESS is empty)'
     );
-  } else {
-    pluginRepoFactoryAddr = process.env.PLUGIN_REPO_FACTORY_ADDRESS;
   }
 
   console.log(`\nDeploying the "${ensSubdomain}" plugin repo`);

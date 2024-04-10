@@ -8,6 +8,7 @@ import {
   InstallationPreparedEvent,
   PluginSetupRefStruct,
 } from '../../typechain/@aragon/osx/framework/plugin/setup/PluginSetupProcessor';
+import {isLocalChain} from '../../utils/hardhat';
 import {findEvent, hashHelpers} from '../../utils/helpers';
 import {getPluginRepoInfo} from '../../utils/plugin-repo-info';
 import {IDAO, IDAO__factory, PluginSetupProcessor} from '@aragon/osx-ethers';
@@ -140,3 +141,5 @@ func.tags = [
   GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   'ManagingDAO',
 ];
+func.skip = (hre: HardhatRuntimeEnvironment) =>
+  Promise.resolve(isLocalChain(hre.network.name));

@@ -1,3 +1,4 @@
+import {isLocalChain} from '../../utils/hardhat';
 import {DAO__factory} from '@aragon/osx-ethers';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
@@ -31,3 +32,5 @@ export default func;
 
 func.tags = ['Verification'];
 func.runAtTheEnd = true;
+func.skip = (hre: HardhatRuntimeEnvironment) =>
+  Promise.resolve(isLocalChain(hre.network.name));
