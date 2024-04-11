@@ -17,12 +17,13 @@
     "target": "es6"
   },
   "exclude": ["node_modules"],
-  "files": ["./hardhat.config.ts"],
+  "files": ["./utils/hardhat.d.ts"],
   "include": [
-    "src/**/*",
     "deploy/**/*",
+    "scripts/**/*",
+    "src/**/*",
     "test/**/*",
     "utils/**/*",
-    "plugin-setup-params.ts"
+    "./*.ts"
   ]
 }
