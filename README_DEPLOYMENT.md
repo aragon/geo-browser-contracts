@@ -26,8 +26,8 @@ In the case of specific blockchains where OSx support is not officially availabl
 Clone [the OSx repo](https://github.com/aragon/osx) into a separate folder.
 
 ```sh
+git checkout deployments/simpler-deployment
 yarn
-git checkout simpler-deployment
 cd packages/contracts
 cp .env.example .env
 nano .env    # Update the values
@@ -35,9 +35,7 @@ yarn build
 # yarn test  (optional)
 ```
 
-- Edit the `packages/contracts/hardhat.config.ts` to include the details of your target network.
-- Edit the `.env` file to make use of the deployment wallet's private key.
-- Open the `DEPLOYMENT_CHECKLIST.md` file and follow the instructions
+- Open the [DEPLOYMENT_CHECKLIST.md](https://github.com/aragon/osx/blob/deployments/simpler-deployment/DEPLOYMENT_CHECKLIST.md) file and follow the instructions
 
 Write down the address of the deployed contracts. The result should look similar to this:
 
@@ -91,11 +89,11 @@ The Managing DAO is the contract that has the role of managing certain protocol 
 The Managing DAO will be created with the following permissions:
 
 - The Managing DAO holds `ROOT_PERMISSION` on itself
-- The deployer address holds `EXECUTE_PERMISSION` on the Managing DAO
+- The deployer address also holds `ROOT_PERMISSION` on the Managing DAO
 
 Among the plugins deployed [in the step above](#2-deploy-your-plugins), one of them should be installed to the Managing DAO.
 
-When the script from step 2 finishes, you will be prompted with a message like this:
+When the script from step 2 finishes, you should see a message like this:
 
 ```
 If you wish to configure the Managing DAO:

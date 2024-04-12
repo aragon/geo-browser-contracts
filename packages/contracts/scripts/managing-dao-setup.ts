@@ -79,7 +79,7 @@ async function main() {
   await applyInstallation(preparedInstallation);
 
   // Drop the execute permission
-  await dropExecutePermission();
+  await dropDeployerWalletPermission();
 
   // Check the final permissions
   await checkManagingDaoPost(preparedInstallation);
@@ -209,6 +209,7 @@ async function applyInstallation(
 ) {
   const {helpers, permissions, pluginAddress} = preparedInstallation;
   const mgmtDAO = DAO__factory.connect(MANAGING_DAO_ADDRESS!, deployer);
+  const ROOT_PERMISSION_ID = await mgmtDAO.ROOT_PERMISSION_ID();
 
   // Encode a call to execute() > applyInstallation
   console.log('Installing the plugin to the managing DAO');
@@ -224,21 +225,19 @@ async function applyInstallation(
     };
 
   console.log('- Allowing the PSP to manage permissions');
-  console.log('- Telling the PSP to apply the installation');
-  console.log("- Revoking the PSP's permission to manage permissions");
 
+  // Allow the PSP to install a plugin
+  const tx1 = await mgmtDAO.grant(
+    MANAGING_DAO_ADDRESS!,
+    PLUGIN_SETUP_PROCESSOR_ADDRESS!,
+    ROOT_PERMISSION_ID
+  );
+  await tx1.wait();
+
+  console.log('- Telling the PSP to apply the installation');
+
+  // Install the plugin
   const actions: IDAO.ActionStruct[] = [
-    // Allow the PSP to install a plugin
-    {
-      to: MANAGING_DAO_ADDRESS!,
-      value: 0,
-      data: DAO__factory.createInterface().encodeFunctionData('grant', [
-        MANAGING_DAO_ADDRESS!,
-        PLUGIN_SETUP_PROCESSOR_ADDRESS!,
-        await mgmtDAO.ROOT_PERMISSION_ID(),
-      ]),
-    },
-    // Install the plugin
     {
       to: PLUGIN_SETUP_PROCESSOR_ADDRESS!,
       value: 0,
@@ -247,19 +246,9 @@ async function applyInstallation(
         [MANAGING_DAO_ADDRESS!, applyInstallationParams]
       ),
     },
-    // Revoke the PSP permission
-    {
-      to: MANAGING_DAO_ADDRESS!,
-      value: 0,
-      data: DAO__factory.createInterface().encodeFunctionData('revoke', [
-        MANAGING_DAO_ADDRESS!,
-        PLUGIN_SETUP_PROCESSOR_ADDRESS!,
-        await mgmtDAO.ROOT_PERMISSION_ID(),
-      ]),
-    },
   ];
 
-  const tx = await IDAO__factory.connect(
+  const tx2 = await IDAO__factory.connect(
     MANAGING_DAO_ADDRESS!,
     deployer
   ).execute(
@@ -267,53 +256,40 @@ async function applyInstallation(
     actions,
     0
   );
-  await tx.wait();
+  await tx2.wait();
 
   // Executed(address,bytes32,tuple[],uint256,uint256,bytes[])
-  const executedEvent = await findEvent<ExecutedEvent>(tx, 'Executed');
+  const executedEvent = await findEvent<ExecutedEvent>(tx2, 'Executed');
   if (!executedEvent) {
     throw new Error('Could not execute the applyInstallation action');
   }
 
+  // Revoke the PSP permission
+  console.log("- Revoking the PSP's permission to manage permissions");
+  const tx3 = await mgmtDAO.revoke(
+    MANAGING_DAO_ADDRESS!,
+    PLUGIN_SETUP_PROCESSOR_ADDRESS!,
+    ROOT_PERMISSION_ID
+  );
+  await tx3.wait();
+
   console.log('Installation confirmed');
 }
 
-async function dropExecutePermission() {
+async function dropDeployerWalletPermission() {
   const mgmtDAO = DAO__factory.connect(MANAGING_DAO_ADDRESS!, deployer);
+  const ROOT_PERMISSION_ID = await mgmtDAO.ROOT_PERMISSION_ID();
 
-  // Encode a call to execute() > revoke
-  console.log('Revoking EXECUTE permission from the deployment wallet');
+  console.log('Revoking the ROOT permission from the deployment wallet');
 
-  const actions: IDAO.ActionStruct[] = [
-    // Revoke the PSP permission
-    {
-      to: MANAGING_DAO_ADDRESS!,
-      value: 0,
-      data: DAO__factory.createInterface().encodeFunctionData('revoke', [
-        MANAGING_DAO_ADDRESS!,
-        deployer.address,
-        await mgmtDAO.ROOT_PERMISSION_ID(),
-      ]),
-    },
-  ];
-
-  const tx = await IDAO__factory.connect(
+  const tx = await mgmtDAO.revoke(
     MANAGING_DAO_ADDRESS!,
-    deployer
-  ).execute(
-    '0x0000000000000000000000000000000000000000000000000000000000000001',
-    actions,
-    0
+    deployer.address,
+    ROOT_PERMISSION_ID
   );
   await tx.wait();
 
-  // Executed(address,bytes32,tuple[],uint256,uint256,bytes[])
-  const executedEvent = await findEvent<ExecutedEvent>(tx, 'Executed');
-  if (!executedEvent) {
-    throw new Error('Could not execute the revoke action');
-  }
-
-  console.log('Revoked EXECUTE permission from the deployment wallet');
+  console.log('Permission revoked');
 }
 
 async function checkManagingDaoPost(
@@ -321,17 +297,19 @@ async function checkManagingDaoPost(
 ) {
   console.log("Checking the Managing DAO's final permissions");
   const mgmtDAO = DAO__factory.connect(MANAGING_DAO_ADDRESS!, deployer);
+  const EXECUTE_PERMISSION_ID = await mgmtDAO.EXECUTE_PERMISSION_ID();
+  const ROOT_PERMISSION_ID = await mgmtDAO.ROOT_PERMISSION_ID();
 
   // Deployer should not have execute permission on the DAO
   let canExecute = await mgmtDAO.hasPermission(
     MANAGING_DAO_ADDRESS!,
     deployer.address,
-    await mgmtDAO.EXECUTE_PERMISSION_ID(),
+    EXECUTE_PERMISSION_ID,
     '0x'
   );
   if (canExecute) {
     throw new Error(
-      'The given deployment wallet should no longer have EXECUTE permission on the DAO'
+      'The given deployment wallet should not have EXECUTE permission on the DAO'
     );
   }
 
@@ -339,7 +317,7 @@ async function checkManagingDaoPost(
   canExecute = await mgmtDAO.hasPermission(
     MANAGING_DAO_ADDRESS!,
     preparedInstallation.pluginAddress,
-    await mgmtDAO.EXECUTE_PERMISSION_ID(),
+    EXECUTE_PERMISSION_ID,
     '0x'
   );
   if (!canExecute) {
@@ -352,7 +330,7 @@ async function checkManagingDaoPost(
   let isRoot = await mgmtDAO.hasPermission(
     MANAGING_DAO_ADDRESS!,
     MANAGING_DAO_ADDRESS!,
-    await mgmtDAO.ROOT_PERMISSION_ID(),
+    ROOT_PERMISSION_ID,
     '0x'
   );
   if (!isRoot) {
@@ -363,7 +341,20 @@ async function checkManagingDaoPost(
   isRoot = await mgmtDAO.hasPermission(
     MANAGING_DAO_ADDRESS!,
     PLUGIN_SETUP_PROCESSOR_ADDRESS!,
-    await mgmtDAO.ROOT_PERMISSION_ID(),
+    ROOT_PERMISSION_ID,
+    '0x'
+  );
+  if (isRoot) {
+    throw new Error(
+      'The Plugin Setup Processor should not have root permission on the managing DAO (yet)'
+    );
+  }
+
+  // The deployment wallet should not have root permission on the DAO
+  isRoot = await mgmtDAO.hasPermission(
+    MANAGING_DAO_ADDRESS!,
+    deployer.address,
+    ROOT_PERMISSION_ID,
     '0x'
   );
   if (isRoot) {
