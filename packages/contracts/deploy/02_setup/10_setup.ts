@@ -3,6 +3,7 @@ import {
   PersonalSpaceAdminPluginSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
+import {isLocalChain} from '../../utils/hardhat';
 import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
@@ -13,7 +14,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await getNamedAccounts();
 
   let pspAddress: string;
-  if (!process.env.PLUGIN_SETUP_PROCESSOR_ADDRESS) {
+  if (
+    process.env.PLUGIN_SETUP_PROCESSOR_ADDRESS &&
+    !isLocalChain(hre.network.name)
+  ) {
+    pspAddress = process.env.PLUGIN_SETUP_PROCESSOR_ADDRESS;
+  } else {
     pspAddress = getPluginSetupProcessorAddress(network.name);
     if (!pspAddress)
       throw new Error(
@@ -24,8 +30,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(
       'Using the default Plugin Setup Processor address (PLUGIN_SETUP_PROCESSOR_ADDRESS is empty)'
     );
-  } else {
-    pspAddress = process.env.PLUGIN_SETUP_PROCESSOR_ADDRESS;
   }
 
   // Space Setup
