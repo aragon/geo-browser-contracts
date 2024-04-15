@@ -63,6 +63,7 @@
     "build": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat compile",
     "coverage": "hardhat coverage --solcoverjs ./.solcover.js --temp artifacts --testfiles \"test/**/*.ts\" && yarn typechain",
     "deploy": "hardhat deploy",
+    "managing-dao-setup": "ts-node scripts/managing-dao-setup.ts",
     "lint": "yarn lint:sol && yarn lint:ts",
     "lint:sol": "solhint \"src/**/*.sol\"",
     "lint:ts": "eslint --ignore-path ./.eslintignore --ext .js,.ts .",
