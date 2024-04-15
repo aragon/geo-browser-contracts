@@ -6,7 +6,9 @@ import {
   keccak256,
   LogDescription,
 } from 'ethers/lib/utils';
+// @ts-ignore
 import {ethers} from 'hardhat';
+// @ts-ignore
 import {upgrades} from 'hardhat';
 
 export type NetworkNameMapping = {[index: string]: string};
