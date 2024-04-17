@@ -22,6 +22,7 @@ packages/subgraph/tests/.bin
 coverage.json
 
 packages/contracts/plugin-repo-info-dev.json
+packages/contracts/deployments
 
 packages/subgraph/deploy-output.txt
 packages/subgraph/subgraph.yaml

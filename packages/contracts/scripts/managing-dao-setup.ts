@@ -79,7 +79,7 @@ async function main() {
   await applyInstallation(preparedInstallation);
 
   // Drop the execute permission
-  await dropDeployerWalletPermission();
+  await dropDeployerWalletPermissions();
 
   // Check the final permissions
   await checkManagingDaoPost(preparedInstallation);
@@ -276,18 +276,30 @@ async function applyInstallation(
   console.log('Installation confirmed');
 }
 
-async function dropDeployerWalletPermission() {
+async function dropDeployerWalletPermissions() {
   const mgmtDAO = DAO__factory.connect(MANAGING_DAO_ADDRESS!, deployer);
+  const EXECUTE_PERMISSION_ID = await mgmtDAO.EXECUTE_PERMISSION_ID();
   const ROOT_PERMISSION_ID = await mgmtDAO.ROOT_PERMISSION_ID();
+
+  console.log('Revoking the EXECUTE permission from the deployment wallet');
+
+  const tx1 = await mgmtDAO.revoke(
+    MANAGING_DAO_ADDRESS!,
+    deployer.address,
+    EXECUTE_PERMISSION_ID
+  );
+  await tx1.wait();
+
+  console.log('Permission revoked');
 
   console.log('Revoking the ROOT permission from the deployment wallet');
 
-  const tx = await mgmtDAO.revoke(
+  const tx2 = await mgmtDAO.revoke(
     MANAGING_DAO_ADDRESS!,
     deployer.address,
     ROOT_PERMISSION_ID
   );
-  await tx.wait();
+  await tx2.wait();
 
   console.log('Permission revoked');
 }

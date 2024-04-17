@@ -26,7 +26,7 @@ MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD="500000"   # 50%
 MGMT_DAO_INITIAL_EDITORS="0x1234,0x2345,0x3456,0x4567..." # Comma separated addresses
 
 3) Run the following command:
-$ npx ts-node scripts/managing-dao-setup.ts
+$ yarn managing-dao-setup
 `);
 };
 
