@@ -16,6 +16,13 @@ import {ProposalContentItem} from "../common.sol";
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
     MainVotingPlugin.createProposal.selector ^
+    MainVotingPlugin.proposeNewContent.selector ^
+    MainVotingPlugin.proposeAcceptSubspace.selector ^
+    MainVotingPlugin.proposeRemoveSubspace.selector ^
+    MainVotingPlugin.addEditor.selector ^
+    MainVotingPlugin.removeEditor.selector ^
+    MainVotingPlugin.addMember.selector ^
+    MainVotingPlugin.removeMember.selector ^
     MainVotingPlugin.cancelProposal.selector;
 
 /// @title MainVotingPlugin (Address list)
@@ -207,7 +214,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
     /// @param _proposalContentItem A list with the content changes to emit
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function proposaNewContent(
+    function proposeNewContent(
         ProposalContentItem[] calldata _proposalContentItem,
         address _spacePlugin
     ) public onlyMembers {

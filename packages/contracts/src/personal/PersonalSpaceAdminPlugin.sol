@@ -22,7 +22,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             this.isMember.selector ^
             this.isEditor.selector ^
             this.executeProposal.selector ^
-            this.submitProcessGeoProposal.selector ^
+            this.submitNewContent.selector ^
             this.submitAcceptSubspace.selector ^
             this.submitRemoveSubspace.selector ^
             this.submitNewMember.selector ^
