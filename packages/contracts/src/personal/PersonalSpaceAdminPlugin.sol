@@ -84,7 +84,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
     /// @param _proposalContentItems A list with the content changes to emit
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function submitProcessGeoProposal(
+    function submitNewContent(
         ProposalContentItem[] calldata _proposalContentItems,
         address _spacePlugin
     ) public auth(MEMBER_PERMISSION_ID) {
