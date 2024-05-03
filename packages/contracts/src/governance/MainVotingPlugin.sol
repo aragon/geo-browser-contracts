@@ -10,6 +10,8 @@ import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 import {IMembers} from "./base/IMembers.sol";
 import {IEditors} from "./base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
+import {SpacePlugin} from "../space/SpacePlugin.sol";
+import {ProposalContentItem} from "../common.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
@@ -50,6 +52,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
     /// @notice Raised when attempting to cancel a proposal that already ended
     error ProposalIsNotOpen();
+
+    /// @notice Raised when a content proposal is called with empty data
+    error EmptyContent();
 
     modifier onlyMembers() {
         if (!isMember(_msgSender())) {
@@ -197,6 +202,163 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         if (_voteOption != VoteOption.None) {
             vote(proposalId, _voteOption, _tryEarlyExecution);
         }
+    }
+
+    /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
+    /// @param _proposalContentItem A list with the content changes to emit
+    /// @param _spacePlugin The address of the space plugin where changes will be executed
+    function proposaNewContent(
+        ProposalContentItem[] calldata _proposalContentItem,
+        address _spacePlugin
+    ) public onlyMembers {
+        if (_proposalContentItem.length == 0 || _spacePlugin == address(0)) {
+            revert EmptyContent();
+        }
+
+        uint64 snapshotBlock;
+        unchecked {
+            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+        }
+        uint64 _startDate = block.timestamp.toUint64();
+
+        uint256 proposalId = _createProposalId();
+
+        // Store proposal related information
+        Proposal storage proposal_ = proposals[proposalId];
+
+        proposal_.parameters.startDate = _startDate;
+        proposal_.parameters.endDate = _startDate + duration();
+        proposal_.parameters.snapshotBlock = snapshotBlock;
+        proposal_.parameters.votingMode = votingMode();
+        proposal_.parameters.supportThreshold = supportThreshold();
+        proposal_.parameters.minVotingPower = _applyRatioCeiled(
+            totalVotingPower(snapshotBlock),
+            minParticipation()
+        );
+        for (uint256 i; i < _proposalContentItem.length; ) {
+            IDAO.Action memory _action = IDAO.Action({
+                to: _spacePlugin,
+                value: 0,
+                data: abi.encodeCall(
+                    SpacePlugin.processGeoProposal,
+                    (
+                        _proposalContentItem[i].blockIndex,
+                        _proposalContentItem[i].itemIndex,
+                        _proposalContentItem[i].contentUri
+                    )
+                )
+            });
+            proposal_.actions.push(_action);
+            unchecked {
+                ++i;
+            }
+        }
+
+        proposalCreators[proposalId] = _msgSender();
+
+        emit ProposalCreated({
+            proposalId: proposalId,
+            creator: proposalCreators[proposalId],
+            metadata: "",
+            startDate: _startDate,
+            endDate: proposal_.parameters.endDate,
+            actions: proposal_.actions,
+            allowFailureMap: 0
+        });
+    }
+
+    /// @notice Creates a proposal to make the DAO accept the given DAO as a subspace.
+    /// @param _subspaceDao The address of the DAO that holds the new subspace
+    /// @param _spacePlugin The address of the space plugin where changes will be executed
+    function proposeAcceptSubspace(IDAO _subspaceDao, address _spacePlugin) public onlyMembers {
+        if (address(_subspaceDao) == address(0) || _spacePlugin == address(0)) {
+            revert EmptyContent();
+        }
+        uint64 snapshotBlock;
+        unchecked {
+            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+        }
+        uint64 _startDate = block.timestamp.toUint64();
+
+        uint256 proposalId = _createProposalId();
+
+        // Store proposal related information
+        Proposal storage proposal_ = proposals[proposalId];
+
+        proposal_.parameters.startDate = _startDate;
+        proposal_.parameters.endDate = _startDate + duration();
+        proposal_.parameters.snapshotBlock = snapshotBlock;
+        proposal_.parameters.votingMode = votingMode();
+        proposal_.parameters.supportThreshold = supportThreshold();
+        proposal_.parameters.minVotingPower = _applyRatioCeiled(
+            totalVotingPower(snapshotBlock),
+            minParticipation()
+        );
+        IDAO.Action memory _action = IDAO.Action({
+            to: _spacePlugin,
+            value: 0,
+            data: abi.encodeCall(SpacePlugin.acceptSubspace, (address(_subspaceDao)))
+        });
+        proposal_.actions.push(_action);
+
+        proposalCreators[proposalId] = _msgSender();
+
+        emit ProposalCreated({
+            proposalId: proposalId,
+            creator: proposalCreators[proposalId],
+            metadata: "",
+            startDate: _startDate,
+            endDate: proposal_.parameters.endDate,
+            actions: proposal_.actions,
+            allowFailureMap: 0
+        });
+    }
+
+    /// @notice Creates a proposal to make the DAO remove the given DAO as a subspace.
+    /// @param _subspaceDao The address of the DAO that holds the subspace to remove
+    /// @param _spacePlugin The address of the space plugin where changes will be executed
+    function proposeRemoveSubspace(IDAO _subspaceDao, address _spacePlugin) public onlyMembers {
+        if (address(_subspaceDao) == address(0) || _spacePlugin == address(0)) {
+            revert EmptyContent();
+        }
+        uint64 snapshotBlock;
+        unchecked {
+            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+        }
+        uint64 _startDate = block.timestamp.toUint64();
+
+        uint256 proposalId = _createProposalId();
+
+        // Store proposal related information
+        Proposal storage proposal_ = proposals[proposalId];
+
+        proposal_.parameters.startDate = _startDate;
+        proposal_.parameters.endDate = _startDate + duration();
+        proposal_.parameters.snapshotBlock = snapshotBlock;
+        proposal_.parameters.votingMode = votingMode();
+        proposal_.parameters.supportThreshold = supportThreshold();
+        proposal_.parameters.minVotingPower = _applyRatioCeiled(
+            totalVotingPower(snapshotBlock),
+            minParticipation()
+        );
+        IDAO.Action memory _action = IDAO.Action({
+            to: _spacePlugin,
+            value: 0,
+            data: abi.encodeCall(SpacePlugin.removeSubspace, (address(_subspaceDao)))
+        });
+        proposal_.actions.push(_action);
+
+        proposalCreators[proposalId] = _msgSender();
+
+        emit ProposalCreated({
+            proposalId: proposalId,
+            creator: proposalCreators[proposalId],
+            metadata: "",
+            startDate: _startDate,
+            endDate: proposal_.parameters.endDate,
+            actions: proposal_.actions,
+            allowFailureMap: 0
+        });
     }
 
     /// @inheritdoc MajorityVotingBase

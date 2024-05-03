@@ -8,6 +8,7 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
+import {ProposalContentItem} from "../common.sol";
 
 /// @title PersonalSpaceAdminPlugin
 /// @author Aragon - 2023
@@ -81,22 +82,28 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
     }
 
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
-    /// @param _blockIndex The index of the block whose items have new contents.
-    /// @param _itemIndex The index of the item that has new contents.
-    /// @param _contentUri An IPFS URI pointing to the new contents behind the block's item.
+    /// @param _proposalContentItems A list with the content changes to emit
     /// @param _spacePlugin The address of the space plugin where changes will be executed
     function submitProcessGeoProposal(
-        uint32 _blockIndex,
-        uint32 _itemIndex,
-        string memory _contentUri,
+        ProposalContentItem[] calldata _proposalContentItems,
         address _spacePlugin
     ) public auth(MEMBER_PERMISSION_ID) {
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-        _actions[0].to = _spacePlugin;
-        _actions[0].data = abi.encodeCall(
-            SpacePlugin.processGeoProposal,
-            (_blockIndex, _itemIndex, _contentUri)
-        );
+        IDAO.Action[] memory _actions = new IDAO.Action[](_proposalContentItems.length);
+
+        for (uint i = 0; i < _proposalContentItems.length; ) {
+            _actions[i].to = _spacePlugin;
+            _actions[i].data = abi.encodeCall(
+                SpacePlugin.processGeoProposal,
+                (
+                    _proposalContentItems[i].blockIndex,
+                    _proposalContentItems[i].itemIndex,
+                    _proposalContentItems[i].contentUri
+                )
+            );
+            unchecked {
+                i++;
+            }
+        }
 
         uint256 proposalId = _createProposal(_msgSender(), _actions);
 
