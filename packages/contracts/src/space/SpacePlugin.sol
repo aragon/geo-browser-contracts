@@ -73,15 +73,15 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     }
 
     /// @notice Emits an event accepting another DAO as a subspace. Caller needs CONTENT_PERMISSION.
-    /// @param _dao The address of the DAO to accept as a subspace.
-    function acceptSubspace(address _dao) external auth(SUBSPACE_PERMISSION_ID) {
-        emit SubspaceAccepted(_dao);
+    /// @param _subspaceDao The address of the DAO to accept as a subspace.
+    function acceptSubspace(address _subspaceDao) external auth(SUBSPACE_PERMISSION_ID) {
+        emit SubspaceAccepted(_subspaceDao);
     }
 
     /// @notice Emits an event removing another DAO as a subspace. Caller needs CONTENT_PERMISSION.
-    /// @param _dao The address of the DAO to remove as a subspace.
-    function removeSubspace(address _dao) external auth(SUBSPACE_PERMISSION_ID) {
-        emit SubspaceRemoved(_dao);
+    /// @param _subspaceDao The address of the DAO to remove as a subspace.
+    function removeSubspace(address _subspaceDao) external auth(SUBSPACE_PERMISSION_ID) {
+        emit SubspaceRemoved(_subspaceDao);
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables without shifting down storage in the inheritance chain (see [OpenZeppelin's guide about storage gaps](https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps)).
