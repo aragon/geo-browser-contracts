@@ -13,22 +13,25 @@ bytes4 constant SPACE_INTERFACE_ID = SpacePlugin.initialize.selector ^
 /// @dev Release 1, Build 1
 contract SpacePlugin is PluginUUPSUpgradeable {
     /// @notice Emitted when the contents of a space change.
+    /// @param dao The address of the DAO where this proposal was executed.
     /// @param blockIndex The index of the block whose items have new contents.
     /// @param itemIndex The index of the item that has new contents.
     /// @param contentUri An IPFS URI pointing to the new contents behind the block's item.
-    event GeoProposalProcessed(uint32 blockIndex, uint32 itemIndex, string contentUri);
+    event GeoProposalProcessed(address dao, uint32 blockIndex, uint32 itemIndex, string contentUri);
 
     /// @notice Announces that the current space plugin is the successor of an already existing Space
     /// @param predecessorSpace The address of the space contract that the plugin will replace
     event SuccessorSpaceCreated(address predecessorSpace);
 
     /// @notice Emitted when the DAO accepts another DAO as a subspace.
+    /// @param dao The address of the DAO where this proposal was executed.
     /// @param subspaceDao The address of the DAO to be accepted as a subspace.
-    event SubspaceAccepted(address subspaceDao);
+    event SubspaceAccepted(address dao, address subspaceDao);
 
     /// @notice Emitted when the DAO stops recognizing another DAO as a subspace.
+    /// @param dao The address of the DAO where this proposal was executed.
     /// @param subspaceDao The address of the DAO to be removed as a subspace.
-    event SubspaceRemoved(address subspaceDao);
+    event SubspaceRemoved(address dao, address subspaceDao);
 
     /// @notice Initializes the plugin when build 1 is installed.
     /// @param _dao The address of the DAO to read the permissions from.
@@ -44,7 +47,12 @@ contract SpacePlugin is PluginUUPSUpgradeable {
         if (_predecessorSpace != address(0)) {
             emit SuccessorSpaceCreated(_predecessorSpace);
         }
-        emit GeoProposalProcessed({blockIndex: 0, itemIndex: 0, contentUri: _firstBlockContentUri});
+        emit GeoProposalProcessed({
+            dao: address(dao()),
+            blockIndex: 0,
+            itemIndex: 0,
+            contentUri: _firstBlockContentUri
+        });
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -66,6 +74,7 @@ contract SpacePlugin is PluginUUPSUpgradeable {
         string memory _contentUri
     ) external auth(CONTENT_PERMISSION_ID) {
         emit GeoProposalProcessed({
+            dao: address(dao()),
             blockIndex: _blockIndex,
             itemIndex: _itemIndex,
             contentUri: _contentUri
@@ -75,13 +84,13 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     /// @notice Emits an event accepting another DAO as a subspace. Caller needs CONTENT_PERMISSION.
     /// @param _subspaceDao The address of the DAO to accept as a subspace.
     function acceptSubspace(address _subspaceDao) external auth(SUBSPACE_PERMISSION_ID) {
-        emit SubspaceAccepted(_subspaceDao);
+        emit SubspaceAccepted(address(dao()), _subspaceDao);
     }
 
     /// @notice Emits an event removing another DAO as a subspace. Caller needs CONTENT_PERMISSION.
     /// @param _subspaceDao The address of the DAO to remove as a subspace.
     function removeSubspace(address _subspaceDao) external auth(SUBSPACE_PERMISSION_ID) {
-        emit SubspaceRemoved(_subspaceDao);
+        emit SubspaceRemoved(address(dao()), _subspaceDao);
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables without shifting down storage in the inheritance chain (see [OpenZeppelin's guide about storage gaps](https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps)).

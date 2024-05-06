@@ -22,7 +22,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             this.isMember.selector ^
             this.isEditor.selector ^
             this.executeProposal.selector ^
-            this.submitNewContent.selector ^
+            this.submitData.selector ^
             this.submitAcceptSubspace.selector ^
             this.submitRemoveSubspace.selector ^
             this.submitNewMember.selector ^
@@ -70,7 +70,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
     ) external auth(EDITOR_PERMISSION_ID) {
         uint64 _currentTimestamp64 = block.timestamp.toUint64();
 
-        uint256 proposalId = _createProposal({
+        uint256 _proposalId = _createProposal({
             _creator: _msgSender(),
             _metadata: _metadata,
             _startDate: _currentTimestamp64,
@@ -78,13 +78,13 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             _actions: _actions,
             _allowFailureMap: _allowFailureMap
         });
-        _executeProposal(dao(), proposalId, _actions, _allowFailureMap);
+        dao().execute(bytes32(_proposalId), _actions, _allowFailureMap);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
     /// @param _proposalContentItems A list with the content changes to emit
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function submitNewContent(
+    function submitData(
         ProposalContentItem[] calldata _proposalContentItems,
         address _spacePlugin
     ) public auth(MEMBER_PERMISSION_ID) {
@@ -105,9 +105,9 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             }
         }
 
-        uint256 proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(_msgSender(), _actions);
 
-        _executeProposal(dao(), proposalId, _actions, 0);
+        dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO accept the given DAO as a subspace.
@@ -121,9 +121,9 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         _actions[0].to = _spacePlugin;
         _actions[0].data = abi.encodeCall(SpacePlugin.acceptSubspace, (address(_subspaceDao)));
 
-        uint256 proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(_msgSender(), _actions);
 
-        _executeProposal(dao(), proposalId, _actions, 0);
+        dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO remove the given DAO as a subspace.
@@ -137,9 +137,9 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         _actions[0].to = _spacePlugin;
         _actions[0].data = abi.encodeCall(SpacePlugin.removeSubspace, (address(_subspaceDao)));
 
-        uint256 proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(_msgSender(), _actions);
 
-        _executeProposal(dao(), proposalId, _actions, 0);
+        dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO grant membership permission to the given address
@@ -152,9 +152,9 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _newMember, MEMBER_PERMISSION_ID)
         );
 
-        uint256 proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(_msgSender(), _actions);
 
-        _executeProposal(dao(), proposalId, _actions, 0);
+        dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the given address
@@ -167,9 +167,9 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _member, MEMBER_PERMISSION_ID)
         );
 
-        uint256 proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(_msgSender(), _actions);
 
-        _executeProposal(dao(), proposalId, _actions, 0);
+        dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO grant editor permission to the given address
@@ -182,9 +182,9 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _newEditor, EDITOR_PERMISSION_ID)
         );
 
-        uint256 proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(_msgSender(), _actions);
 
-        _executeProposal(dao(), proposalId, _actions, 0);
+        dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke editor permission from the given address
@@ -197,14 +197,15 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _editor, EDITOR_PERMISSION_ID)
         );
 
-        uint256 proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(_msgSender(), _actions);
 
-        _executeProposal(dao(), proposalId, _actions, 0);
+        dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
     // Internal helpers
 
-    /// @notice Internal function to create a proposal.
+    /// @notice Internal, simplified function to create a proposal.
+    /// @param _creator The address who created the proposal.
     /// @param _actions The actions that will be executed after the proposal passes.
     /// @return proposalId The ID of the proposal.
     function _createProposal(
