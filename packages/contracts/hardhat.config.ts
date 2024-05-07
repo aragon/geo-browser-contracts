@@ -16,16 +16,13 @@ import 'solidity-coverage';
 const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || '../../.env';
 dotenvConfig({path: resolve(__dirname, dotenvConfigPath)});
 
-if (!process.env.INFURA_API_KEY) {
-  throw new Error('INFURA_API_KEY in .env not set');
+if (!process.env.ALCHEMY_API_KEY) {
+  throw new Error('ALCHEMY_API_KEY in .env not set');
 }
 
 const apiUrls: NetworkNameMapping = {
-  mainnet: 'https://mainnet.infura.io/v3/',
-  sepolia: 'https://sepolia.infura.io/v3/',
-  polygon: 'https://polygon-mainnet.infura.io/v3/',
-  polygonMumbai: 'https://polygon-mumbai.infura.io/v3/',
-  baseGoerli: 'https://goerli.base.org',
+  mainnet: 'https://eth-mainnet.g.alchemy.com/v2/',
+  sepolia: 'https://eth-sepolia.g.alchemy.com/v2/',
   custom: process.env.DEPLOYMENT_RPC_ENDPOINT ?? '',
 };
 
@@ -35,29 +32,16 @@ export const networks: {[index: string]: NetworkUserConfig} = {
     forking: {
       url: `${
         apiUrls[process.env.NETWORK_NAME ? process.env.NETWORK_NAME : 'mainnet']
-      }${process.env.INFURA_API_KEY}`,
+      }${process.env.ALCHEMY_API_KEY}`,
     },
   },
   mainnet: {
     chainId: 1,
-    url: `${apiUrls.mainnet}${process.env.INFURA_API_KEY}`,
+    url: `${apiUrls.mainnet}${process.env.ALCHEMY_API_KEY}`,
   },
   sepolia: {
     chainId: 11155111,
-    url: `${apiUrls.sepolia}${process.env.INFURA_API_KEY}`,
-  },
-  polygon: {
-    chainId: 137,
-    url: `${apiUrls.polygon}${process.env.INFURA_API_KEY}`,
-  },
-  polygonMumbai: {
-    chainId: 80001,
-    url: `${apiUrls.polygonMumbai}${process.env.INFURA_API_KEY}`,
-  },
-  baseGoerli: {
-    chainId: 84531,
-    url: `${apiUrls.baseGoerli}`,
-    gasPrice: 20000000000,
+    url: `${apiUrls.sepolia}${process.env.ALCHEMY_API_KEY}`,
   },
   custom: {
     chainId: 100000,
