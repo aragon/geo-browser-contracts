@@ -8,7 +8,6 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
-import {ProposalContentItem} from "../common.sol";
 
 /// @title PersonalSpaceAdminPlugin
 /// @author Aragon - 2023
@@ -22,7 +21,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             this.isMember.selector ^
             this.isEditor.selector ^
             this.executeProposal.selector ^
-            this.submitData.selector ^
+            this.submitEdits.selector ^
             this.submitAcceptSubspace.selector ^
             this.submitRemoveSubspace.selector ^
             this.submitNewMember.selector ^
@@ -71,7 +70,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint64 _currentTimestamp64 = block.timestamp.toUint64();
 
         uint256 _proposalId = _createProposal({
-            _creator: _msgSender(),
+            _creator: msg.sender,
             _metadata: _metadata,
             _startDate: _currentTimestamp64,
             _endDate: _currentTimestamp64,
@@ -82,30 +81,18 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
     }
 
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
-    /// @param _proposalContentItems A list with the content changes to emit
+    /// @param _contentUri The URI of the IPFS content to publish
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function submitData(
-        ProposalContentItem[] calldata _proposalContentItems,
+    function submitEdits(
+        string memory _contentUri,
         address _spacePlugin
     ) public auth(MEMBER_PERMISSION_ID) {
-        IDAO.Action[] memory _actions = new IDAO.Action[](_proposalContentItems.length);
+        IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
-        for (uint i = 0; i < _proposalContentItems.length; ) {
-            _actions[i].to = _spacePlugin;
-            _actions[i].data = abi.encodeCall(
-                SpacePlugin.processGeoProposal,
-                (
-                    _proposalContentItems[i].blockIndex,
-                    _proposalContentItems[i].itemIndex,
-                    _proposalContentItems[i].contentUri
-                )
-            );
-            unchecked {
-                i++;
-            }
-        }
+        _actions[0].to = _spacePlugin;
+        _actions[0].data = abi.encodeCall(SpacePlugin.publishEdits, (_contentUri));
 
-        uint256 _proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
     }
@@ -121,7 +108,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         _actions[0].to = _spacePlugin;
         _actions[0].data = abi.encodeCall(SpacePlugin.acceptSubspace, (address(_subspaceDao)));
 
-        uint256 _proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
     }
@@ -137,7 +124,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         _actions[0].to = _spacePlugin;
         _actions[0].data = abi.encodeCall(SpacePlugin.removeSubspace, (address(_subspaceDao)));
 
-        uint256 _proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
     }
@@ -152,7 +139,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _newMember, MEMBER_PERMISSION_ID)
         );
 
-        uint256 _proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
     }
@@ -167,7 +154,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _member, MEMBER_PERMISSION_ID)
         );
 
-        uint256 _proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
     }
@@ -182,7 +169,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _newEditor, EDITOR_PERMISSION_ID)
         );
 
-        uint256 _proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
     }
@@ -197,7 +184,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
             (address(this), _editor, EDITOR_PERMISSION_ID)
         );
 
-        uint256 _proposalId = _createProposal(_msgSender(), _actions);
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
     }

@@ -228,8 +228,8 @@ describe('Personal Space Admin Plugin', function () {
     it('Executed content proposals emit an event', async () => {
       // Encode an action to change some content
       const data = SpacePlugin__factory.createInterface().encodeFunctionData(
-        'processGeoProposal',
-        [1, 2, '0x']
+        'publishEdits',
+        ['0x']
       );
       const actions = [
         {
@@ -258,8 +258,8 @@ describe('Personal Space Admin Plugin', function () {
           .connect(alice)
           .executeProposal('0x', actions, 0)
       )
-        .to.emit(spacePlugin, 'GeoProposalProcessed')
-        .withArgs(1, 2, '0x');
+        .to.emit(spacePlugin, 'EditsPublished')
+        .withArgs('0x');
     });
 
     it('Approved subspaces emit an event', async () => {

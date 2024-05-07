@@ -262,16 +262,14 @@ abstract contract MajorityVotingBase is
         VoteOption _voteOption,
         bool _tryEarlyExecution
     ) public virtual {
-        address account = _msgSender();
-
-        if (!_canVote(_proposalId, account, _voteOption)) {
+        if (!_canVote(_proposalId, msg.sender, _voteOption)) {
             revert VoteCastForbidden({
                 proposalId: _proposalId,
-                account: account,
+                account: msg.sender,
                 voteOption: _voteOption
             });
         }
-        _vote(_proposalId, _voteOption, account, _tryEarlyExecution);
+        _vote(_proposalId, _voteOption, msg.sender, _tryEarlyExecution);
     }
 
     /// @inheritdoc IMajorityVoting

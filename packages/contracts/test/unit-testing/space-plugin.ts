@@ -70,8 +70,8 @@ describe('Space Plugin', function () {
           ADDRESS_ZERO
         )
       )
-        .to.emit(spacePlugin, 'GeoProposalProcessed')
-        .withArgs(dao.address, 0, 0, defaultInput.contentUri);
+        .to.emit(spacePlugin, 'EditsPublished')
+        .withArgs(dao.address, defaultInput.contentUri);
     });
 
     it('Should emit a successor space event', async () => {
@@ -109,7 +109,7 @@ describe('Space Plugin', function () {
 
   it('The Space plugin emits an event when new content is published', async () => {
     // Fails by default
-    await expect(spacePlugin.connect(alice).processGeoProposal(1, 2, 'hello'))
+    await expect(spacePlugin.connect(alice).publishEdits('hello'))
       .to.be.revertedWithCustomError(spacePlugin, 'DaoUnauthorized')
       .withArgs(
         dao.address,
@@ -122,9 +122,9 @@ describe('Space Plugin', function () {
     await dao.grant(spacePlugin.address, alice.address, CONTENT_PERMISSION_ID);
 
     // Set content
-    await expect(spacePlugin.connect(alice).processGeoProposal(1, 2, 'hello'))
-      .to.emit(spacePlugin, 'GeoProposalProcessed')
-      .withArgs(dao.address, 1, 2, 'hello');
+    await expect(spacePlugin.connect(alice).publishEdits('hello'))
+      .to.emit(spacePlugin, 'EditsPublished')
+      .withArgs(dao.address, 'hello');
   });
 
   it('The Space plugin emits an event when a subspace is accepted', async () => {
@@ -185,17 +185,12 @@ describe('Space Plugin', function () {
     it('Only the DAO can emit content on the space plugin', async () => {
       // They cannot
       await expect(
-        spacePlugin
-          .connect(alice)
-          .processGeoProposal(1, 2, toHex('ipfs://1234'))
+        spacePlugin.connect(alice).publishEdits(toHex('ipfs://1234'))
       ).to.be.reverted;
+      await expect(spacePlugin.connect(bob).publishEdits(toHex('ipfs://1234')))
+        .to.be.reverted;
       await expect(
-        spacePlugin.connect(bob).processGeoProposal(1, 2, toHex('ipfs://1234'))
-      ).to.be.reverted;
-      await expect(
-        spacePlugin
-          .connect(carol)
-          .processGeoProposal(1, 2, toHex('ipfs://1234'))
+        spacePlugin.connect(carol).publishEdits(toHex('ipfs://1234'))
       ).to.be.reverted;
 
       // The DAO can
@@ -204,15 +199,15 @@ describe('Space Plugin', function () {
           to: spacePlugin.address,
           value: 0,
           data: SpacePlugin__factory.createInterface().encodeFunctionData(
-            'processGeoProposal',
-            [1, 2, toHex('ipfs://1234')]
+            'publishEdits',
+            [toHex('ipfs://1234')]
           ),
         },
       ];
 
       await expect(dao.execute(ZERO_BYTES32, actions, 0))
-        .to.emit(spacePlugin, 'GeoProposalProcessed')
-        .withArgs(dao.address, 1, 2, toHex('ipfs://1234'));
+        .to.emit(spacePlugin, 'EditsPublished')
+        .withArgs(dao.address, toHex('ipfs://1234'));
     });
 
     it('Only the DAO can accept subspaces', async () => {

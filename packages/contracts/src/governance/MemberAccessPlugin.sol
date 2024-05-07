@@ -174,7 +174,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         // Revert if the settings have been changed in the same block as this proposal should be created in.
         // This prevents a malicious party from voting with previous addresses and the new settings.
         if (lastMultisigSettingsChange > snapshotBlock) {
-            revert ProposalCreationForbidden(_msgSender());
+            revert ProposalCreationForbidden(msg.sender);
         }
 
         uint64 _startDate = block.timestamp.toUint64();
@@ -184,7 +184,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
         emit ProposalCreated({
             proposalId: proposalId,
-            creator: _msgSender(),
+            creator: msg.sender,
             metadata: _metadata,
             startDate: _startDate,
             endDate: _endDate,
@@ -206,7 +206,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             }
         }
 
-        if (isEditor(_msgSender())) {
+        if (isEditor(msg.sender)) {
             if (multisigSettings.mainVotingPlugin.addresslistLength() < 2) {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR;
             } else {
@@ -271,9 +271,8 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @inheritdoc IMultisig
     /// @dev The second parameter is left empty to keep compatibility with the existing multisig interface
     function approve(uint256 _proposalId) public {
-        address sender = _msgSender();
-        if (!_canApprove(_proposalId, sender)) {
-            revert ApprovalCastForbidden(_proposalId, sender);
+        if (!_canApprove(_proposalId, msg.sender)) {
+            revert ApprovalCastForbidden(_proposalId, msg.sender);
         }
 
         Proposal storage proposal_ = proposals[_proposalId];
@@ -284,9 +283,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             proposal_.approvals += 1;
         }
 
-        proposal_.approvers[sender] = true;
+        proposal_.approvers[msg.sender] = true;
 
-        emit Approved({proposalId: _proposalId, editor: sender});
+        emit Approved({proposalId: _proposalId, editor: msg.sender});
 
         if (_canExecute(_proposalId)) {
             _execute(_proposalId);
@@ -295,9 +294,8 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
     /// @notice Rejects the given proposal immediately.
     function reject(uint256 _proposalId) public {
-        address sender = _msgSender();
-        if (!_canApprove(_proposalId, sender)) {
-            revert ApprovalCastForbidden(_proposalId, sender);
+        if (!_canApprove(_proposalId, msg.sender)) {
+            revert ApprovalCastForbidden(_proposalId, msg.sender);
         }
 
         Proposal storage proposal_ = proposals[_proposalId];
@@ -305,7 +303,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         // Prevent any further approvals, expire it
         proposal_.parameters.endDate = block.timestamp.toUint64();
 
-        emit Rejected({proposalId: _proposalId, editor: sender});
+        emit Rejected({proposalId: _proposalId, editor: msg.sender});
     }
 
     /// @inheritdoc IMultisig

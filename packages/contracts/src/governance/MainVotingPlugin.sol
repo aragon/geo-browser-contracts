@@ -11,12 +11,11 @@ import {IMembers} from "./base/IMembers.sol";
 import {IEditors} from "./base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
-import {ProposalContentItem} from "../common.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
     MainVotingPlugin.createProposal.selector ^
-    MainVotingPlugin.proposeData.selector ^
+    MainVotingPlugin.proposeEdits.selector ^
     MainVotingPlugin.proposeAcceptSubspace.selector ^
     MainVotingPlugin.proposeRemoveSubspace.selector ^
     MainVotingPlugin.addEditor.selector ^
@@ -64,8 +63,8 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     error EmptyContent();
 
     modifier onlyMembers() {
-        if (!isMember(_msgSender())) {
-            revert NotAMember(_msgSender());
+        if (!isMember(msg.sender)) {
+            revert NotAMember(msg.sender);
         }
         _;
     }
@@ -172,7 +171,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         uint64 _startDate = block.timestamp.toUint64();
 
         proposalId = _createProposal({
-            _creator: _msgSender(),
+            _creator: msg.sender,
             _metadata: _metadata,
             _startDate: _startDate,
             _endDate: _startDate + duration(),
@@ -192,7 +191,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
             totalVotingPower(snapshotBlock),
             minParticipation()
         );
-        proposalCreators[proposalId] = _msgSender();
+        proposalCreators[proposalId] = msg.sender;
 
         // Reduce costs
         if (_allowFailureMap != 0) {
@@ -212,13 +211,10 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     }
 
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
-    /// @param _proposalContentItem A list with the content changes to emit
+    /// @param _contentUri The URI of the IPFS content to publish
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function proposeData(
-        ProposalContentItem[] calldata _proposalContentItem,
-        address _spacePlugin
-    ) public onlyMembers {
-        if (_proposalContentItem.length == 0 || _spacePlugin == address(0)) {
+    function proposeEdits(string memory _contentUri, address _spacePlugin) public onlyMembers {
+        if (_spacePlugin == address(0)) {
             revert EmptyContent();
         }
 
@@ -242,26 +238,15 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
             totalVotingPower(snapshotBlock),
             minParticipation()
         );
-        for (uint256 i; i < _proposalContentItem.length; ) {
-            IDAO.Action memory _action = IDAO.Action({
+        proposal_.actions.push(
+            IDAO.Action({
                 to: _spacePlugin,
                 value: 0,
-                data: abi.encodeCall(
-                    SpacePlugin.processGeoProposal,
-                    (
-                        _proposalContentItem[i].blockIndex,
-                        _proposalContentItem[i].itemIndex,
-                        _proposalContentItem[i].contentUri
-                    )
-                )
-            });
-            proposal_.actions.push(_action);
-            unchecked {
-                ++i;
-            }
-        }
+                data: abi.encodeCall(SpacePlugin.publishEdits, (_contentUri))
+            })
+        );
 
-        proposalCreators[proposalId] = _msgSender();
+        proposalCreators[proposalId] = msg.sender;
 
         emit ProposalCreated({
             proposalId: proposalId,
@@ -308,7 +293,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         });
         proposal_.actions.push(_action);
 
-        proposalCreators[proposalId] = _msgSender();
+        proposalCreators[proposalId] = msg.sender;
 
         emit ProposalCreated({
             proposalId: proposalId,
@@ -360,7 +345,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         });
         proposal_.actions.push(_action);
 
-        proposalCreators[proposalId] = _msgSender();
+        proposalCreators[proposalId] = msg.sender;
 
         emit ProposalCreated({
             proposalId: proposalId,
@@ -418,7 +403,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
     /// @notice Cancels the given proposal. It can only be called by the creator and the proposal must have not ended.
     function cancelProposal(uint256 _proposalId) external {
-        if (proposalCreators[_proposalId] != _msgSender()) {
+        if (proposalCreators[_proposalId] != msg.sender) {
             revert OnlyCreatorCanCancel();
         }
         Proposal storage proposal_ = proposals[_proposalId];
