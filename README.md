@@ -254,13 +254,13 @@ This plugin is upgradeable.
 #### Methods
 
 ```solidity
-function initialize(IDAO _dao, string _firstBlockContentUri, address predecessorSpace);
+function initialize(IDAO _dao, string _firstContentUri, address predecessorSpace);
 
-function publishEdits(uint32 _blockIndex, uint32 _itemIndex, string _contentUri);
+function publishEdits(string _contentUri);
 
-function acceptSubspace(address _dao);
+function acceptSubspace(address _subspaceDao);
 
-function removeSubspace(address _dao);
+function removeSubspace(address _subspaceDao);
 ```
 
 Inherited:
@@ -282,10 +282,10 @@ function implementation() returns (address);
 #### Events
 
 ```solidity
-event EditsPublished(uint32 blockIndex, uint32 itemIndex, string contentUri);
-event SuccessorSpaceCreated(address predecessorSpace);
-event SubspaceAccepted(address dao);
-event SubspaceRemoved(address dao);
+event EditsPublished(address dao, string contentUri);
+event SuccessorSpaceCreated(address dao, address predecessorSpaceDao);
+event SubspaceAccepted(address dao, address subspaceDao);
+event SubspaceRemoved(address dao, address subspaceDao);
 ```
 
 #### Permissions

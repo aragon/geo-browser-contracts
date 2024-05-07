@@ -43,6 +43,15 @@ export const defaultInitData: InitData = {
 export const psvpInterface = new ethers.utils.Interface([
   'function initialize(address)',
   'function executeProposal(bytes,tuple(address,uint256,bytes)[],uint256)',
+  'function isEditor(address _account) view returns (bool)',
+  'function isMember(address _account) view returns (bool)',
+  'function submitAcceptSubspace(address _subspaceDao, address _spacePlugin)',
+  'function submitEdits(string _contentUri, address _spacePlugin)',
+  'function submitNewEditor(address _newEditor)',
+  'function submitNewMember(address _newMember)',
+  'function submitRemoveEditor(address _editor)',
+  'function submitRemoveMember(address _member)',
+  'function submitRemoveSubspace(address _subspaceDao, address _spacePlugin)',
 ]);
 
 describe('Personal Space Admin Plugin', function () {
@@ -233,7 +242,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       )
         .to.emit(spacePlugin, 'EditsPublished')
-        .withArgs('0x');
+        .withArgs(dao.address, '0x');
     });
 
     it('Executed content proposals emit an event', async () => {
@@ -264,7 +273,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       )
         .to.emit(spacePlugin, 'EditsPublished')
-        .withArgs('0x');
+        .withArgs(dao.address, '0x');
     });
 
     it('Approved subspaces emit an event', async () => {
@@ -295,7 +304,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       )
         .to.emit(spacePlugin, 'SubspaceAccepted')
-        .withArgs(ADDRESS_TWO);
+        .withArgs(dao.address, ADDRESS_TWO);
     });
 
     it('Removed subspaces emit an event', async () => {
@@ -340,7 +349,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actionsRemove, 0)
       )
         .to.emit(spacePlugin, 'SubspaceRemoved')
-        .withArgs(ADDRESS_TWO);
+        .withArgs(dao.address, ADDRESS_TWO);
     });
   });
 
