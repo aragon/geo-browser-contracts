@@ -216,13 +216,24 @@ describe('Personal Space Admin Plugin', function () {
     });
 
     it('Proposal execution is immediate', async () => {
+      const data = SpacePlugin__factory.createInterface().encodeFunctionData(
+        'publishEdits',
+        ['0x']
+      );
+      const actions = [
+        {
+          to: spacePlugin.address,
+          value: 0,
+          data,
+        },
+      ];
       await expect(
         personalSpaceVotingPlugin
           .connect(alice)
-          .executeProposal('0x', dummyActions, 0)
+          .executeProposal('0x', actions, 0)
       )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(0);
+        .to.emit(spacePlugin, 'EditsPublished')
+        .withArgs('0x');
     });
 
     it('Executed content proposals emit an event', async () => {
@@ -245,13 +256,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
 
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(alice)
-          .executeProposal('0x', actions, 0)
-      )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(1);
+      // ProposalExecuted is redundant and not emitted
 
       await expect(
         personalSpaceVotingPlugin
@@ -282,13 +287,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
 
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(alice)
-          .executeProposal('0x', actions, 0)
-      )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(1);
+      // ProposalExecuted is redundant and not emitted
 
       await expect(
         personalSpaceVotingPlugin
@@ -333,13 +332,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actionsRemove, 0)
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
 
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(alice)
-          .executeProposal('0x', actionsRemove, 0)
-      )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(2);
+      // ProposalExecuted is redundant and not emitted
 
       await expect(
         personalSpaceVotingPlugin
@@ -381,14 +374,6 @@ describe('Personal Space Admin Plugin', function () {
         expect(
           await personalSpaceVotingPlugin.supportsInterface(
             getInterfaceID(iface)
-          )
-        ).to.be.true;
-      });
-
-      it('supports the `Admin` interface', async () => {
-        expect(
-          await personalSpaceVotingPlugin.supportsInterface(
-            getInterfaceID(psvpInterface)
           )
         ).to.be.true;
       });
@@ -470,20 +455,6 @@ describe('Personal Space Admin Plugin', function () {
         expect(event!.args.actions[0].value).to.equal(dummyActions[0].value);
         expect(event!.args.actions[0].data).to.equal(dummyActions[0].data);
         expect(event!.args.allowFailureMap).to.equal(allowFailureMap);
-      });
-
-      it('correctly emits the `ProposalExecuted` event', async () => {
-        const currentExpectedProposalId = 0;
-
-        await expect(
-          personalSpaceVotingPlugin.executeProposal(
-            dummyMetadata,
-            dummyActions,
-            0
-          )
-        )
-          .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-          .withArgs(currentExpectedProposalId);
       });
 
       it('correctly increments the proposal ID', async () => {

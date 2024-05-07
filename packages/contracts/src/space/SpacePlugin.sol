@@ -18,8 +18,9 @@ contract SpacePlugin is PluginUUPSUpgradeable {
     event EditsPublished(address dao, string contentUri);
 
     /// @notice Announces that the current space plugin is the successor of an already existing Space
+    /// @param dao The address of the DAO where this proposal was executed.
     /// @param predecessorSpace The address of the space contract that the plugin will replace
-    event SuccessorSpaceCreated(address predecessorSpace);
+    event SuccessorSpaceCreated(address dao, address predecessorSpace);
 
     /// @notice Emitted when the DAO accepts another DAO as a subspace.
     /// @param dao The address of the DAO where this proposal was executed.
@@ -43,7 +44,7 @@ contract SpacePlugin is PluginUUPSUpgradeable {
         __PluginUUPSUpgradeable_init(_dao);
 
         if (_predecessorSpace != address(0)) {
-            emit SuccessorSpaceCreated(_predecessorSpace);
+            emit SuccessorSpaceCreated(address(dao()), _predecessorSpace);
         }
         emit EditsPublished({dao: address(dao()), contentUri: _firstContentUri});
     }
