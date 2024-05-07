@@ -23,6 +23,7 @@ import {
 import {deployTestDao} from '../helpers/test-dao';
 import {
   ADDRESS_ONE,
+  ADDRESS_THREE,
   ADDRESS_TWO,
   ADDRESS_ZERO,
   advanceAfterVoteEnd,
@@ -44,6 +45,7 @@ import {
 import {defaultMainVotingSettings} from './common';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
+import {BigNumber} from 'ethers';
 import {toUtf8Bytes} from 'ethers/lib/utils';
 import {ethers} from 'hardhat';
 
@@ -247,6 +249,54 @@ describe('Main Voting Plugin', function () {
           VoteOption.None,
           true // auto execute
         )
+      )
+        .to.be.revertedWithCustomError(mainVotingPlugin, 'NotAMember')
+        .withArgs(dave.address);
+    });
+
+    it('Only members can call proposal creation wrappers', async () => {
+      await expect(
+        mainVotingPlugin
+          .connect(alice)
+          .proposeEdits('ipfs://', spacePlugin.address)
+      ).to.not.be.reverted;
+
+      await expect(
+        mainVotingPlugin
+          .connect(bob)
+          .proposeAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+      ).to.not.be.reverted;
+
+      await expect(
+        mainVotingPlugin
+          .connect(bob)
+          .proposeRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
+      ).to.not.be.reverted;
+
+      expect(await mainVotingPlugin.proposalCount()).to.equal(
+        BigNumber.from(3)
+      );
+
+      await expect(
+        mainVotingPlugin
+          .connect(carol)
+          .proposeEdits('ipfs://', spacePlugin.address)
+      )
+        .to.be.revertedWithCustomError(mainVotingPlugin, 'NotAMember')
+        .withArgs(carol.address);
+
+      await expect(
+        mainVotingPlugin
+          .connect(dave)
+          .proposeAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+      )
+        .to.be.revertedWithCustomError(mainVotingPlugin, 'NotAMember')
+        .withArgs(dave.address);
+
+      await expect(
+        mainVotingPlugin
+          .connect(dave)
+          .proposeRemoveSubspace(ADDRESS_TWO, spacePlugin.address)
       )
         .to.be.revertedWithCustomError(mainVotingPlugin, 'NotAMember')
         .withArgs(dave.address);
