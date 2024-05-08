@@ -107,7 +107,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         _editors[0] = _account;
 
         _addAddresses(_editors);
-        emit EditorAdded(_account);
+        emit EditorAdded(address(dao()), _account);
     }
 
     /// @notice Removes existing editors from the address list.
@@ -120,7 +120,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         _editors[0] = _account;
 
         _removeAddresses(_editors);
-        emit EditorRemoved(_account);
+        emit EditorRemoved(address(dao()), _account);
     }
 
     /// @notice Defines the given address as a new space member that can create proposals.
@@ -129,7 +129,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         if (members[_account]) return;
 
         members[_account] = true;
-        emit MemberAdded(_account);
+        emit MemberAdded(address(dao()), _account);
     }
 
     /// @notice Removes the given address as a proposal creator.
@@ -138,7 +138,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         if (!members[_account]) return;
 
         members[_account] = false;
-        emit MemberRemoved(_account);
+        emit MemberRemoved(address(dao()), _account);
     }
 
     /// @notice Returns whether the given address is currently listed as an editor

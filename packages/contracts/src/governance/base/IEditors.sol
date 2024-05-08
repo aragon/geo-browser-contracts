@@ -10,12 +10,14 @@ interface IEditors {
     event EditorsAdded(address[] editors);
 
     /// @notice Emitted when an editor is added to the DAO plugin.
+    /// @param dao The address of the DAO whose plugin has added an editor.
     /// @param editor The address of the new editor.
-    event EditorAdded(address editor);
+    event EditorAdded(address dao, address editor);
 
     /// @notice Emitted when an editor is removed from the DAO plugin.
+    /// @param dao The address of the DAO whose plugin has removed an editor.
     /// @param editor The address of the editor being removed.
-    event EditorRemoved(address editor);
+    event EditorRemoved(address dao, address editor);
 
     /// @notice Checks if an account is an editor on the DAO.
     /// @param _account The address of the account to be checked.
