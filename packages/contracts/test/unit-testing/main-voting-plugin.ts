@@ -2394,6 +2394,12 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           .false;
         expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
         expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+        await expect(mainVotingPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            mainVotingPlugin,
+            'ProposalExecutionForbidden'
+          )
+          .withArgs(id);
 
         // 2
         await mainVotingPlugin
@@ -2406,6 +2412,12 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           .false;
         expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
         expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+        await expect(mainVotingPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            mainVotingPlugin,
+            'ProposalExecutionForbidden'
+          )
+          .withArgs(id);
 
         await advanceAfterVoteEnd(endDate);
 
@@ -2413,6 +2425,12 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           .false;
         expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
         expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+        await expect(mainVotingPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            mainVotingPlugin,
+            'ProposalExecutionForbidden'
+          )
+          .withArgs(id);
       });
 
       it('does not execute if participation is high enough but support is too low', async () => {
@@ -2432,13 +2450,24 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
           .false;
         expect(await mainVotingPlugin.canExecute(id)).to.be.false;
-
+        await expect(mainVotingPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            mainVotingPlugin,
+            'ProposalExecutionForbidden'
+          )
+          .withArgs(id);
         await advanceAfterVoteEnd(endDate);
 
         expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
         expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be
           .false;
         expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+        await expect(mainVotingPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            mainVotingPlugin,
+            'ProposalExecutionForbidden'
+          )
+          .withArgs(id);
       });
 
       it('executes after the duration if participation and support thresholds are met', async () => {
@@ -2496,6 +2525,13 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         await advanceIntoVoteTime(startDate, endDate);
 
         expect(await mainVotingPlugin.addresslistLength()).to.eq(5);
+
+        await expect(mainVotingPlugin.execute(id))
+          .to.be.revertedWithCustomError(
+            mainVotingPlugin,
+            'ProposalExecutionForbidden'
+          )
+          .withArgs(id);
 
         // 1
         await mainVotingPlugin
