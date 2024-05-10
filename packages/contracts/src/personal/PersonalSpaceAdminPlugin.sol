@@ -159,6 +159,20 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         dao().execute(bytes32(_proposalId), _actions, 0);
     }
 
+    /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the sender address
+    function leaveSpace() public auth(MEMBER_PERMISSION_ID) {
+        IDAO.Action[] memory _actions = new IDAO.Action[](1);
+        _actions[0].to = address(dao());
+        _actions[0].data = abi.encodeCall(
+            PermissionManager.revoke,
+            (address(this), msg.sender, MEMBER_PERMISSION_ID)
+        );
+
+        uint256 _proposalId = _createProposal(msg.sender, _actions);
+
+        dao().execute(bytes32(_proposalId), _actions, 0);
+    }
+
     /// @notice Creates and executes a proposal that makes the DAO grant editor permission to the given address
     /// @param _newEditor The address to grant editor permission to
     function submitNewEditor(address _newEditor) public auth(EDITOR_PERMISSION_ID) {

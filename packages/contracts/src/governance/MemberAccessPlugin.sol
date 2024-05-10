@@ -244,6 +244,43 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         return createProposal(_metadata, _actions);
     }
 
+    /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the sender address.
+    /// @param _metadata The metadata of the proposal.
+    function leaveSpace(bytes calldata _metadata) external {
+        if (!isMember(msg.sender)) {
+            revert AlreadyNotMember(msg.sender);
+        }
+
+        // Build the list of actions
+        IDAO.Action[] memory _actions = new IDAO.Action[](1);
+        _actions[0] = IDAO.Action({
+            to: address(multisigSettings.mainVotingPlugin),
+            value: 0,
+            data: abi.encodeCall(MainVotingPlugin.removeMember, (msg.sender))
+        });
+
+        uint _proposalId = _createProposalId();
+        emit ProposalCreated({
+            proposalId: _proposalId,
+            creator: msg.sender,
+            metadata: _metadata,
+            startDate: block.timestamp.toUint64(),
+            endDate: block.timestamp.toUint64(),
+            actions: _actions,
+            allowFailureMap: uint8(0)
+        });
+
+        // Register as a proposal
+        Proposal storage proposal_ = proposals[_proposalId];
+
+        proposal_.parameters.snapshotBlock = uint64(block.number) - 1;
+        proposal_.parameters.startDate = block.timestamp.toUint64();
+        proposal_.parameters.endDate = block.timestamp.toUint64();
+        proposal_.actions.push(_actions[0]);
+
+        _executeProposal(dao(), _createProposalId(), proposals[_proposalId].actions, 0);
+    }
+
     /// @notice Creates a proposal to remove an existing member.
     /// @param _metadata The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eveutnally be removed.
@@ -252,7 +289,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         bytes calldata _metadata,
         address _proposedMember
     ) external returns (uint256 proposalId) {
-        if (!isMember(_proposedMember)) {
+        if (!isEditor(msg.sender)) {
+            revert ProposalCreationForbidden(msg.sender);
+        } else if (!isMember(_proposedMember)) {
             revert AlreadyNotMember(_proposedMember);
         }
 
