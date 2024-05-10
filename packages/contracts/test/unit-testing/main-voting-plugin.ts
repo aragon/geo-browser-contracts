@@ -2344,6 +2344,234 @@ describe('Tests replicated from the original AddressList plugin', async () => {
         expect(await mainVotingPlugin.canExecute(id)).to.be.true;
       });
     });
+
+    describe('Min participation 50% and support threshold 50%', () => {
+      beforeEach(async () => {
+        votingSettings.minParticipation = pctToRatio(50);
+        votingSettings.supportThreshold = pctToRatio(50);
+
+        await mainVotingPlugin.initialize(dao.address, votingSettings, [
+          signers[0].address,
+        ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers); // 10 members
+        await makeEditors(signers.slice(0, 5)); // editors 0-5
+
+        startDate = (await getTime()) + startOffset;
+        endDate = startDate + votingSettings.duration;
+
+        await mainVotingPlugin.createProposal(
+          dummyMetadata,
+          dummyActions,
+          0,
+          VoteOption.None,
+          false
+        );
+      });
+
+      it('does not execute if support is high enough but participation is too low', async () => {
+        await advanceIntoVoteTime(startDate, endDate);
+
+        expect(await mainVotingPlugin.addresslistLength()).to.eq(5);
+
+        // 1
+        await mainVotingPlugin
+          .connect(signers[0])
+          .vote(id, VoteOption.Yes, false);
+
+        const prop = await mainVotingPlugin.getProposal(id);
+        expect(prop.tally.yes).to.eq(1);
+        expect(prop.tally.no).to.eq(0);
+        expect(prop.tally.abstain).to.eq(0);
+        expect(prop.parameters.minVotingPower).to.eq(3);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+
+        // 2
+        await mainVotingPlugin
+          .connect(signers[1])
+          .vote(id, VoteOption.Yes, false);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+
+        await advanceAfterVoteEnd(endDate);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+      });
+
+      it('does not execute if participation is high enough but support is too low', async () => {
+        await advanceIntoVoteTime(startDate, endDate);
+
+        expect(await mainVotingPlugin.addresslistLength()).to.eq(5);
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be
+          .false;
+
+        await voteWithSigners(mainVotingPlugin, id, signers, {
+          yes: [0], // 1 votes
+          no: [1, 2, 3, 4], // 4 votes
+          abstain: [], // 0 votes
+        });
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+
+        await advanceAfterVoteEnd(endDate);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+      });
+
+      it('executes after the duration if participation and support thresholds are met', async () => {
+        await advanceIntoVoteTime(startDate, endDate);
+
+        await voteWithSigners(mainVotingPlugin, id, signers, {
+          yes: [0, 1, 2], // 3 votes
+          no: [3, 4], // 2 votes
+          abstain: [], // 0 votes
+        });
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .true;
+
+        expect(await mainVotingPlugin.canExecute(id)).to.be.true;
+
+        await advanceAfterVoteEnd(endDate);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.true;
+      });
+    });
+
+    describe('Min participation 0% and support threshold 50%', () => {
+      beforeEach(async () => {
+        votingSettings.minParticipation = pctToRatio(0);
+        votingSettings.supportThreshold = pctToRatio(50);
+
+        await mainVotingPlugin.initialize(dao.address, votingSettings, [
+          signers[0].address,
+        ]);
+        await memberAccessPlugin.initialize(dao.address, {
+          proposalDuration: 60 * 60 * 24 * 5,
+          mainVotingPlugin: mainVotingPlugin.address,
+        });
+        await makeMembers(signers); // 10 members
+        await makeEditors(signers.slice(0, 5)); // editors 0-5
+
+        startDate = (await getTime()) + startOffset;
+        endDate = startDate + votingSettings.duration;
+
+        await mainVotingPlugin.createProposal(
+          dummyMetadata,
+          dummyActions,
+          0,
+          VoteOption.None,
+          false
+        );
+      });
+
+      it('does execute with enough support, any participation', async () => {
+        await advanceIntoVoteTime(startDate, endDate);
+
+        expect(await mainVotingPlugin.addresslistLength()).to.eq(5);
+
+        // 1
+        await mainVotingPlugin
+          .connect(signers[0])
+          .vote(id, VoteOption.Yes, false);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+
+        // 2
+        await mainVotingPlugin
+          .connect(signers[1])
+          .vote(id, VoteOption.Yes, false);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+
+        await advanceAfterVoteEnd(endDate);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.true;
+      });
+
+      it('does not execute if participation is high enough but support is too low', async () => {
+        await advanceIntoVoteTime(startDate, endDate);
+
+        expect(await mainVotingPlugin.addresslistLength()).to.eq(5);
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+
+        await voteWithSigners(mainVotingPlugin, id, signers, {
+          yes: [0], // 1 votes
+          no: [1, 2, 3, 4], // 4 votes
+          abstain: [], // 0 votes
+        });
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+
+        await advanceAfterVoteEnd(endDate);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be
+          .false;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.false;
+      });
+
+      it('executes after the duration if participation and support thresholds are met', async () => {
+        await advanceIntoVoteTime(startDate, endDate);
+
+        await voteWithSigners(mainVotingPlugin, id, signers, {
+          yes: [0, 1], // 2 votes
+          no: [2], // 1 vote
+          abstain: [3, 4], // 2 votes
+        });
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReachedEarly(id)).to.be
+          .true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.true;
+
+        await advanceAfterVoteEnd(endDate);
+
+        expect(await mainVotingPlugin.isMinParticipationReached(id)).to.be.true;
+        expect(await mainVotingPlugin.isSupportThresholdReached(id)).to.be.true;
+        expect(await mainVotingPlugin.canExecute(id)).to.be.true;
+      });
+    });
   });
 
   // Helpers
