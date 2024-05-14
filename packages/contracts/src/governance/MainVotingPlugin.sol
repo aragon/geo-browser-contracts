@@ -62,6 +62,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Raised when a content proposal is called with empty data
     error EmptyContent();
 
+    /// @notice Thrown when attempting propose removing membership for a non-member.
+    error AlreadyNotMember(address _member);
+
     modifier onlyMembers() {
         if (!isMember(msg.sender)) {
             revert NotAMember(msg.sender);
@@ -351,6 +354,62 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
             proposalId: proposalId,
             creator: proposalCreators[proposalId],
             metadata: "",
+            startDate: _startDate,
+            endDate: proposal_.parameters.endDate,
+            actions: proposal_.actions,
+            allowFailureMap: 0
+        });
+    }
+
+    /// @notice Creates a proposal to remove an existing member.
+    /// @param _metadata The metadata of the proposal.
+    /// @param _proposedMember The address of the member who may eveutnally be removed.
+    /// @param _spacePlugin The address of the space plugin where changes will be executed
+    function proposeRemoveMember(
+        bytes calldata _metadata,
+        address _proposedMember,
+        address _spacePlugin
+    ) public onlyMembers {
+        if (!isEditor(msg.sender)) {
+            revert ProposalCreationForbidden(msg.sender);
+        } else if (_spacePlugin == address(0)) {
+            revert EmptyContent();
+        } else if (!isMember(_proposedMember)) {
+            revert AlreadyNotMember(_proposedMember);
+        }
+        uint64 snapshotBlock;
+        unchecked {
+            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+        }
+        uint64 _startDate = block.timestamp.toUint64();
+
+        uint256 proposalId = _createProposalId();
+
+        // Store proposal related information
+        Proposal storage proposal_ = proposals[proposalId];
+
+        proposal_.parameters.startDate = _startDate;
+        proposal_.parameters.endDate = _startDate + duration();
+        proposal_.parameters.snapshotBlock = snapshotBlock;
+        proposal_.parameters.votingMode = votingMode();
+        proposal_.parameters.supportThreshold = supportThreshold();
+        proposal_.parameters.minVotingPower = _applyRatioCeiled(
+            totalVotingPower(snapshotBlock),
+            minParticipation()
+        );
+        IDAO.Action memory _action = IDAO.Action({
+            to: address(this),
+            value: 0,
+            data: abi.encodeCall(MainVotingPlugin.removeMember, (_proposedMember))
+        });
+        proposal_.actions.push(_action);
+
+        proposalCreators[proposalId] = msg.sender;
+
+        emit ProposalCreated({
+            proposalId: proposalId,
+            creator: proposalCreators[proposalId],
+            metadata: _metadata,
             startDate: _startDate,
             endDate: proposal_.parameters.endDate,
             actions: proposal_.actions,

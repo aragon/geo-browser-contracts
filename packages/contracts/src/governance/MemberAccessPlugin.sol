@@ -14,7 +14,6 @@ import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlug
 bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
     MemberAccessPlugin.updateMultisigSettings.selector ^
     MemberAccessPlugin.proposeNewMember.selector ^
-    MemberAccessPlugin.proposeRemoveMember.selector ^
     MemberAccessPlugin.getProposal.selector;
 
 /// @title Member access plugin (Multisig) - Release 1, Build 1
@@ -279,32 +278,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         proposal_.actions.push(_actions[0]);
 
         _executeProposal(dao(), _createProposalId(), proposals[_proposalId].actions, 0);
-    }
-
-    /// @notice Creates a proposal to remove an existing member.
-    /// @param _metadata The metadata of the proposal.
-    /// @param _proposedMember The address of the member who may eveutnally be removed.
-    /// @return proposalId The ID of the proposal.
-    function proposeRemoveMember(
-        bytes calldata _metadata,
-        address _proposedMember
-    ) external returns (uint256 proposalId) {
-        if (!isEditor(msg.sender)) {
-            revert ProposalCreationForbidden(msg.sender);
-        } else if (!isMember(_proposedMember)) {
-            revert AlreadyNotMember(_proposedMember);
-        }
-
-        // Build the list of actions
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-
-        _actions[0] = IDAO.Action({
-            to: address(multisigSettings.mainVotingPlugin),
-            value: 0,
-            data: abi.encodeCall(MainVotingPlugin.removeMember, (_proposedMember))
-        });
-
-        return createProposal(_metadata, _actions);
     }
 
     /// @inheritdoc IMultisig
