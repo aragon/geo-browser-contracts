@@ -7,8 +7,8 @@ import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.s
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
 import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
 import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
-import {IMembers} from "./base/IMembers.sol";
-import {IEditors} from "./base/IEditors.sol";
+import {IMembers} from "../base/IMembers.sol";
+import {IEditors} from "../base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 

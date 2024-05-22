@@ -124,6 +124,11 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @param mainVotingPlugin The address of the main voting plugin for the space. Used to apply permissions for it.
     event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
 
+    /// @notice Emitted when a member leaves the space.
+    /// @param dao The address of the DAO whose plugin has removed a member.
+    /// @param member The address of the existing member being removed.
+    event MemberLeft(address dao, address member);
+
     /// @notice Initializes Release 1, Build 1.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     /// @param _dao The IDAO interface of the associated DAO.
@@ -278,6 +283,8 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         proposal_.actions.push(_actions[0]);
 
         _executeProposal(dao(), _createProposalId(), proposals[_proposalId].actions, 0);
+
+        emit MemberLeft(address(dao()), msg.sender);
     }
 
     /// @inheritdoc IMultisig

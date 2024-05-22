@@ -45,7 +45,7 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
         plugin = implementation_.clone();
 
         // Initialize cloned plugin contract.
-        PersonalSpaceAdminPlugin(plugin).initialize(IDAO(_dao));
+        PersonalSpaceAdminPlugin(plugin).initialize(IDAO(_dao), editor);
 
         // Prepare permissions
         PermissionLib.MultiTargetPermission[]

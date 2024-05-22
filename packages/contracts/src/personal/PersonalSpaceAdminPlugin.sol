@@ -7,12 +7,14 @@ import {PluginCloneable} from "@aragon/osx/core/plugin/PluginCloneable.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
+import {IMembers} from "../base/IMembers.sol";
+import {IEditors} from "../base/IEditors.sol";
 import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
 
 /// @title PersonalSpaceAdminPlugin
 /// @author Aragon - 2023
 /// @notice The admin governance plugin giving execution permission on the DAO to a single address.
-contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
+contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, IMembers {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -32,8 +34,10 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.
     /// @dev This method is required to support [ERC-1167](https://eips.ethereum.org/EIPS/eip-1167).
-    function initialize(IDAO _dao) external initializer {
+    function initialize(IDAO _dao, address _initialEditor) external initializer {
         __PluginCloneable_init(_dao);
+
+        emit EditorAdded(address(_dao), _initialEditor);
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -95,6 +99,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        // The event will be emitted by the space plugin
     }
 
     /// @notice Creates and executes a proposal that makes the DAO accept the given DAO as a subspace.
@@ -111,6 +117,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        // The event will be emitted by the space plugin
     }
 
     /// @notice Creates and executes a proposal that makes the DAO remove the given DAO as a subspace.
@@ -127,6 +135,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        // The event will be emitted by the space plugin
     }
 
     /// @notice Creates and executes a proposal that makes the DAO grant membership permission to the given address
@@ -142,6 +152,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        emit MemberAdded(address(dao()), _newMember);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the given address
@@ -157,6 +169,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        emit MemberRemoved(address(dao()), _member);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the sender address
@@ -171,6 +185,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        emit MemberLeft(address(dao()), msg.sender);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO grant editor permission to the given address
@@ -186,6 +202,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        emit EditorAdded(address(dao()), _newEditor);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke editor permission from the given address
@@ -201,6 +219,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable {
         uint256 _proposalId = _createProposal(msg.sender, _actions);
 
         dao().execute(bytes32(_proposalId), _actions, 0);
+
+        emit EditorRemoved(address(dao()), _editor);
     }
 
     // Internal helpers
