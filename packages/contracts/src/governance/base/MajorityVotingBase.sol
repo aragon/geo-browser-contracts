@@ -130,6 +130,7 @@ abstract contract MajorityVotingBase is
     /// @param parameters The proposal parameters at the time of the proposal creation.
     /// @param tally The vote tally of the proposal.
     /// @param voters The votes casted by the voters.
+    /// @param nonCreatorsVoted Whether a wallet other than the creator voted on the proposal.
     /// @param actions The actions to be executed when the proposal passes.
     /// @param allowFailureMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
     struct Proposal {
@@ -137,6 +138,7 @@ abstract contract MajorityVotingBase is
         ProposalParameters parameters;
         Tally tally;
         mapping(address => IMajorityVoting.VoteOption) voters;
+        bool nonCreatorsVoted;
         IDAO.Action[] actions;
         uint256 allowFailureMap;
     }
@@ -573,5 +575,5 @@ abstract contract MajorityVotingBase is
     }
 
     /// @notice This empty reserved space is put in place to allow future versions to add new variables without shifting down storage in the inheritance chain (see [OpenZeppelin's guide about storage gaps](https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps)).
-    uint256[47] private __gap;
+    uint256[48] private __gap;
 }

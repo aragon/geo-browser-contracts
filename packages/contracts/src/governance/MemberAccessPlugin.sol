@@ -157,9 +157,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _updateMultisigSettings(_multisigSettings);
     }
 
-    /// @notice Creates a new multisig proposal wrapped by proposeNewMember and proposeRemoveMember.
+    /// @notice Creates a new multisig proposal wrapped by proposeNewMember.
     /// @param _metadata The metadata of the proposal.
-    /// @param _actions A list of actions wrapped by proposeNewMember and proposeRemoveMember.
+    /// @param _actions A list of actions wrapped by proposeNewMember.
     /// @return proposalId The ID of the proposal.
     function createProposal(
         bytes calldata _metadata,

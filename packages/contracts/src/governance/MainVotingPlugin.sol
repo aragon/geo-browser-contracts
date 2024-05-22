@@ -417,6 +417,24 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         });
     }
 
+    /// @notice Determines whether at least one editor besides the creator has approved
+    /// @param _proposalId The ID of the proposal to check.
+    function isMinParticipationReached(uint256 _proposalId) public view override returns (bool) {
+        Proposal storage proposal_ = proposals[_proposalId];
+
+        if (proposal_.tally.yes == 0 && proposal_.tally.no == 0 && proposal_.tally.abstain == 0) {
+            return false;
+        }
+
+        // Just one voter
+        if (addresslistLengthAtBlock(proposal_.parameters.snapshotBlock) == 1) {
+            return true;
+        }
+
+        // More voters expected
+        return proposal_.nonCreatorsVoted;
+    }
+
     /// @inheritdoc MajorityVotingBase
     function _vote(
         uint256 _proposalId,
@@ -454,6 +472,10 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
             voteOption: _voteOption,
             votingPower: 1
         });
+
+        if (proposalCreators[_proposalId] != msg.sender && !proposal_.nonCreatorsVoted) {
+            proposal_.nonCreatorsVoted = true;
+        }
 
         if (_tryEarlyExecution && _canExecute(_proposalId)) {
             _execute(_proposalId);
@@ -512,5 +534,5 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
     /// https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 }
