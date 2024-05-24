@@ -19,6 +19,11 @@ interface IEditors {
     /// @param editor The address of the editor being removed.
     event EditorRemoved(address dao, address editor);
 
+    /// @notice Emitted when an editor left the space.
+    /// @param dao The address of the DAO whose plugin has lost an editor.
+    /// @param editor The address of the editor leaving.
+    event EditorLeft(address dao, address editor);
+
     /// @notice Checks if an account is an editor on the DAO.
     /// @param _account The address of the account to be checked.
     /// @return Whether the account is an editor or not.

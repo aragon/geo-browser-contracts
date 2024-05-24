@@ -173,20 +173,34 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
         emit MemberRemoved(address(dao()), _member);
     }
 
-    /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the sender address
-    function leaveSpace() public auth(MEMBER_PERMISSION_ID) {
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-        _actions[0].to = address(dao());
-        _actions[0].data = abi.encodeCall(
-            PermissionManager.revoke,
-            (address(this), msg.sender, MEMBER_PERMISSION_ID)
-        );
+    /// @notice Creates and executes a proposal that makes the DAO revoke any permission from the sender address
+    function leaveSpace() public {
+        IDAO.Action[] memory _actions;
+        if (dao().hasPermission(address(this), msg.sender, MEMBER_PERMISSION_ID, bytes(""))) {
+            _actions = new IDAO.Action[](1);
+            _actions[0].to = address(dao());
+            _actions[0].data = abi.encodeCall(
+                PermissionManager.revoke,
+                (address(this), msg.sender, MEMBER_PERMISSION_ID)
+            );
 
-        uint256 _proposalId = _createProposal(msg.sender, _actions);
+            uint256 _proposalId = _createProposal(msg.sender, _actions);
+            dao().execute(bytes32(_proposalId), _actions, 0);
+            emit MemberLeft(address(dao()), msg.sender);
+        }
 
-        dao().execute(bytes32(_proposalId), _actions, 0);
+        if (isEditor(msg.sender)) {
+            _actions = new IDAO.Action[](1);
+            _actions[0].to = address(dao());
+            _actions[0].data = abi.encodeCall(
+                PermissionManager.revoke,
+                (address(this), msg.sender, EDITOR_PERMISSION_ID)
+            );
 
-        emit MemberLeft(address(dao()), msg.sender);
+            uint256 _proposalId = _createProposal(msg.sender, _actions);
+            dao().execute(bytes32(_proposalId), _actions, 0);
+            emit EditorLeft(address(dao()), msg.sender);
+        }
     }
 
     /// @notice Creates and executes a proposal that makes the DAO grant editor permission to the given address

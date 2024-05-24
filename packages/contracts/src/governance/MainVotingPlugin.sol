@@ -50,6 +50,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Raised when attempting to remove the last editor
     error NoEditorsLeft();
 
+    /// @notice Raised when a non-editor attempts to leave a space
+    error NotAnEditor();
+
     /// @notice Raised when a wallet who is not an editor or a member attempts to do something
     error NotAMember(address caller);
 
@@ -142,6 +145,19 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
         members[_account] = false;
         emit MemberRemoved(address(dao()), _account);
+    }
+
+    /// @notice Removes
+    function leaveSpace() public {
+        if (!isEditor(msg.sender)) {
+            revert NotAnEditor();
+        } else if (addresslistLength() <= 1) revert NoEditorsLeft();
+
+        address[] memory _editors = new address[](1);
+        _editors[0] = msg.sender;
+
+        _removeAddresses(_editors);
+        emit EditorLeft(address(dao()), msg.sender);
     }
 
     /// @notice Returns whether the given address is currently listed as an editor
