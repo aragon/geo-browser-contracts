@@ -390,38 +390,41 @@ describe('Main Voting Plugin', function () {
     });
 
     it('isMember() returns true when appropriate', async () => {
-      expect(await memberAccessPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
-      expect(await memberAccessPlugin.isMember(ADDRESS_ONE)).to.eq(false);
-      expect(await memberAccessPlugin.isMember(ADDRESS_TWO)).to.eq(false);
+      expect(await mainVotingPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
+      expect(await mainVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+      expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(false);
 
-      expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
-      expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
+      expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
+      expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
 
-      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       await memberAccessPlugin.proposeNewMember('0x', carol.address);
-      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(true);
 
-      await memberAccessPlugin.proposeRemoveMember('0x', carol.address);
-      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
+      await mainVotingPlugin
+        .connect(bob)
+        .proposeRemoveMember('0x', carol.address);
+      await mainVotingPlugin.vote(0, VoteOption.Yes, true);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       await makeEditor(carol.address);
 
-      expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
+      expect(await mainVotingPlugin.isMember(carol.address)).to.eq(true);
     });
 
     it('isEditor() returns true when appropriate', async () => {
-      expect(await memberAccessPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
-      expect(await memberAccessPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
-      expect(await memberAccessPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
+      expect(await mainVotingPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
+      expect(await mainVotingPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
+      expect(await mainVotingPlugin.isEditor(ADDRESS_TWO)).to.eq(false);
 
-      expect(await memberAccessPlugin.isEditor(alice.address)).to.eq(true);
-      expect(await memberAccessPlugin.isEditor(bob.address)).to.eq(false);
-      expect(await memberAccessPlugin.isEditor(carol.address)).to.eq(false);
+      expect(await mainVotingPlugin.isEditor(alice.address)).to.eq(true);
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.eq(false);
+      expect(await mainVotingPlugin.isEditor(carol.address)).to.eq(false);
 
       await makeEditor(carol.address);
 
-      expect(await memberAccessPlugin.isEditor(carol.address)).to.eq(true);
+      expect(await mainVotingPlugin.isEditor(carol.address)).to.eq(true);
     });
   });
 

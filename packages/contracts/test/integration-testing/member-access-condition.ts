@@ -22,6 +22,7 @@ import {
   ROOT_PERMISSION_ID,
   UPGRADE_PLUGIN_PERMISSION_ID,
   ONE_BYTES32,
+  ADDRESS_ONE,
 } from '../unit-testing/common';
 import {
   DAO,
@@ -193,40 +194,6 @@ describe('Member Access Condition E2E', () => {
     expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
   });
 
-  it('Executing a proposal to remove membership works', async () => {
-    await expect(memberAccessPlugin.proposeNewMember('0x', alice.address)).to
-      .not.be.reverted;
-    await expect(memberAccessPlugin.proposeRemoveMember('0x', alice.address)).to
-      .not.be.reverted;
-    expect(await mainVotingPlugin.isMember(alice.address)).to.eq(false);
-
-    // Valid revoke
-    const grantAction = {
-      to: mainVotingPlugin.address,
-      value: 0,
-      data: mainVotingInterface.encodeFunctionData('addMember', [bob.address]),
-    };
-    const revokeAction = {
-      to: mainVotingPlugin.address,
-      value: 0,
-      data: mainVotingInterface.encodeFunctionData('removeMember', [
-        bob.address,
-      ]),
-    };
-
-    // Via direct create proposal
-    await expect(
-      memberAccessPlugin.createArbitraryProposal('0x', [grantAction])
-    ).to.not.be.reverted;
-    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
-
-    await expect(
-      memberAccessPlugin.createArbitraryProposal('0x', [revokeAction])
-    ).to.not.be.reverted;
-
-    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(false);
-  });
-
   it('Executing a proposal to do something else reverts', async () => {
     const validActions = [
       {
@@ -239,12 +206,19 @@ describe('Member Access Condition E2E', () => {
       {
         to: mainVotingPlugin.address,
         value: 0,
-        data: mainVotingInterface.encodeFunctionData('removeMember', [
-          bob.address,
+        data: mainVotingInterface.encodeFunctionData('addMember', [
+          ADDRESS_ONE,
         ]),
       },
     ];
     const invalidActions = [
+      {
+        to: mainVotingPlugin.address,
+        value: 0,
+        data: mainVotingInterface.encodeFunctionData('removeMember', [
+          bob.address,
+        ]),
+      },
       {
         to: dao.address,
         value: 0,

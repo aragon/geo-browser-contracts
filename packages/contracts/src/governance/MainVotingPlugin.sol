@@ -388,16 +388,12 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Creates a proposal to remove an existing member.
     /// @param _metadata The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eveutnally be removed.
-    /// @param _spacePlugin The address of the space plugin where changes will be executed
     function proposeRemoveMember(
         bytes calldata _metadata,
-        address _proposedMember,
-        address _spacePlugin
+        address _proposedMember
     ) public onlyMembers {
         if (!isEditor(msg.sender)) {
             revert ProposalCreationForbidden(msg.sender);
-        } else if (_spacePlugin == address(0)) {
-            revert EmptyContent();
         } else if (!isMember(_proposedMember)) {
             revert AlreadyNotMember(_proposedMember);
         }
