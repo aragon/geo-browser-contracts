@@ -18,10 +18,12 @@ bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.sel
     MainVotingPlugin.proposeEdits.selector ^
     MainVotingPlugin.proposeAcceptSubspace.selector ^
     MainVotingPlugin.proposeRemoveSubspace.selector ^
+    MainVotingPlugin.proposeRemoveMember.selector ^
     MainVotingPlugin.addEditor.selector ^
     MainVotingPlugin.removeEditor.selector ^
     MainVotingPlugin.addMember.selector ^
     MainVotingPlugin.removeMember.selector ^
+    MainVotingPlugin.leaveSpace.selector ^
     MainVotingPlugin.cancelProposal.selector;
 
 /// @title MainVotingPlugin (Address list)
@@ -147,19 +149,23 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         emit MemberRemoved(address(dao()), _account);
     }
 
-    /// @notice Removes
+    /// @notice Removes msg.sender from the list of editors. If the last editors leaves the space, the space will become read only.
     function leaveSpace() public {
-        if (!isEditor(msg.sender)) {
-            revert NotAnEditor();
+        if (isEditor(msg.sender)) {
+            // Not checking whether msg.sender is the last editor. It is acceptable
+            // that a DAO/Space remains in read-only mode, as it can always be forked.
+
+            address[] memory _editors = new address[](1);
+            _editors[0] = msg.sender;
+
+            _removeAddresses(_editors);
+            emit EditorLeft(address(dao()), msg.sender);
         }
-        // Not checking whether msg.sender is the last editor. It is acceptable
-        // that a DAO/Space remains in read-only mode, as it can always be forked.
 
-        address[] memory _editors = new address[](1);
-        _editors[0] = msg.sender;
-
-        _removeAddresses(_editors);
-        emit EditorLeft(address(dao()), msg.sender);
+        if (members[msg.sender]) {
+            members[msg.sender] = false;
+            emit MemberLeft(address(dao()), msg.sender);
+        }
     }
 
     /// @notice Returns whether the given address is currently listed as an editor

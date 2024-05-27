@@ -124,11 +124,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @param mainVotingPlugin The address of the main voting plugin for the space. Used to apply permissions for it.
     event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
 
-    /// @notice Emitted when a member leaves the space.
-    /// @param dao The address of the DAO whose plugin has removed a member.
-    /// @param member The address of the existing member being removed.
-    event MemberLeft(address dao, address member);
-
     /// @notice Initializes Release 1, Build 1.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
     /// @param _dao The IDAO interface of the associated DAO.
@@ -246,45 +241,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         });
 
         return createProposal(_metadata, _actions);
-    }
-
-    /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the sender address.
-    /// @param _metadata The metadata of the proposal.
-    function leaveSpace(bytes calldata _metadata) external {
-        if (!isMember(msg.sender)) {
-            revert AlreadyNotMember(msg.sender);
-        }
-
-        // Build the list of actions
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-        _actions[0] = IDAO.Action({
-            to: address(multisigSettings.mainVotingPlugin),
-            value: 0,
-            data: abi.encodeCall(MainVotingPlugin.removeMember, (msg.sender))
-        });
-
-        uint _proposalId = _createProposalId();
-        emit ProposalCreated({
-            proposalId: _proposalId,
-            creator: msg.sender,
-            metadata: _metadata,
-            startDate: block.timestamp.toUint64(),
-            endDate: block.timestamp.toUint64(),
-            actions: _actions,
-            allowFailureMap: uint8(0)
-        });
-
-        // Register as a proposal
-        Proposal storage proposal_ = proposals[_proposalId];
-
-        proposal_.parameters.snapshotBlock = uint64(block.number) - 1;
-        proposal_.parameters.startDate = block.timestamp.toUint64();
-        proposal_.parameters.endDate = block.timestamp.toUint64();
-        proposal_.actions.push(_actions[0]);
-
-        _executeProposal(dao(), _createProposalId(), proposals[_proposalId].actions, 0);
-
-        emit MemberLeft(address(dao()), msg.sender);
     }
 
     /// @inheritdoc IMultisig
