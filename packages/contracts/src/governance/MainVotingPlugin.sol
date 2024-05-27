@@ -149,8 +149,8 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         emit MemberRemoved(address(dao()), _account);
     }
 
-    /// @notice Removes msg.sender from the list of editors. If the last editors leaves the space, the space will become read only.
-    function leaveSpace() public {
+    /// @notice Removes msg.sender from the list of editors and members, whichever is applicable. If the last editor leaves the space, the space will become read-only.
+    function leaveSpace() external {
         if (isEditor(msg.sender)) {
             // Not checking whether msg.sender is the last editor. It is acceptable
             // that a DAO/Space remains in read-only mode, as it can always be forked.

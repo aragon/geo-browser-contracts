@@ -174,7 +174,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke any permission from the sender address
-    function leaveSpace() public {
+    function leaveSpace() external {
         IDAO.Action[] memory _actions;
         if (dao().hasPermission(address(this), msg.sender, MEMBER_PERMISSION_ID, bytes(""))) {
             _actions = new IDAO.Action[](1);
