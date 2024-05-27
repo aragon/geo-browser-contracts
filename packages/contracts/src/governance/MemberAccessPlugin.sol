@@ -22,7 +22,7 @@ bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selec
 contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
 
-    /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
+    /// @notice The ID of the permission required to call the `addAddresses` functions.
     bytes32 public constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID =
         keccak256("UPDATE_MULTISIG_SETTINGS_PERMISSION");
 
@@ -97,7 +97,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @param proposalId The ID of the proposal.
     error ProposalExecutionForbidden(uint256 proposalId);
 
-    /// @notice Thrown when attempting to use addAddresses and removeAddresses.
+    /// @notice Thrown when attempting to use addAddresses.
     error AddresslistDisabled();
 
     /// @notice Thrown when attempting to use an invalid contract.
@@ -105,9 +105,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
     /// @notice Thrown when attempting request membership for a current member.
     error AlreadyMember(address _member);
-
-    /// @notice Thrown when attempting propose removing membership for a non-member.
-    error AlreadyNotMember(address _member);
 
     /// @notice Emitted when a proposal is approved by an editor.
     /// @param proposalId The ID of the proposal.

@@ -16,6 +16,6 @@ contract TestMemberAccessExecuteCondition is MemberAccessExecuteCondition {
     function decodeAddRemoveMemberCalldata(
         bytes memory _data
     ) public pure returns (bytes4 sig, address account) {
-        return super._decodeAddRemoveMemberCalldata(_data);
+        return super._decodeAddMemberCalldata(_data);
     }
 }

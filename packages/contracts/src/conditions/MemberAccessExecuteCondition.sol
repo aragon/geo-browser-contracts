@@ -18,7 +18,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         targetContract = _targetContract;
     }
 
-    /// @notice Checks whether the current action attempts to add or remove members
+    /// @notice Checks whether the current action attempts to add members
     function isGranted(
         address _where,
         address _who,
@@ -42,12 +42,9 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         else if (_actions[0].to != targetContract) return false;
 
         // Decode the call being requested (both have the same parameters)
-        (bytes4 _requestedSelector, ) = _decodeAddRemoveMemberCalldata(_actions[0].data);
+        (bytes4 _requestedSelector, ) = _decodeAddMemberCalldata(_actions[0].data);
 
-        if (
-            _requestedSelector != MainVotingPlugin.addMember.selector &&
-            _requestedSelector != MainVotingPlugin.removeMember.selector
-        ) return false;
+        if (_requestedSelector != MainVotingPlugin.addMember.selector) return false;
 
         return true;
     }
@@ -60,7 +57,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         }
     }
 
-    function _decodeAddRemoveMemberCalldata(
+    function _decodeAddMemberCalldata(
         bytes memory _data
     ) internal pure returns (bytes4 sig, address account) {
         // Slicing is only supported for bytes calldata, not bytes memory
