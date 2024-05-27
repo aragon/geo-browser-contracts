@@ -151,7 +151,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     function leaveSpace() public {
         if (!isEditor(msg.sender)) {
             revert NotAnEditor();
-        } else if (addresslistLength() <= 1) revert NoEditorsLeft();
+        }
+        // Not checking whether msg.sender is the last editor. It is acceptable
+        // that a DAO/Space remains in read-only mode, as it can always be forked.
 
         address[] memory _editors = new address[](1);
         _editors[0] = msg.sender;
