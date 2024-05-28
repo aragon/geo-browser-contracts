@@ -5,7 +5,7 @@ import {IDAO, PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpg
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/math/SafeCastUpgradeable.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {RATIO_BASE, _applyRatioCeiled} from "@aragon/osx/plugins/utils/Ratio.sol";
-import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
+import {IMajorityVoting} from "./base/IMajorityVoting.sol";
 import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";

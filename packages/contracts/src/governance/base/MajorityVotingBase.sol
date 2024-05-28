@@ -11,7 +11,7 @@ import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgr
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {RATIO_BASE, RatioOutOfBounds} from "@aragon/osx/plugins/utils/Ratio.sol";
-import {IMajorityVoting} from "@aragon/osx/plugins/governance/majority-voting/IMajorityVoting.sol";
+import {IMajorityVoting} from "./IMajorityVoting.sol";
 
 /// @title MajorityVotingBase
 /// @author Aragon X - 2022-2023
