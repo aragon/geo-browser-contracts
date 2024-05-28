@@ -44,8 +44,8 @@ describe('Member Access Condition', function () {
     memberAccessExecuteCondition = await factory.deploy(SOME_CONTRACT_ADDRESS);
   });
 
-  describe('Executing addMember and removeMember on a certain contract', () => {
-    it('Should only allow executing addMember and removeMember', async () => {
+  describe('Executing addMember on a certain contract', () => {
+    it('Should only allow executing addMember', async () => {
       const actions: IDAO.ActionStruct[] = [
         {to: SOME_CONTRACT_ADDRESS, value: 0, data: '0x'},
       ];
@@ -64,7 +64,7 @@ describe('Member Access Condition', function () {
         )
       ).to.eq(true);
 
-      // Valid remove
+      // Invalid
       actions[0].data = mainVotingPluginInterface.encodeFunctionData(
         'removeMember',
         [carol.address]
@@ -76,7 +76,7 @@ describe('Member Access Condition', function () {
           EXECUTE_PERMISSION_ID, // permission (used)
           daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
         )
-      ).to.eq(true);
+      ).to.eq(false);
 
       // Invalid
       actions[0].data = daoInterface.encodeFunctionData('setDaoURI', [
@@ -138,7 +138,7 @@ describe('Member Access Condition', function () {
         )
       ).to.eq(true);
 
-      // Valid membe remove
+      // Invalid
       actions[0].data = mainVotingPluginInterface.encodeFunctionData(
         'removeMember',
         [carol.address]
@@ -150,7 +150,7 @@ describe('Member Access Condition', function () {
           EXECUTE_PERMISSION_ID, // permission (used)
           daoInterface.encodeFunctionData('execute', [ONE_BYTES32, actions, 0])
         )
-      ).to.eq(true);
+      ).to.eq(false);
 
       // Invalid (editor)
       actions[0].data = mainVotingPluginInterface.encodeFunctionData(
@@ -239,7 +239,7 @@ describe('Member Access Condition', function () {
       ).to.eq(false);
     });
 
-    it('Should allow adding/removing any address', async () => {
+    it('Should allow adding any address', async () => {
       const actions: IDAO.ActionStruct[] = [
         {to: SOME_CONTRACT_ADDRESS, value: 0, data: '0x'},
       ];
@@ -266,29 +266,11 @@ describe('Member Access Condition', function () {
             ])
           )
         ).to.eq(true);
-
-        // Valid remove
-        actions[0].data = mainVotingPluginInterface.encodeFunctionData(
-          'removeMember',
-          [grantedToAddress]
-        );
-        expect(
-          await memberAccessExecuteCondition.isGranted(
-            ADDRESS_ONE, // where (used)
-            ADDRESS_TWO, // who (used)
-            EXECUTE_PERMISSION_ID, // permission (used)
-            daoInterface.encodeFunctionData('execute', [
-              ONE_BYTES32,
-              actions,
-              0,
-            ])
-          )
-        ).to.eq(true);
       }
     });
   });
 
-  describe('Direct add and remove are not allowed', () => {
+  describe('Direct add are not allowed', () => {
     it('Should reject adding and removing directly, rather than executing', async () => {
       // Valid
       expect(
@@ -297,17 +279,6 @@ describe('Member Access Condition', function () {
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
           mainVotingPluginInterface.encodeFunctionData('addMember', [
-            carol.address,
-          ])
-        )
-      ).to.eq(false);
-
-      expect(
-        await memberAccessExecuteCondition.isGranted(
-          ADDRESS_ONE, // where (used)
-          ADDRESS_TWO, // who (used)
-          EXECUTE_PERMISSION_ID, // permission (used)
-          mainVotingPluginInterface.encodeFunctionData('removeMember', [
             carol.address,
           ])
         )
@@ -358,28 +329,18 @@ describe('Member Access Condition', function () {
         SOME_CONTRACT_ADDRESS
       );
 
-      const calldataList = [
-        mainVotingPluginInterface.encodeFunctionData('addMember', [pspAddress]),
-        mainVotingPluginInterface.encodeFunctionData('removeMember', [
-          bob.address,
-        ]),
-      ];
+      const calldata = mainVotingPluginInterface.encodeFunctionData(
+        'addMember',
+        [pspAddress]
+      );
 
       // 1
       let [selector, who] =
-        await testMemberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
-          calldataList[0]
+        await testMemberAccessExecuteCondition.decodeAddMemberCalldata(
+          calldata
         );
-      expect(selector).to.eq(calldataList[0].slice(0, 10));
+      expect(selector).to.eq(calldata.slice(0, 10));
       expect(who).to.eq(pspAddress);
-
-      // 2
-      [selector, who] =
-        await testMemberAccessExecuteCondition.decodeAddRemoveMemberCalldata(
-          calldataList[1]
-        );
-      expect(selector).to.eq(calldataList[1].slice(0, 10));
-      expect(who).to.eq(bob.address);
     });
   });
 });

@@ -41,17 +41,16 @@ export const defaultInitData: InitData = {
   contentUri: 'ipfs://',
 };
 export const psvpInterface = new ethers.utils.Interface([
-  'function initialize(address)',
+  'function initialize(address, address)',
   'function executeProposal(bytes,tuple(address,uint256,bytes)[],uint256)',
-  'function isEditor(address _account) view returns (bool)',
-  'function isMember(address _account) view returns (bool)',
+  'function submitEdits(string, address)',
   'function submitAcceptSubspace(address _subspaceDao, address _spacePlugin)',
-  'function submitEdits(string _contentUri, address _spacePlugin)',
+  'function submitRemoveSubspace(address _subspaceDao, address _spacePlugin)',
   'function submitNewEditor(address _newEditor)',
   'function submitNewMember(address _newMember)',
   'function submitRemoveEditor(address _editor)',
   'function submitRemoveMember(address _member)',
-  'function submitRemoveSubspace(address _subspaceDao, address _spacePlugin)',
+  'function leaveSpace()',
 ]);
 
 describe('Personal Space Admin Plugin', function () {

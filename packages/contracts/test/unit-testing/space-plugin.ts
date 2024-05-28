@@ -107,7 +107,7 @@ describe('Space Plugin', function () {
     });
   });
 
-  it('The Space plugin emits an event when new content is published', async () => {
+  it('The Space plugin emits an event when new edits are published', async () => {
     // Fails by default
     await expect(spacePlugin.connect(alice).publishEdits('hello'))
       .to.be.revertedWithCustomError(spacePlugin, 'DaoUnauthorized')

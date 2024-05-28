@@ -20,8 +20,6 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 internal constant ADMIN_INTERFACE_ID =
         this.initialize.selector ^
-            this.isMember.selector ^
-            this.isEditor.selector ^
             this.executeProposal.selector ^
             this.submitEdits.selector ^
             this.submitAcceptSubspace.selector ^
@@ -29,7 +27,8 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
             this.submitNewMember.selector ^
             this.submitRemoveMember.selector ^
             this.submitNewEditor.selector ^
-            this.submitRemoveEditor.selector;
+            this.submitRemoveEditor.selector ^
+            this.leaveSpace.selector;
 
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.
