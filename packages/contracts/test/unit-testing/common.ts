@@ -2,7 +2,6 @@ import {BigNumber} from '@ethersproject/bignumber';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
 
-export const abiCoder = ethers.utils.defaultAbiCoder;
 export const EMPTY_DATA = '0x';
 export const ZERO_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000000';

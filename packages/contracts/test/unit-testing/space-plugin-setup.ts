@@ -1,4 +1,3 @@
-import buildMetadata from '../../src/space/space-build-metadata.json';
 import {
   DAO,
   SpacePlugin__factory,
@@ -9,7 +8,6 @@ import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
 import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
 import {
-  abiCoder,
   ADDRESS_ONE,
   ADDRESS_ZERO,
   CONTENT_PERMISSION_ID,
@@ -41,12 +39,12 @@ describe('Space Plugin Setup', function () {
 
   describe('prepareInstallation', async () => {
     it('returns the plugin, helpers, and permissions (no pluginUpgrader)', async () => {
-      const initData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs
-        ),
-        [defaultInitData.contentUri, ADDRESS_ZERO, ADDRESS_ZERO]
+      const initData = await spacePluginSetup.encodeInstallationParams(
+        defaultInitData.contentUri,
+        ADDRESS_ZERO,
+        ADDRESS_ZERO
       );
+
       const nonce = await ethers.provider.getTransactionCount(
         spacePluginSetup.address
       );
@@ -92,11 +90,10 @@ describe('Space Plugin Setup', function () {
 
     it('returns the plugin, helpers, and permissions (with a pluginUpgrader)', async () => {
       const pluginUpgrader = bob.address;
-      const initData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs
-        ),
-        [defaultInitData.contentUri, ADDRESS_ONE, pluginUpgrader]
+      const initData = await spacePluginSetup.encodeInstallationParams(
+        defaultInitData.contentUri,
+        ADDRESS_ZERO,
+        pluginUpgrader
       );
       const nonce = await ethers.provider.getTransactionCount(
         spacePluginSetup.address
@@ -157,11 +154,8 @@ describe('Space Plugin Setup', function () {
     it('returns the permission changes (no pluginUpgrader)', async () => {
       const plugin = await new SpacePlugin__factory(alice).deploy();
 
-      const uninstallData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs
-        ),
-        [ADDRESS_ZERO]
+      const uninstallData = await spacePluginSetup.encodeUninstallationParams(
+        ADDRESS_ZERO
       );
 
       const permissions =
@@ -194,11 +188,8 @@ describe('Space Plugin Setup', function () {
       const plugin = await new SpacePlugin__factory(alice).deploy();
 
       const pluginUpgrader = bob.address;
-      const uninstallData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs
-        ),
-        [pluginUpgrader]
+      const uninstallData = await spacePluginSetup.encodeUninstallationParams(
+        pluginUpgrader
       );
 
       const permissions =
