@@ -11,6 +11,7 @@ export const ONE_BYTES32 =
 
 export const DEPLOYER_PERMISSION_ID = ethers.utils.id('DEPLOYER_PERMISSION');
 export const EDITOR_PERMISSION_ID = ethers.utils.id('EDITOR_PERMISSION');
+export const MEMBER_PERMISSION_ID = ethers.utils.id('MEMBER_PERMISSION');
 
 export const CONTENT_PERMISSION_ID = ethers.utils.id('CONTENT_PERMISSION');
 export const SUBSPACE_PERMISSION_ID = ethers.utils.id('SUBSPACE_PERMISSION');
