@@ -25,6 +25,7 @@ import {
   ADDRESS_ONE,
   ADDRESS_TWO,
   ADDRESS_ZERO,
+  advanceTime,
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   mineBlock,
@@ -51,7 +52,6 @@ export const multisigInterface = new ethers.utils.Interface([
   'function initialize(address,tuple(uint64,address))',
   'function updateMultisigSettings(tuple(uint64,address))',
   'function proposeNewMember(bytes,address)',
-  'function proposeRemoveMember(bytes,address)',
   'function getProposal(uint256)',
 ]);
 const mainVotingPluginInterface = MainVotingPlugin__factory.createInterface();
@@ -147,6 +147,7 @@ describe('Member Access Plugin', function () {
     // Alice is an editor (see mainVotingPlugin initialize)
 
     // Bob is a member
+    await mineBlock();
     await memberAccessPlugin.proposeNewMember('0x', bob.address);
   });
 
@@ -287,7 +288,6 @@ describe('Member Access Plugin', function () {
 
       expect(await memberAccessPlugin.isMember(alice.address)).to.eq(true);
       expect(await memberAccessPlugin.isMember(bob.address)).to.eq(true);
-
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
       await memberAccessPlugin.proposeNewMember('0x', carol.address);
@@ -779,12 +779,30 @@ describe('Member Access Plugin', function () {
       );
     });
 
+    it('Proposing an existing member fails', async () => {
+      await expect(
+        memberAccessPlugin
+          .connect(dave)
+          .proposeNewMember(toUtf8Bytes('ipfs://1234'), alice.address)
+      )
+        .to.be.revertedWithCustomError(memberAccessPlugin, 'AlreadyMember')
+        .withArgs(alice.address);
+
+      await expect(
+        memberAccessPlugin
+          .connect(dave)
+          .proposeNewMember(toUtf8Bytes('ipfs://1234'), bob.address)
+      )
+        .to.be.revertedWithCustomError(memberAccessPlugin, 'AlreadyMember')
+        .withArgs(bob.address);
+    });
+
     it('Attempting to approve twice fails', async () => {
       pid = await memberAccessPlugin.proposalCount();
       await expect(
         memberAccessPlugin
           .connect(dave)
-          .proposeNewMember(toUtf8Bytes('ipfs://1234'), bob.address)
+          .proposeNewMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
       await expect(memberAccessPlugin.approve(pid)).to.not.be.reverted;
@@ -796,7 +814,7 @@ describe('Member Access Plugin', function () {
       await expect(
         memberAccessPlugin
           .connect(dave)
-          .proposeNewMember(toUtf8Bytes('ipfs://1234'), bob.address)
+          .proposeNewMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
@@ -828,7 +846,7 @@ describe('Member Access Plugin', function () {
       await expect(
         memberAccessPlugin
           .connect(dave)
-          .proposeNewMember(toUtf8Bytes('ipfs://1234'), bob.address)
+          .proposeNewMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
@@ -840,7 +858,7 @@ describe('Member Access Plugin', function () {
       await expect(
         memberAccessPlugin
           .connect(dave)
-          .proposeNewMember(toUtf8Bytes('ipfs://1234'), bob.address)
+          .proposeNewMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;

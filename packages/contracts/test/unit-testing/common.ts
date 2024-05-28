@@ -88,13 +88,11 @@ export enum VotingMode {
 export type VotingSettings = {
   votingMode: number;
   supportThreshold: BigNumber;
-  minParticipation: BigNumber;
   duration: number;
 };
 
 export const defaultMainVotingSettings: VotingSettings = {
   duration: 60 * 60, // 1 second
-  minParticipation: pctToRatio(30), // 30%
   supportThreshold: pctToRatio(50), // 50% + 1
   votingMode: VotingMode.EarlyExecution,
 };

@@ -116,12 +116,10 @@ abstract contract MajorityVotingBase is
     /// @notice A container for the majority voting settings that will be applied as parameters on proposal creation.
     /// @param votingMode A parameter to select the vote mode. In standard mode (0), early execution and vote replacement are disabled. In early execution mode (1), a proposal can be executed early before the end date if the vote outcome cannot mathematically change by more voters voting. In vote replacement mode (2), voters can change their vote multiple times and only the latest vote option is tallied.
     /// @param supportThreshold The support threshold value. Its value has to be in the interval [0, 10^6] defined by `RATIO_BASE = 10**6`.
-    /// @param minParticipation The minimum participation value. Its value has to be in the interval [0, 10^6] defined by `RATIO_BASE = 10**6`.
     /// @param duration The duration of proposals in seconds.
     struct VotingSettings {
         VotingMode votingMode;
         uint32 supportThreshold;
-        uint32 minParticipation;
         uint64 duration;
     }
 
@@ -149,14 +147,12 @@ abstract contract MajorityVotingBase is
     /// @param startDate The start date of the proposal vote.
     /// @param endDate The end date of the proposal vote.
     /// @param snapshotBlock The number of the block prior to the proposal creation.
-    /// @param minVotingPower The minimum voting power needed.
     struct ProposalParameters {
         VotingMode votingMode;
         uint32 supportThreshold;
         uint64 startDate;
         uint64 endDate;
         uint64 snapshotBlock;
-        uint256 minVotingPower;
     }
 
     /// @notice A container for the proposal vote tally.
@@ -219,14 +215,8 @@ abstract contract MajorityVotingBase is
     /// @notice Emitted when the voting settings are updated.
     /// @param votingMode A parameter to select the vote mode.
     /// @param supportThreshold The support threshold value.
-    /// @param minParticipation The minimum participation value.
     /// @param duration The minimum duration of the proposal vote in seconds.
-    event VotingSettingsUpdated(
-        VotingMode votingMode,
-        uint32 supportThreshold,
-        uint32 minParticipation,
-        uint64 duration
-    );
+    event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint64 duration);
 
     /// @notice Initializes the component to be used by inheriting contracts.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
@@ -333,24 +323,11 @@ abstract contract MajorityVotingBase is
     }
 
     /// @inheritdoc IMajorityVoting
-    function isMinParticipationReached(uint256 _proposalId) public view virtual returns (bool) {
-        Proposal storage proposal_ = proposals[_proposalId];
-
-        // The code below implements the formula of the participation criterion explained in the top of this file.
-        // `N_yes + N_no + N_abstain >= minVotingPower = minParticipation * N_total`
-        return
-            proposal_.tally.yes + proposal_.tally.no + proposal_.tally.abstain >=
-            proposal_.parameters.minVotingPower;
-    }
+    function isMinParticipationReached(uint256 _proposalId) public view virtual returns (bool);
 
     /// @inheritdoc IMajorityVoting
     function supportThreshold() public view virtual returns (uint32) {
         return votingSettings.supportThreshold;
-    }
-
-    /// @inheritdoc IMajorityVoting
-    function minParticipation() public view virtual returns (uint32) {
-        return votingSettings.minParticipation;
     }
 
     /// @notice Returns the minimum duration parameter stored in the voting settings.
@@ -517,16 +494,9 @@ abstract contract MajorityVotingBase is
             });
         }
 
-        // Require the minimum participation value to be in the interval [0, 10^6], because `>=` comparision is used in the participation criterion.
-        if (_votingSettings.minParticipation > RATIO_BASE) {
-            revert RatioOutOfBounds({limit: RATIO_BASE, actual: _votingSettings.minParticipation});
-        }
-
         if (_votingSettings.duration < 60 minutes) {
             revert DurationOutOfBounds({limit: 60 minutes, actual: _votingSettings.duration});
-        }
-
-        if (_votingSettings.duration > 365 days) {
+        } else if (_votingSettings.duration > 365 days) {
             revert DurationOutOfBounds({limit: 365 days, actual: _votingSettings.duration});
         }
 
@@ -535,7 +505,6 @@ abstract contract MajorityVotingBase is
         emit VotingSettingsUpdated({
             votingMode: _votingSettings.votingMode,
             supportThreshold: _votingSettings.supportThreshold,
-            minParticipation: _votingSettings.minParticipation,
             duration: _votingSettings.duration
         });
     }

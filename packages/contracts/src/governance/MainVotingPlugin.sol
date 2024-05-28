@@ -214,10 +214,6 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower(snapshotBlock),
-            minParticipation()
-        );
         proposalCreators[proposalId] = msg.sender;
 
         // Reduce costs
@@ -261,10 +257,6 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower(snapshotBlock),
-            minParticipation()
-        );
         proposal_.actions.push(
             IDAO.Action({
                 to: _spacePlugin,
@@ -309,10 +301,6 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower(snapshotBlock),
-            minParticipation()
-        );
         IDAO.Action memory _action = IDAO.Action({
             to: _spacePlugin,
             value: 0,
@@ -361,10 +349,6 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower(snapshotBlock),
-            minParticipation()
-        );
         IDAO.Action memory _action = IDAO.Action({
             to: _spacePlugin,
             value: 0,
@@ -392,7 +376,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         bytes calldata _metadata,
         address _proposedMember
     ) public onlyMembers {
-        if (!isEditor(msg.sender)) {
+        if (!isMember(msg.sender)) {
             revert ProposalCreationForbidden(msg.sender);
         } else if (!isMember(_proposedMember)) {
             revert AlreadyNotMember(_proposedMember);
@@ -413,10 +397,6 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.parameters.minVotingPower = _applyRatioCeiled(
-            totalVotingPower(snapshotBlock),
-            minParticipation()
-        );
         IDAO.Action memory _action = IDAO.Action({
             to: address(this),
             value: 0,
@@ -445,9 +425,8 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         if (proposal_.tally.yes == 0 && proposal_.tally.no == 0 && proposal_.tally.abstain == 0) {
             return false;
         }
-
-        // Just one voter
-        if (addresslistLengthAtBlock(proposal_.parameters.snapshotBlock) == 1) {
+        // Just one voter?
+        else if (addresslistLengthAtBlock(proposal_.parameters.snapshotBlock) == 1) {
             return true;
         }
 
