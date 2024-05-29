@@ -19,6 +19,8 @@ bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.sel
     MainVotingPlugin.proposeAcceptSubspace.selector ^
     MainVotingPlugin.proposeRemoveSubspace.selector ^
     MainVotingPlugin.proposeRemoveMember.selector ^
+    MainVotingPlugin.proposeAddEditor.selector ^
+    MainVotingPlugin.proposeRemoveEditor.selector ^
     MainVotingPlugin.addEditor.selector ^
     MainVotingPlugin.removeEditor.selector ^
     MainVotingPlugin.addMember.selector ^
@@ -68,7 +70,13 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     error EmptyContent();
 
     /// @notice Thrown when attempting propose removing membership for a non-member.
-    error AlreadyNotMember(address _member);
+    error AlreadyNotAMember(address _member);
+
+    /// @notice Thrown when attempting propose removing membership for a non-member.
+    error AlreadyAnEditor(address _editor);
+
+    /// @notice Thrown when attempting propose removing someone who already isn't an editor.
+    error AlreadyNotAnEditor(address _editor);
 
     modifier onlyMembers() {
         if (!isMember(msg.sender)) {
@@ -371,15 +379,10 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
     /// @notice Creates a proposal to remove an existing member.
     /// @param _metadata The metadata of the proposal.
-    /// @param _proposedMember The address of the member who may eveutnally be removed.
-    function proposeRemoveMember(
-        bytes calldata _metadata,
-        address _proposedMember
-    ) public onlyMembers {
-        if (!isMember(msg.sender)) {
-            revert ProposalCreationForbidden(msg.sender);
-        } else if (!isMember(_proposedMember)) {
-            revert AlreadyNotMember(_proposedMember);
+    /// @param _member The address of the member who may eveutnally be removed.
+    function proposeRemoveMember(bytes calldata _metadata, address _member) public onlyMembers {
+        if (!isMember(_member)) {
+            revert AlreadyNotAMember(_member);
         }
         uint64 snapshotBlock;
         unchecked {
@@ -400,7 +403,96 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         IDAO.Action memory _action = IDAO.Action({
             to: address(this),
             value: 0,
-            data: abi.encodeCall(MainVotingPlugin.removeMember, (_proposedMember))
+            data: abi.encodeCall(MainVotingPlugin.removeMember, (_member))
+        });
+        proposal_.actions.push(_action);
+
+        proposalCreators[proposalId] = msg.sender;
+
+        emit ProposalCreated({
+            proposalId: proposalId,
+            creator: proposalCreators[proposalId],
+            metadata: _metadata,
+            startDate: _startDate,
+            endDate: proposal_.parameters.endDate,
+            actions: proposal_.actions,
+            allowFailureMap: 0
+        });
+    }
+
+    /// @notice Creates a proposal to remove an existing member.
+    /// @param _metadata The metadata of the proposal.
+    /// @param _proposedEditor The address of the wallet who may eveutnally be made an editor.
+    function proposeAddEditor(
+        bytes calldata _metadata,
+        address _proposedEditor
+    ) public onlyMembers {
+        if (isEditor(_proposedEditor)) {
+            revert AlreadyAnEditor(_proposedEditor);
+        }
+        uint64 snapshotBlock;
+        unchecked {
+            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+        }
+        uint64 _startDate = block.timestamp.toUint64();
+
+        uint256 proposalId = _createProposalId();
+
+        // Store proposal related information
+        Proposal storage proposal_ = proposals[proposalId];
+
+        proposal_.parameters.startDate = _startDate;
+        proposal_.parameters.endDate = _startDate + duration();
+        proposal_.parameters.snapshotBlock = snapshotBlock;
+        proposal_.parameters.votingMode = votingMode();
+        proposal_.parameters.supportThreshold = supportThreshold();
+        IDAO.Action memory _action = IDAO.Action({
+            to: address(this),
+            value: 0,
+            data: abi.encodeCall(MainVotingPlugin.addEditor, (_proposedEditor))
+        });
+        proposal_.actions.push(_action);
+
+        proposalCreators[proposalId] = msg.sender;
+
+        emit ProposalCreated({
+            proposalId: proposalId,
+            creator: proposalCreators[proposalId],
+            metadata: _metadata,
+            startDate: _startDate,
+            endDate: proposal_.parameters.endDate,
+            actions: proposal_.actions,
+            allowFailureMap: 0
+        });
+    }
+
+    /// @notice Creates a proposal to remove an existing editor.
+    /// @param _metadata The metadata of the proposal.
+    /// @param _editor The address of the editor who may eveutnally be removed.
+    function proposeRemoveEditor(bytes calldata _metadata, address _editor) public onlyMembers {
+        if (!isEditor(_editor)) {
+            revert AlreadyNotAnEditor(_editor);
+        }
+        uint64 snapshotBlock;
+        unchecked {
+            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+        }
+        uint64 _startDate = block.timestamp.toUint64();
+
+        uint256 proposalId = _createProposalId();
+
+        // Store proposal related information
+        Proposal storage proposal_ = proposals[proposalId];
+
+        proposal_.parameters.startDate = _startDate;
+        proposal_.parameters.endDate = _startDate + duration();
+        proposal_.parameters.snapshotBlock = snapshotBlock;
+        proposal_.parameters.votingMode = votingMode();
+        proposal_.parameters.supportThreshold = supportThreshold();
+        IDAO.Action memory _action = IDAO.Action({
+            to: address(this),
+            value: 0,
+            data: abi.encodeCall(MainVotingPlugin.removeEditor, (_editor))
         });
         proposal_.actions.push(_action);
 
