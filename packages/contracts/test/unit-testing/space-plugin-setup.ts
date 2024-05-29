@@ -6,7 +6,7 @@ import {
 } from '../../typechain';
 import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
-import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
+import {Operation} from '../helpers/types';
 import {
   ADDRESS_ONE,
   ADDRESS_ZERO,

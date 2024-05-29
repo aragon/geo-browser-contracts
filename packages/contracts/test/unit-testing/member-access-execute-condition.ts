@@ -335,7 +335,7 @@ describe('Member Access Condition', function () {
       );
 
       // 1
-      let [selector, who] =
+      const [selector, who] =
         await testMemberAccessExecuteCondition.decodeAddMemberCalldata(
           calldata
         );

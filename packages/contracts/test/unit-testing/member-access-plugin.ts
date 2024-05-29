@@ -25,7 +25,6 @@ import {
   ADDRESS_ONE,
   ADDRESS_TWO,
   ADDRESS_ZERO,
-  advanceTime,
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   mineBlock,

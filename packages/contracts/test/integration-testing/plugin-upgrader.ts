@@ -33,7 +33,6 @@ import {
   UPGRADE_PLUGIN_PERMISSION_ID,
   ZERO_BYTES32,
 } from '../unit-testing/common';
-// import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
   DAO,
   PluginRepo__factory,
