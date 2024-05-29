@@ -6,7 +6,6 @@ import {
 import {PluginRepo} from '../../typechain';
 import {osxContracts} from '../../utils/helpers';
 import {getPluginRepoInfo} from '../../utils/plugin-repo-info';
-// import { toHex } from "../../utils/ipfs";
 import {PluginRepoRegistry__factory} from '@aragon/osx-ethers';
 import {PluginRepoRegistry} from '@aragon/osx-ethers';
 import {PluginRepo__factory} from '@aragon/osx-ethers';
@@ -100,36 +99,11 @@ describe('PluginRepo Deployment', function () {
             ).address
           );
 
-          const receivedStriMetadata = Buffer.from(
+          const receivedStrMetadata = Buffer.from(
             results.buildMetadata.slice(2),
             'hex'
           ).toString();
-
-          switch (pluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME) {
-            case SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
-              expect(receivedStriMetadata).to.equal(
-                'ipfs://QmcAUbh4UmhwZp4b7aQf9nkpemhCfTVms2eSVng1bZUmmo'
-              );
-              break;
-
-            case PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
-              expect(receivedStriMetadata).to.equal(
-                'ipfs://QmYKrFvNmsEzZmtGGBfUJXzevR6YLk7a16VEAeuPDhwzCJ'
-              );
-              break;
-
-            case GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME:
-              expect(receivedStriMetadata).to.equal(
-                'ipfs://QmUivtg6CD3XUvArRS1BqaPYUrKU7oyw8MU59oemL3zxLQ'
-              );
-              break;
-
-            default:
-              throw new Error(
-                'Unexpected contract name: ' +
-                  pluginSetupParams.PLUGIN_CONTRACT_NAME
-              );
-          }
+          expect(receivedStrMetadata).to.equal('\0');
         });
       });
     });

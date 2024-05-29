@@ -24,7 +24,6 @@ import {
   hashHelpers,
   osxContracts,
 } from '../../utils/helpers';
-import {toHex} from '../../utils/ipfs';
 import {installPlugin} from '../helpers/setup';
 import {deployTestDao} from '../helpers/test-dao';
 import {
@@ -122,15 +121,15 @@ describe('Plugin upgrader', () => {
       tx = await pluginRepo.createVersion(
         1,
         pSetupBuild1.address,
-        toHex('build'),
-        toHex('release')
+        '0x00',
+        '0x00'
       );
       // Publish build 2
       tx = await pluginRepo.createVersion(
         1,
         pSetupBuild2.address,
-        toHex('build'),
-        toHex('release')
+        '0x00',
+        '0x00'
       );
       await tx.wait();
     });
@@ -242,25 +241,33 @@ describe('Plugin upgrader', () => {
       // Should not allow to execute other than the expected 3 actions
       {
         await expect(
-          dao.execute(toHex('01234123412341234123412341234123'), [], 0)
-        ).to.be.reverted;
-        await expect(
-          dao
-            .connect(pluginUpgrader)
-            .execute(toHex('01234123412341234123412341234123'), [], 0)
+          dao.execute(
+            '0x0123412341234123412341234123412301234123412341234123412341234123',
+            [],
+            0
+          )
         ).to.be.reverted;
         await expect(
           dao
             .connect(pluginUpgrader)
             .execute(
-              toHex('01234123412341234123412341234123'),
+              '0x0123412341234123412341234123412301234123412341234123412341234123',
+              [],
+              0
+            )
+        ).to.be.reverted;
+        await expect(
+          dao
+            .connect(pluginUpgrader)
+            .execute(
+              '0x0123412341234123412341234123412301234123412341234123412341234123',
               [{to: dao.address, value: 0, data: '0x'}],
               0
             )
         ).to.be.reverted;
         await expect(
           dao.connect(pluginUpgrader).execute(
-            toHex('01234123412341234123412341234123'),
+            '0x0123412341234123412341234123412301234123412341234123412341234123',
             [
               {
                 to: mainVotingPlugin.address,
@@ -529,8 +536,8 @@ describe('Plugin upgrader', () => {
       tx = await pluginRepo.createVersion(
         1,
         pSetupBuild1.address,
-        toHex('build'),
-        toHex('release')
+        '0x00',
+        '0x00'
       );
     });
 
@@ -557,7 +564,7 @@ describe('Plugin upgrader', () => {
 
       // Install build 1
       const data1 = await pSetupBuild1.encodeInstallationParams(
-        toHex('ipfs://1234'),
+        '0x1234',
         ADDRESS_ZERO,
         pluginUpgrader.address
       );
@@ -604,8 +611,8 @@ describe('Plugin upgrader', () => {
       let tx = await pluginRepo.createVersion(
         1,
         pSetupBuild2.address,
-        toHex('build'),
-        toHex('release')
+        '0x00',
+        '0x00'
       );
       await tx.wait();
 
@@ -637,25 +644,33 @@ describe('Plugin upgrader', () => {
       // Should not allow to execute other than the expected 3 actions
       {
         await expect(
-          dao.execute(toHex('23412341234123412341234123412341'), [], 0)
-        ).to.be.reverted;
-        await expect(
-          dao
-            .connect(pluginUpgrader)
-            .execute(toHex('23412341234123412341234123412341'), [], 0)
+          dao.execute(
+            '0x2341234123412341234123412341234123412341234123412341234123412341',
+            [],
+            0
+          )
         ).to.be.reverted;
         await expect(
           dao
             .connect(pluginUpgrader)
             .execute(
-              toHex('23412341234123412341234123412341'),
+              '0x2341234123412341234123412341234123412341234123412341234123412341',
+              [],
+              0
+            )
+        ).to.be.reverted;
+        await expect(
+          dao
+            .connect(pluginUpgrader)
+            .execute(
+              '0x2341234123412341234123412341234123412341234123412341234123412341',
               [{to: dao.address, value: 0, data: '0x'}],
               0
             )
         ).to.be.reverted;
         await expect(
           dao.connect(pluginUpgrader).execute(
-            toHex('23412341234123412341234123412341'),
+            '0x2341234123412341234123412341234123412341234123412341234123412341',
             [
               {
                 to: spacePlugin.address,
