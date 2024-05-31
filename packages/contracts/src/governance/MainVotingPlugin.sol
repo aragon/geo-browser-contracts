@@ -69,6 +69,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Raised when a content proposal is called with empty data
     error EmptyContent();
 
+    /// @notice Raised when a non-editor attempts to call a restricted function.
+    error Unauthorized();
+
     /// @notice Thrown when attempting propose removing membership for a non-member.
     error AlreadyNotAMember(address _member);
 
@@ -174,6 +177,22 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
             members[msg.sender] = false;
             emit MemberLeft(address(dao()), msg.sender);
         }
+    }
+
+    /// @notice Removes msg.sender from the list of editors. If the last editor leaves the space, the space will become read-only.
+    function leaveSpaceAsEditor() external {
+        if (!isEditor(msg.sender)) {
+            revert NotAnEditor();
+        }
+
+        // Not checking whether msg.sender is the last editor. It is acceptable
+        // that a DAO/Space remains in read-only mode, as it can always be forked.
+
+        address[] memory _editors = new address[](1);
+        _editors[0] = msg.sender;
+
+        _removeAddresses(_editors);
+        emit EditorLeft(address(dao()), msg.sender);
     }
 
     /// @notice Returns whether the given address is currently listed as an editor
@@ -380,8 +399,10 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Creates a proposal to remove an existing member.
     /// @param _metadata The metadata of the proposal.
     /// @param _member The address of the member who may eveutnally be removed.
-    function proposeRemoveMember(bytes calldata _metadata, address _member) public onlyMembers {
-        if (!isMember(_member)) {
+    function proposeRemoveMember(bytes calldata _metadata, address _member) public {
+        if (!isEditor(msg.sender)) {
+            revert Unauthorized();
+        } else if (!isMember(_member)) {
             revert AlreadyNotAMember(_member);
         }
         uint64 snapshotBlock;
