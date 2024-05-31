@@ -72,6 +72,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Raised when a non-editor attempts to call a restricted function.
     error Unauthorized();
 
+    /// @notice Thrown when attempting propose membership for an existing member.
+    error AlreadyAMember(address _member);
+
     /// @notice Thrown when attempting propose removing membership for a non-member.
     error AlreadyNotAMember(address _member);
 
@@ -114,6 +117,40 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
             _interfaceId == type(IMembers).interfaceId ||
             _interfaceId == type(IEditors).interfaceId ||
             super.supportsInterface(_interfaceId);
+    }
+
+    /// @notice Returns whether the given address is currently listed as an editor
+    function isEditor(address _account) public view returns (bool) {
+        return isListed(_account);
+    }
+
+    /// @notice Returns whether the given address holds membership/editor permission on the main voting plugin
+    function isMember(address _account) public view returns (bool) {
+        return members[_account] || isEditor(_account);
+    }
+
+    /// @inheritdoc MajorityVotingBase
+    function totalVotingPower(uint256 _blockNumber) public view override returns (uint256) {
+        return addresslistLengthAtBlock(_blockNumber);
+    }
+
+    /// @notice Determines whether at least one editor besides the creator has approved.
+    /// @param _proposalId The ID of the proposal to check.
+    function isMinParticipationReached(uint256 _proposalId) public view override returns (bool) {
+        Proposal storage proposal_ = proposals[_proposalId];
+
+        // Zero votes?
+        if (proposal_.tally.yes == 0 && proposal_.tally.no == 0 && proposal_.tally.abstain == 0) {
+            return false;
+        }
+        // Do we have only one potential voter?
+        else if (addresslistLengthAtBlock(proposal_.parameters.snapshotBlock) == 1) {
+            // If so, we don't want to brick the DAO
+            return true;
+        }
+
+        // Did other voters participate, other than the creator?
+        return proposal_.didNonProposersVote;
     }
 
     /// @notice Adds new editors to the address list.
@@ -195,21 +232,6 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         emit EditorLeft(address(dao()), msg.sender);
     }
 
-    /// @notice Returns whether the given address is currently listed as an editor
-    function isEditor(address _account) public view returns (bool) {
-        return isListed(_account);
-    }
-
-    /// @notice Returns whether the given address holds membership/editor permission on the main voting plugin
-    function isMember(address _account) public view returns (bool) {
-        return members[_account] || isEditor(_account);
-    }
-
-    /// @inheritdoc MajorityVotingBase
-    function totalVotingPower(uint256 _blockNumber) public view override returns (uint256) {
-        return addresslistLengthAtBlock(_blockNumber);
-    }
-
     /// @inheritdoc MajorityVotingBase
     function createProposal(
         bytes calldata _metadata,
@@ -263,182 +285,93 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
     /// @param _contentUri The URI of the IPFS content to publish
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function proposeEdits(string memory _contentUri, address _spacePlugin) public onlyMembers {
+    function proposeEdits(
+        string memory _contentUri,
+        address _spacePlugin
+    ) public onlyMembers returns (uint256 proposalId) {
         if (_spacePlugin == address(0)) {
             revert EmptyContent();
         }
 
-        uint64 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
-        }
-        uint64 _startDate = block.timestamp.toUint64();
-
-        uint256 proposalId = _createProposalId();
-
-        // Store proposal related information
-        Proposal storage proposal_ = proposals[proposalId];
-
-        proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _startDate + duration();
-        proposal_.parameters.snapshotBlock = snapshotBlock;
-        proposal_.parameters.votingMode = votingMode();
-        proposal_.parameters.supportThreshold = supportThreshold();
-        proposal_.actions.push(
-            IDAO.Action({
-                to: _spacePlugin,
-                value: 0,
-                data: abi.encodeCall(SpacePlugin.publishEdits, (_contentUri))
-            })
+        proposalId = _proposeWrappedAction(
+            "",
+            _spacePlugin,
+            abi.encodeCall(SpacePlugin.publishEdits, (_contentUri))
         );
-
-        proposalCreators[proposalId] = msg.sender;
-
-        emit ProposalCreated({
-            proposalId: proposalId,
-            creator: proposalCreators[proposalId],
-            metadata: "",
-            startDate: _startDate,
-            endDate: proposal_.parameters.endDate,
-            actions: proposal_.actions,
-            allowFailureMap: 0
-        });
     }
 
     /// @notice Creates a proposal to make the DAO accept the given DAO as a subspace.
     /// @param _subspaceDao The address of the DAO that holds the new subspace
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function proposeAcceptSubspace(IDAO _subspaceDao, address _spacePlugin) public onlyMembers {
+    function proposeAcceptSubspace(
+        IDAO _subspaceDao,
+        address _spacePlugin
+    ) public onlyMembers returns (uint256 proposalId) {
         if (address(_subspaceDao) == address(0) || _spacePlugin == address(0)) {
             revert EmptyContent();
         }
-        uint64 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
-        }
-        uint64 _startDate = block.timestamp.toUint64();
 
-        uint256 proposalId = _createProposalId();
-
-        // Store proposal related information
-        Proposal storage proposal_ = proposals[proposalId];
-
-        proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _startDate + duration();
-        proposal_.parameters.snapshotBlock = snapshotBlock;
-        proposal_.parameters.votingMode = votingMode();
-        proposal_.parameters.supportThreshold = supportThreshold();
-        IDAO.Action memory _action = IDAO.Action({
-            to: _spacePlugin,
-            value: 0,
-            data: abi.encodeCall(SpacePlugin.acceptSubspace, (address(_subspaceDao)))
-        });
-        proposal_.actions.push(_action);
-
-        proposalCreators[proposalId] = msg.sender;
-
-        emit ProposalCreated({
-            proposalId: proposalId,
-            creator: proposalCreators[proposalId],
-            metadata: "",
-            startDate: _startDate,
-            endDate: proposal_.parameters.endDate,
-            actions: proposal_.actions,
-            allowFailureMap: 0
-        });
-
-        if (isEditor(proposalCreators[proposalId])) {
-            // Assuming that the proposer approves (if an editor)
-            vote(proposalId, VoteOption.Yes, false);
-        }
+        proposalId = _proposeWrappedAction(
+            "",
+            _spacePlugin,
+            abi.encodeCall(SpacePlugin.acceptSubspace, (address(_subspaceDao)))
+        );
     }
 
     /// @notice Creates a proposal to make the DAO remove the given DAO as a subspace.
     /// @param _subspaceDao The address of the DAO that holds the subspace to remove
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function proposeRemoveSubspace(IDAO _subspaceDao, address _spacePlugin) public onlyMembers {
+    function proposeRemoveSubspace(
+        IDAO _subspaceDao,
+        address _spacePlugin
+    ) public onlyMembers returns (uint256 proposalId) {
         if (address(_subspaceDao) == address(0) || _spacePlugin == address(0)) {
             revert EmptyContent();
         }
-        uint64 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
+
+        proposalId = _proposeWrappedAction(
+            "",
+            _spacePlugin,
+            abi.encodeCall(SpacePlugin.removeSubspace, (address(_subspaceDao)))
+        );
+    }
+
+    /// @notice Creates a proposal to add a new member.
+    /// @param _metadata The metadata of the proposal.
+    /// @param _proposedMember The address of the member who may eveutnally be added.
+    function proposeAddMember(
+        bytes calldata _metadata,
+        address _proposedMember
+    ) public onlyMembers returns (uint256 proposalId) {
+        if (isMember(_proposedMember)) {
+            revert AlreadyAMember(_proposedMember);
         }
-        uint64 _startDate = block.timestamp.toUint64();
 
-        uint256 proposalId = _createProposalId();
-
-        // Store proposal related information
-        Proposal storage proposal_ = proposals[proposalId];
-
-        proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _startDate + duration();
-        proposal_.parameters.snapshotBlock = snapshotBlock;
-        proposal_.parameters.votingMode = votingMode();
-        proposal_.parameters.supportThreshold = supportThreshold();
-        IDAO.Action memory _action = IDAO.Action({
-            to: _spacePlugin,
-            value: 0,
-            data: abi.encodeCall(SpacePlugin.removeSubspace, (address(_subspaceDao)))
-        });
-        proposal_.actions.push(_action);
-
-        proposalCreators[proposalId] = msg.sender;
-
-        emit ProposalCreated({
-            proposalId: proposalId,
-            creator: proposalCreators[proposalId],
-            metadata: "",
-            startDate: _startDate,
-            endDate: proposal_.parameters.endDate,
-            actions: proposal_.actions,
-            allowFailureMap: 0
-        });
+        proposalId = _proposeWrappedAction(
+            _metadata,
+            address(this),
+            abi.encodeCall(MainVotingPlugin.addMember, (_proposedMember))
+        );
     }
 
     /// @notice Creates a proposal to remove an existing member.
     /// @param _metadata The metadata of the proposal.
     /// @param _member The address of the member who may eveutnally be removed.
-    function proposeRemoveMember(bytes calldata _metadata, address _member) public {
+    function proposeRemoveMember(
+        bytes calldata _metadata,
+        address _member
+    ) public returns (uint256 proposalId) {
         if (!isEditor(msg.sender)) {
             revert Unauthorized();
         } else if (!isMember(_member)) {
             revert AlreadyNotAMember(_member);
         }
-        uint64 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
-        }
-        uint64 _startDate = block.timestamp.toUint64();
 
-        uint256 proposalId = _createProposalId();
-
-        // Store proposal related information
-        Proposal storage proposal_ = proposals[proposalId];
-
-        proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _startDate + duration();
-        proposal_.parameters.snapshotBlock = snapshotBlock;
-        proposal_.parameters.votingMode = votingMode();
-        proposal_.parameters.supportThreshold = supportThreshold();
-        IDAO.Action memory _action = IDAO.Action({
-            to: address(this),
-            value: 0,
-            data: abi.encodeCall(MainVotingPlugin.removeMember, (_member))
-        });
-        proposal_.actions.push(_action);
-
-        proposalCreators[proposalId] = msg.sender;
-
-        emit ProposalCreated({
-            proposalId: proposalId,
-            creator: proposalCreators[proposalId],
-            metadata: _metadata,
-            startDate: _startDate,
-            endDate: proposal_.parameters.endDate,
-            actions: proposal_.actions,
-            allowFailureMap: 0
-        });
+        proposalId = _proposeWrappedAction(
+            _metadata,
+            address(this),
+            abi.encodeCall(MainVotingPlugin.removeMember, (_member))
+        );
     }
 
     /// @notice Creates a proposal to remove an existing member.
@@ -447,60 +380,67 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     function proposeAddEditor(
         bytes calldata _metadata,
         address _proposedEditor
-    ) public onlyMembers {
+    ) public onlyMembers returns (uint256 proposalId) {
         if (isEditor(_proposedEditor)) {
             revert AlreadyAnEditor(_proposedEditor);
         }
-        uint64 snapshotBlock;
-        unchecked {
-            snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
-        }
-        uint64 _startDate = block.timestamp.toUint64();
 
-        uint256 proposalId = _createProposalId();
-
-        // Store proposal related information
-        Proposal storage proposal_ = proposals[proposalId];
-
-        proposal_.parameters.startDate = _startDate;
-        proposal_.parameters.endDate = _startDate + duration();
-        proposal_.parameters.snapshotBlock = snapshotBlock;
-        proposal_.parameters.votingMode = votingMode();
-        proposal_.parameters.supportThreshold = supportThreshold();
-        IDAO.Action memory _action = IDAO.Action({
-            to: address(this),
-            value: 0,
-            data: abi.encodeCall(MainVotingPlugin.addEditor, (_proposedEditor))
-        });
-        proposal_.actions.push(_action);
-
-        proposalCreators[proposalId] = msg.sender;
-
-        emit ProposalCreated({
-            proposalId: proposalId,
-            creator: proposalCreators[proposalId],
-            metadata: _metadata,
-            startDate: _startDate,
-            endDate: proposal_.parameters.endDate,
-            actions: proposal_.actions,
-            allowFailureMap: 0
-        });
+        proposalId = _proposeWrappedAction(
+            _metadata,
+            address(this),
+            abi.encodeCall(MainVotingPlugin.addEditor, (_proposedEditor))
+        );
     }
 
     /// @notice Creates a proposal to remove an existing editor.
     /// @param _metadata The metadata of the proposal.
     /// @param _editor The address of the editor who may eveutnally be removed.
-    function proposeRemoveEditor(bytes calldata _metadata, address _editor) public onlyMembers {
+    function proposeRemoveEditor(
+        bytes calldata _metadata,
+        address _editor
+    ) public onlyMembers returns (uint256 proposalId) {
         if (!isEditor(_editor)) {
             revert AlreadyNotAnEditor(_editor);
         }
+
+        proposalId = _proposeWrappedAction(
+            _metadata,
+            address(this),
+            abi.encodeCall(MainVotingPlugin.removeEditor, (_editor))
+        );
+    }
+
+    /// @notice Cancels the given proposal. It can only be called by the creator and the proposal must have not ended.
+    function cancelProposal(uint256 _proposalId) external {
+        if (proposalCreators[_proposalId] != msg.sender) {
+            revert OnlyCreatorCanCancel();
+        }
+        Proposal storage proposal_ = proposals[_proposalId];
+        if (!_isProposalOpen(proposal_)) {
+            revert ProposalIsNotOpen();
+        }
+
+        // Make it end now
+        proposal_.parameters.endDate = block.timestamp.toUint64();
+        emit ProposalCanceled(_proposalId);
+    }
+
+    /// @notice Creates a proposal with the given calldata as the only action.
+    /// @param _metadata The IPFS URI of the metadata.
+    /// @param _to The contract to call with the action.
+    /// @param _data The calldata to eventually invoke.
+    function _proposeWrappedAction(
+        bytes memory _metadata,
+        address _to,
+        bytes memory _data
+    ) internal returns (uint256 proposalId) {
         uint64 snapshotBlock;
         unchecked {
             snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
         }
         uint64 _startDate = block.timestamp.toUint64();
 
-        uint256 proposalId = _createProposalId();
+        proposalId = _createProposalId();
 
         // Store proposal related information
         Proposal storage proposal_ = proposals[proposalId];
@@ -510,41 +450,24 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposal_.parameters.snapshotBlock = snapshotBlock;
         proposal_.parameters.votingMode = votingMode();
         proposal_.parameters.supportThreshold = supportThreshold();
-        IDAO.Action memory _action = IDAO.Action({
-            to: address(this),
-            value: 0,
-            data: abi.encodeCall(MainVotingPlugin.removeEditor, (_editor))
-        });
-        proposal_.actions.push(_action);
+        proposal_.actions.push(IDAO.Action({to: _to, value: 0, data: _data}));
 
         proposalCreators[proposalId] = msg.sender;
 
         emit ProposalCreated({
             proposalId: proposalId,
-            creator: proposalCreators[proposalId],
+            creator: msg.sender,
             metadata: _metadata,
             startDate: _startDate,
             endDate: proposal_.parameters.endDate,
             actions: proposal_.actions,
             allowFailureMap: 0
         });
-    }
 
-    /// @notice Determines whether at least one editor besides the creator has approved
-    /// @param _proposalId The ID of the proposal to check.
-    function isMinParticipationReached(uint256 _proposalId) public view override returns (bool) {
-        Proposal storage proposal_ = proposals[_proposalId];
-
-        if (proposal_.tally.yes == 0 && proposal_.tally.no == 0 && proposal_.tally.abstain == 0) {
-            return false;
+        if (isEditor(msg.sender)) {
+            // We assume that the proposer approves (if an editor)
+            vote(proposalId, VoteOption.Yes, true);
         }
-        // Just one voter?
-        else if (addresslistLengthAtBlock(proposal_.parameters.snapshotBlock) == 1) {
-            return true;
-        }
-
-        // More voters expected
-        return proposal_.nonCreatorsVoted;
     }
 
     /// @inheritdoc MajorityVotingBase
@@ -585,28 +508,13 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
             votingPower: 1
         });
 
-        if (proposalCreators[_proposalId] != msg.sender && !proposal_.nonCreatorsVoted) {
-            proposal_.nonCreatorsVoted = true;
+        if (proposalCreators[_proposalId] != msg.sender && !proposal_.didNonProposersVote) {
+            proposal_.didNonProposersVote = true;
         }
 
         if (_tryEarlyExecution && _canExecute(_proposalId)) {
             _execute(_proposalId);
         }
-    }
-
-    /// @notice Cancels the given proposal. It can only be called by the creator and the proposal must have not ended.
-    function cancelProposal(uint256 _proposalId) external {
-        if (proposalCreators[_proposalId] != msg.sender) {
-            revert OnlyCreatorCanCancel();
-        }
-        Proposal storage proposal_ = proposals[_proposalId];
-        if (!_isProposalOpen(proposal_)) {
-            revert ProposalIsNotOpen();
-        }
-
-        // Make it end now
-        proposal_.parameters.endDate = block.timestamp.toUint64();
-        emit ProposalCanceled(_proposalId);
     }
 
     /// @inheritdoc MajorityVotingBase

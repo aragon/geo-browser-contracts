@@ -128,7 +128,7 @@ abstract contract MajorityVotingBase is
     /// @param parameters The proposal parameters at the time of the proposal creation.
     /// @param tally The vote tally of the proposal.
     /// @param voters The votes casted by the voters.
-    /// @param nonCreatorsVoted Whether a wallet other than the creator voted on the proposal.
+    /// @param didNonProposersVote Whether a wallet other than the proposer voted on the proposal.
     /// @param actions The actions to be executed when the proposal passes.
     /// @param allowFailureMap A bitmap allowing the proposal to succeed, even if individual actions might revert. If the bit at index `i` is 1, the proposal succeeds even if the `i`th action reverts. A failure map value of 0 requires every action to not revert.
     struct Proposal {
@@ -136,7 +136,7 @@ abstract contract MajorityVotingBase is
         ProposalParameters parameters;
         Tally tally;
         mapping(address => IMajorityVoting.VoteOption) voters;
-        bool nonCreatorsVoted;
+        bool didNonProposersVote;
         IDAO.Action[] actions;
         uint256 allowFailureMap;
     }
