@@ -1,10 +1,3 @@
-import governanceBuildMetadata from './src/governance/governance-build-metadata.json';
-import governanceReleaseMetadata from './src/governance/governance-release-metadata.json';
-import personalSpaceAdminBuildMetadata from './src/personal/personal-space-admin-build-metadata.json';
-import personalSpaceAdminReleaseMetadata from './src/personal/personal-space-admin-release-metadata.json';
-import spaceBuildMetadata from './src/space/space-build-metadata.json';
-import spaceReleaseMetadata from './src/space/space-release-metadata.json';
-
 export const SpacePluginSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: 'geo-browser-space',
   PLUGIN_CONTRACT_NAME: 'SpacePlugin',
@@ -12,10 +5,6 @@ export const SpacePluginSetupParams: PluginSetupParams = {
   VERSION: {
     release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
     build: 1, // Increment this number if non-breaking/compatible changes were made. Updates to newer builds are possible.
-  },
-  METADATA: {
-    build: spaceBuildMetadata,
-    release: spaceReleaseMetadata,
   },
 };
 
@@ -27,10 +16,6 @@ export const PersonalSpaceAdminPluginSetupParams: PluginSetupParams = {
     release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
     build: 1, // Increment this number if non-breaking/compatible changes were made. Updates to newer builds are possible.
   },
-  METADATA: {
-    build: personalSpaceAdminBuildMetadata,
-    release: personalSpaceAdminReleaseMetadata,
-  },
 };
 
 export const GovernancePluginsSetupParams: PluginSetupParams = {
@@ -40,10 +25,6 @@ export const GovernancePluginsSetupParams: PluginSetupParams = {
   VERSION: {
     release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
     build: 1, // Increment this number if non-breaking/compatible changes were made. Updates to newer builds are possible.
-  },
-  METADATA: {
-    build: governanceBuildMetadata,
-    release: governanceReleaseMetadata,
   },
 };
 
@@ -56,9 +37,5 @@ export type PluginSetupParams = {
   VERSION: {
     release: number;
     build: number;
-  };
-  METADATA: {
-    build: {[k: string]: any};
-    release: {[k: string]: any};
   };
 };
