@@ -292,10 +292,7 @@ describe('Member Access Plugin', function () {
       await memberAccessPlugin.proposeNewMember('0x', carol.address);
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(true);
 
-      await mainVotingPlugin
-        .connect(bob)
-        .proposeRemoveMember('0x', carol.address);
-      await mainVotingPlugin.vote(0, VoteOption.Yes, true);
+      await mainVotingPlugin.proposeRemoveMember('0x', carol.address);
       expect(await memberAccessPlugin.isMember(carol.address)).to.eq(false);
 
       await proposeNewEditor(carol.address);
