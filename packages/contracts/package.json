@@ -28,7 +28,6 @@
     "hardhat": "^2.13.1",
     "hardhat-deploy": "^0.11.37",
     "hardhat-gas-reporter": "^1.0.9",
-    "ipfs-http-client": "^51.0.0",
     "mocha": "^10.1.0",
     "solhint": "^3.4.0",
     "solhint-plugin-prettier": "^0.0.5",

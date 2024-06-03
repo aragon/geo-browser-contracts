@@ -632,35 +632,6 @@ function encodeUninstallationParams(
 ) public pure returns (bytes memory)
 ```
 
-The JSON encoded ABI definition can also be found at the corresponding `src/<folder>/<name>-build-metadata.json` file:
-
-```json
-{
-  // ...
-  "pluginSetup": {
-    "prepareInstallation": {
-      // ...
-      "inputs": [
-        {
-          "name": "firstBlockContentUri",
-          "type": "string",
-          "internalType": "string",
-          "description": "The inital contents of the first block item."
-        },
-        {
-          "internalType": "address",
-          "name": "predecessorAddress",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "pluginUpgrader",
-          "type": "address"
-        }
-      ]
-    },
-```
-
 The same also applies to `prepareUpdate` (if present) and to `prepareUninstallation`.
 
 ### Available setup contracts
@@ -700,14 +671,6 @@ In the example, the code is making use of the existing JS client for [Aragon's T
 - The settings about the naming, ID's and versions can be found on `packages/contracts/plugin-setup-params.ts`.
 - The deployments made will populate data to the `packages/contracts/plugin-repo-info.json` and `packages/contracts/plugin-repo-info-dev.json`.
 - You need to copy `.env.template` into `.env` and provide your Infura API key
-
-### Plugin metadata
-
-Plugins need some basic metadata in order for JS clients to be able to handle installations and updates. Beyond a simple title and description, every contract's build metadata contains the ABI of the parameters that need to be encoded in order to prepare the plugin installation.
-
-Every plugin has an `initialize()` methos, which acts as the constructor for UUPS upgradeable contracts. This method will be passed its DAO's address, as well as a `bytes memory data` parameter, with all the settings encoded.
-
-The format of these settings is defined in the `packages/contracts/src/*-build.metadata.json` file. See the `pluginSetup` > `prepareInstallation` section.
 
 ## DO's and DONT's
 

@@ -14,7 +14,6 @@ import {
   getPluginRepoFactoryAddress,
   osxContracts,
 } from '../../utils/helpers';
-import {toHex} from '../../utils/ipfs';
 import {installPlugin} from '../helpers/setup';
 import {deployTestDao} from '../helpers/test-dao';
 import {
@@ -107,12 +106,7 @@ describe('Member Access Condition E2E', () => {
     pluginSetup = await gpsFactory.deploy(psp.address);
 
     // Publish build 1
-    tx = await pluginRepo.createVersion(
-      1,
-      pluginSetup.address,
-      toHex('build'),
-      toHex('release')
-    );
+    tx = await pluginRepo.createVersion(1, pluginSetup.address, '0x00', '0x00');
 
     // Deploy setups
     pluginSetupRef = {

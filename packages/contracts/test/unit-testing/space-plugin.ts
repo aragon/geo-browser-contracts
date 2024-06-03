@@ -1,6 +1,5 @@
 import {DAO, IDAO, SpacePlugin, SpacePlugin__factory} from '../../typechain';
 import {deployWithProxy} from '../../utils/helpers';
-import {toHex} from '../../utils/ipfs';
 import {deployTestDao} from '../helpers/test-dao';
 import {
   ADDRESS_ONE,
@@ -184,14 +183,12 @@ describe('Space Plugin', function () {
 
     it('Only the DAO can emit content on the space plugin', async () => {
       // They cannot
-      await expect(
-        spacePlugin.connect(alice).publishEdits(toHex('ipfs://1234'))
-      ).to.be.reverted;
-      await expect(spacePlugin.connect(bob).publishEdits(toHex('ipfs://1234')))
-        .to.be.reverted;
-      await expect(
-        spacePlugin.connect(carol).publishEdits(toHex('ipfs://1234'))
-      ).to.be.reverted;
+      await expect(spacePlugin.connect(alice).publishEdits('0x1234')).to.be
+        .reverted;
+      await expect(spacePlugin.connect(bob).publishEdits('0x1234')).to.be
+        .reverted;
+      await expect(spacePlugin.connect(carol).publishEdits('0x1234')).to.be
+        .reverted;
 
       // The DAO can
       const actions: IDAO.ActionStruct[] = [
@@ -200,14 +197,14 @@ describe('Space Plugin', function () {
           value: 0,
           data: SpacePlugin__factory.createInterface().encodeFunctionData(
             'publishEdits',
-            [toHex('ipfs://1234')]
+            ['0x1234']
           ),
         },
       ];
 
       await expect(dao.execute(ZERO_BYTES32, actions, 0))
         .to.emit(spacePlugin, 'EditsPublished')
-        .withArgs(dao.address, toHex('ipfs://1234'));
+        .withArgs(dao.address, '0x1234');
     });
 
     it('Only the DAO can accept subspaces', async () => {

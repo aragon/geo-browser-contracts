@@ -4,8 +4,6 @@ import {
   PluginSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
-import {toHex} from '../../utils/ipfs';
-import {uploadToIPFS} from '../../utils/ipfs';
 import {
   addDeployedVersion,
   getPluginRepoInfo,
@@ -31,19 +29,6 @@ async function publishPlugin(
 
   const {deployments, network} = hre;
   const [deployer] = await hre.ethers.getSigners();
-
-  // Upload the metadata to IPFS
-  const releaseMetadataURI = `ipfs://${await uploadToIPFS(
-    JSON.stringify(pluginSetupParams.METADATA.release),
-    false
-  )}`;
-  const buildMetadataURI = `ipfs://${await uploadToIPFS(
-    JSON.stringify(pluginSetupParams.METADATA.build),
-    false
-  )}`;
-
-  console.log(`Uploaded release metadata: ${releaseMetadataURI}`);
-  console.log(`Uploaded build metadata: ${buildMetadataURI}`);
 
   // Get PluginSetup
   const setup = await deployments.get(
@@ -99,8 +84,8 @@ async function publishPlugin(
   const tx = await pluginRepo.createVersion(
     pluginSetupParams.VERSION.release,
     setup.address,
-    toHex(buildMetadataURI),
-    toHex(releaseMetadataURI)
+    '0x00',
+    '0x00'
   );
 
   const blockNumberOfPublication = (await tx.wait()).blockNumber;
@@ -137,13 +122,13 @@ async function publishPlugin(
       blockNumberOfDeployment: setup.receipt.blockNumber,
     },
     helpers: [],
-    buildMetadataURI: buildMetadataURI,
+    buildMetadataURI: '',
     blockNumberOfPublication: blockNumberOfPublication,
   };
   addDeployedVersion(
     pluginSetupParams.PLUGIN_REPO_ENS_NAME,
     network.name,
-    releaseMetadataURI,
+    '',
     {release: pluginSetupParams.VERSION.release, build: version.tag.build},
     pluginBuild
   );
