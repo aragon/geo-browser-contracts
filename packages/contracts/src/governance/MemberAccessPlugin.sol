@@ -14,7 +14,6 @@ import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlug
 bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
     MemberAccessPlugin.updateMultisigSettings.selector ^
     MemberAccessPlugin.proposeNewMember.selector ^
-    MemberAccessPlugin.proposeRemoveMember.selector ^
     MemberAccessPlugin.getProposal.selector;
 
 /// @title Member access plugin (Multisig) - Release 1, Build 1
@@ -23,7 +22,7 @@ bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selec
 contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
 
-    /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
+    /// @notice The ID of the permission required to call the `addAddresses` functions.
     bytes32 public constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID =
         keccak256("UPDATE_MULTISIG_SETTINGS_PERMISSION");
 
@@ -98,7 +97,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @param proposalId The ID of the proposal.
     error ProposalExecutionForbidden(uint256 proposalId);
 
-    /// @notice Thrown when attempting to use addAddresses and removeAddresses.
+    /// @notice Thrown when attempting to use addAddresses.
     error AddresslistDisabled();
 
     /// @notice Thrown when attempting to use an invalid contract.
@@ -106,9 +105,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
     /// @notice Thrown when attempting request membership for a current member.
     error AlreadyMember(address _member);
-
-    /// @notice Thrown when attempting propose removing membership for a non-member.
-    error AlreadyNotMember(address _member);
 
     /// @notice Emitted when a proposal is approved by an editor.
     /// @param proposalId The ID of the proposal.
@@ -158,9 +154,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _updateMultisigSettings(_multisigSettings);
     }
 
-    /// @notice Creates a new multisig proposal wrapped by proposeNewMember and proposeRemoveMember.
+    /// @notice Creates a new multisig proposal wrapped by proposeNewMember.
     /// @param _metadata The metadata of the proposal.
-    /// @param _actions A list of actions wrapped by proposeNewMember and proposeRemoveMember.
+    /// @param _actions A list of actions wrapped by proposeNewMember.
     /// @return proposalId The ID of the proposal.
     function createProposal(
         bytes calldata _metadata,
@@ -174,7 +170,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         // Revert if the settings have been changed in the same block as this proposal should be created in.
         // This prevents a malicious party from voting with previous addresses and the new settings.
         if (lastMultisigSettingsChange > snapshotBlock) {
-            revert ProposalCreationForbidden(_msgSender());
+            revert ProposalCreationForbidden(msg.sender);
         }
 
         uint64 _startDate = block.timestamp.toUint64();
@@ -184,7 +180,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
         emit ProposalCreated({
             proposalId: proposalId,
-            creator: _msgSender(),
+            creator: msg.sender,
             metadata: _metadata,
             startDate: _startDate,
             endDate: _endDate,
@@ -206,7 +202,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             }
         }
 
-        if (isEditor(_msgSender())) {
+        if (isEditor(msg.sender)) {
             if (multisigSettings.mainVotingPlugin.addresslistLength() < 2) {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR;
             } else {
@@ -244,36 +240,11 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         return createProposal(_metadata, _actions);
     }
 
-    /// @notice Creates a proposal to remove an existing member.
-    /// @param _metadata The metadata of the proposal.
-    /// @param _proposedMember The address of the member who may eveutnally be removed.
-    /// @return proposalId The ID of the proposal.
-    function proposeRemoveMember(
-        bytes calldata _metadata,
-        address _proposedMember
-    ) external returns (uint256 proposalId) {
-        if (!isMember(_proposedMember)) {
-            revert AlreadyNotMember(_proposedMember);
-        }
-
-        // Build the list of actions
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-
-        _actions[0] = IDAO.Action({
-            to: address(multisigSettings.mainVotingPlugin),
-            value: 0,
-            data: abi.encodeCall(MainVotingPlugin.removeMember, (_proposedMember))
-        });
-
-        return createProposal(_metadata, _actions);
-    }
-
     /// @inheritdoc IMultisig
     /// @dev The second parameter is left empty to keep compatibility with the existing multisig interface
     function approve(uint256 _proposalId) public {
-        address sender = _msgSender();
-        if (!_canApprove(_proposalId, sender)) {
-            revert ApprovalCastForbidden(_proposalId, sender);
+        if (!_canApprove(_proposalId, msg.sender)) {
+            revert ApprovalCastForbidden(_proposalId, msg.sender);
         }
 
         Proposal storage proposal_ = proposals[_proposalId];
@@ -284,9 +255,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             proposal_.approvals += 1;
         }
 
-        proposal_.approvers[sender] = true;
+        proposal_.approvers[msg.sender] = true;
 
-        emit Approved({proposalId: _proposalId, editor: sender});
+        emit Approved({proposalId: _proposalId, editor: msg.sender});
 
         if (_canExecute(_proposalId)) {
             _execute(_proposalId);
@@ -295,9 +266,8 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
     /// @notice Rejects the given proposal immediately.
     function reject(uint256 _proposalId) public {
-        address sender = _msgSender();
-        if (!_canApprove(_proposalId, sender)) {
-            revert ApprovalCastForbidden(_proposalId, sender);
+        if (!_canApprove(_proposalId, msg.sender)) {
+            revert ApprovalCastForbidden(_proposalId, msg.sender);
         }
 
         Proposal storage proposal_ = proposals[_proposalId];
@@ -305,7 +275,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         // Prevent any further approvals, expire it
         proposal_.parameters.endDate = block.timestamp.toUint64();
 
-        emit Rejected({proposalId: _proposalId, editor: sender});
+        emit Rejected({proposalId: _proposalId, editor: msg.sender});
     }
 
     /// @inheritdoc IMultisig

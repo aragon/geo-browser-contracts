@@ -20,12 +20,15 @@ import {getInterfaceID} from '../../utils/interfaces';
 import {deployTestDao} from '../helpers/test-dao';
 import {
   ADDRESS_ONE,
+  ADDRESS_THREE,
   ADDRESS_TWO,
   ADDRESS_ZERO,
   CONTENT_PERMISSION_ID,
+  MEMBER_PERMISSION_ID,
   EDITOR_PERMISSION_ID,
   EXECUTE_PERMISSION_ID,
   SUBSPACE_PERMISSION_ID,
+  ROOT_PERMISSION_ID,
 } from './common';
 import {
   DAO__factory,
@@ -34,6 +37,7 @@ import {
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
+import {BigNumber} from 'ethers';
 import {ethers} from 'hardhat';
 
 export type InitData = {contentUri: string};
@@ -41,8 +45,16 @@ export const defaultInitData: InitData = {
   contentUri: 'ipfs://',
 };
 export const psvpInterface = new ethers.utils.Interface([
-  'function initialize(address)',
+  'function initialize(address, address)',
   'function executeProposal(bytes,tuple(address,uint256,bytes)[],uint256)',
+  'function submitEdits(string, address)',
+  'function submitAcceptSubspace(address _subspaceDao, address _spacePlugin)',
+  'function submitRemoveSubspace(address _subspaceDao, address _spacePlugin)',
+  'function submitNewEditor(address _newEditor)',
+  'function submitNewMember(address _newMember)',
+  'function submitRemoveEditor(address _editor)',
+  'function submitRemoveMember(address _member)',
+  'function leaveSpace()',
 ]);
 
 describe('Personal Space Admin Plugin', function () {
@@ -113,6 +125,12 @@ describe('Personal Space Admin Plugin', function () {
       alice.address,
       EDITOR_PERMISSION_ID
     );
+    // Bob is a member
+    await dao.grant(
+      personalSpaceVotingPlugin.address,
+      bob.address,
+      MEMBER_PERMISSION_ID
+    );
     // The plugin can execute on the DAO
     await dao.grant(
       dao.address,
@@ -122,10 +140,12 @@ describe('Personal Space Admin Plugin', function () {
     // The DAO can use the Space
     await dao.grant(spacePlugin.address, dao.address, CONTENT_PERMISSION_ID);
     await dao.grant(spacePlugin.address, dao.address, SUBSPACE_PERMISSION_ID);
+    // The DAO is root on itself
+    await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
   });
 
   function initializePSVPlugin() {
-    return personalSpaceVotingPlugin.initialize(dao.address);
+    return personalSpaceVotingPlugin.initialize(dao.address, alice.address);
   }
 
   describe('initialize: ', async () => {
@@ -154,6 +174,26 @@ describe('Personal Space Admin Plugin', function () {
     });
   });
 
+  it('isMember() returns true when appropriate', async () => {
+    expect(await personalSpaceVotingPlugin.isMember(ADDRESS_ZERO)).to.eq(false);
+    expect(await personalSpaceVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
+    expect(await personalSpaceVotingPlugin.isMember(ADDRESS_TWO)).to.eq(false);
+
+    expect(await personalSpaceVotingPlugin.isMember(alice.address)).to.eq(true);
+    expect(await personalSpaceVotingPlugin.isMember(bob.address)).to.eq(true);
+    expect(await personalSpaceVotingPlugin.isMember(carol.address)).to.eq(
+      false
+    );
+
+    await dao.grant(
+      personalSpaceVotingPlugin.address,
+      carol.address,
+      MEMBER_PERMISSION_ID
+    );
+
+    expect(await personalSpaceVotingPlugin.isMember(carol.address)).to.eq(true);
+  });
+
   it('isEditor() returns true when appropriate', async () => {
     expect(await personalSpaceVotingPlugin.isEditor(ADDRESS_ZERO)).to.eq(false);
     expect(await personalSpaceVotingPlugin.isEditor(ADDRESS_ONE)).to.eq(false);
@@ -175,7 +215,7 @@ describe('Personal Space Admin Plugin', function () {
   });
 
   describe('Geo Browser customizations', () => {
-    it('Only editors can create and execute proposals', async () => {
+    it('Only editors can create and execute arbitrary proposals', async () => {
       await expect(
         personalSpaceVotingPlugin
           .connect(bob)
@@ -215,21 +255,172 @@ describe('Personal Space Admin Plugin', function () {
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
     });
 
+    it('Only members can call content proposal wrappers', async () => {
+      await expect(
+        personalSpaceVotingPlugin
+          .connect(bob)
+          .submitEdits('ipfs://', spacePlugin.address)
+      ).to.not.be.reverted;
+      await expect(
+        personalSpaceVotingPlugin
+          .connect(bob)
+          .submitAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+      ).to.not.be.reverted;
+      await expect(
+        personalSpaceVotingPlugin
+          .connect(bob)
+          .submitRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
+      ).to.not.be.reverted;
+      expect(await personalSpaceVotingPlugin.proposalCount()).to.equal(
+        BigNumber.from(3)
+      );
+
+      // Non members
+      await expect(
+        personalSpaceVotingPlugin
+          .connect(carol)
+          .submitEdits('ipfs://', spacePlugin.address)
+      )
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          'DaoUnauthorized'
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          carol.address,
+          MEMBER_PERMISSION_ID
+        );
+      await expect(
+        personalSpaceVotingPlugin
+          .connect(carol)
+          .submitAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+      )
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          'DaoUnauthorized'
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          carol.address,
+          MEMBER_PERMISSION_ID
+        );
+      await expect(
+        personalSpaceVotingPlugin
+          .connect(carol)
+          .submitRemoveSubspace(ADDRESS_TWO, spacePlugin.address)
+      )
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          'DaoUnauthorized'
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          carol.address,
+          MEMBER_PERMISSION_ID
+        );
+    });
+
+    it('Only editors can call permission proposal wrappers', async () => {
+      await expect(personalSpaceVotingPlugin.submitNewMember(ADDRESS_ONE)).to
+        .not.be.reverted;
+      await expect(personalSpaceVotingPlugin.submitNewEditor(ADDRESS_TWO)).to
+        .not.be.reverted;
+      await expect(personalSpaceVotingPlugin.submitRemoveMember(ADDRESS_ONE)).to
+        .not.be.reverted;
+      await expect(personalSpaceVotingPlugin.submitRemoveEditor(ADDRESS_TWO)).to
+        .not.be.reverted;
+
+      expect(await personalSpaceVotingPlugin.proposalCount()).to.equal(
+        BigNumber.from(4)
+      );
+
+      // Non editors
+      await expect(
+        personalSpaceVotingPlugin.connect(carol).submitNewMember(ADDRESS_ONE)
+      )
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          'DaoUnauthorized'
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          carol.address,
+          EDITOR_PERMISSION_ID
+        );
+
+      await expect(
+        personalSpaceVotingPlugin.connect(carol).submitNewEditor(ADDRESS_TWO)
+      )
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          'DaoUnauthorized'
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          carol.address,
+          EDITOR_PERMISSION_ID
+        );
+
+      await expect(
+        personalSpaceVotingPlugin.connect(carol).submitRemoveMember(ADDRESS_ONE)
+      )
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          'DaoUnauthorized'
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          carol.address,
+          EDITOR_PERMISSION_ID
+        );
+
+      await expect(
+        personalSpaceVotingPlugin.connect(carol).submitRemoveEditor(ADDRESS_TWO)
+      )
+        .to.be.revertedWithCustomError(
+          personalSpaceVotingPlugin,
+          'DaoUnauthorized'
+        )
+        .withArgs(
+          dao.address,
+          personalSpaceVotingPlugin.address,
+          carol.address,
+          EDITOR_PERMISSION_ID
+        );
+    });
+
     it('Proposal execution is immediate', async () => {
+      const data = SpacePlugin__factory.createInterface().encodeFunctionData(
+        'publishEdits',
+        ['0x']
+      );
+      const actions = [
+        {
+          to: spacePlugin.address,
+          value: 0,
+          data,
+        },
+      ];
       await expect(
         personalSpaceVotingPlugin
           .connect(alice)
-          .executeProposal('0x', dummyActions, 0)
+          .executeProposal('0x', actions, 0)
       )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(0);
+        .to.emit(spacePlugin, 'EditsPublished')
+        .withArgs(dao.address, '0x');
     });
 
     it('Executed content proposals emit an event', async () => {
       // Encode an action to change some content
       const data = SpacePlugin__factory.createInterface().encodeFunctionData(
-        'processGeoProposal',
-        [1, 2, '0x']
+        'publishEdits',
+        ['0x']
       );
       const actions = [
         {
@@ -245,21 +436,15 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
 
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(alice)
-          .executeProposal('0x', actions, 0)
-      )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(1);
+      // ProposalExecuted is redundant and not emitted
 
       await expect(
         personalSpaceVotingPlugin
           .connect(alice)
           .executeProposal('0x', actions, 0)
       )
-        .to.emit(spacePlugin, 'GeoProposalProcessed')
-        .withArgs(1, 2, '0x');
+        .to.emit(spacePlugin, 'EditsPublished')
+        .withArgs(dao.address, '0x');
     });
 
     it('Approved subspaces emit an event', async () => {
@@ -282,13 +467,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
 
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(alice)
-          .executeProposal('0x', actions, 0)
-      )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(1);
+      // ProposalExecuted is redundant and not emitted
 
       await expect(
         personalSpaceVotingPlugin
@@ -296,7 +475,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actions, 0)
       )
         .to.emit(spacePlugin, 'SubspaceAccepted')
-        .withArgs(ADDRESS_TWO);
+        .withArgs(dao.address, ADDRESS_TWO);
     });
 
     it('Removed subspaces emit an event', async () => {
@@ -333,13 +512,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actionsRemove, 0)
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
 
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(alice)
-          .executeProposal('0x', actionsRemove, 0)
-      )
-        .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-        .withArgs(2);
+      // ProposalExecuted is redundant and not emitted
 
       await expect(
         personalSpaceVotingPlugin
@@ -347,7 +520,7 @@ describe('Personal Space Admin Plugin', function () {
           .executeProposal('0x', actionsRemove, 0)
       )
         .to.emit(spacePlugin, 'SubspaceRemoved')
-        .withArgs(ADDRESS_TWO);
+        .withArgs(dao.address, ADDRESS_TWO);
     });
   });
 
@@ -381,14 +554,6 @@ describe('Personal Space Admin Plugin', function () {
         expect(
           await personalSpaceVotingPlugin.supportsInterface(
             getInterfaceID(iface)
-          )
-        ).to.be.true;
-      });
-
-      it('supports the `Admin` interface', async () => {
-        expect(
-          await personalSpaceVotingPlugin.supportsInterface(
-            getInterfaceID(psvpInterface)
           )
         ).to.be.true;
       });
@@ -470,20 +635,6 @@ describe('Personal Space Admin Plugin', function () {
         expect(event!.args.actions[0].value).to.equal(dummyActions[0].value);
         expect(event!.args.actions[0].data).to.equal(dummyActions[0].data);
         expect(event!.args.allowFailureMap).to.equal(allowFailureMap);
-      });
-
-      it('correctly emits the `ProposalExecuted` event', async () => {
-        const currentExpectedProposalId = 0;
-
-        await expect(
-          personalSpaceVotingPlugin.executeProposal(
-            dummyMetadata,
-            dummyActions,
-            0
-          )
-        )
-          .to.emit(personalSpaceVotingPlugin, 'ProposalExecuted')
-          .withArgs(currentExpectedProposalId);
       });
 
       it('correctly increments the proposal ID', async () => {

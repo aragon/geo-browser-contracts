@@ -1,4 +1,3 @@
-import metadata from '../../src/personal/personal-space-admin-build-metadata.json';
 import {
   PersonalSpaceAdminPlugin__factory,
   PersonalSpaceAdminPluginSetup,
@@ -6,12 +5,11 @@ import {
 } from '../../typechain';
 import {getInterfaceID} from '../../utils/interfaces';
 import {deployTestDao} from '../helpers/test-dao';
-import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
+import {Operation} from '../helpers/types';
 import {psvpInterface} from './personal-space-admin-plugin';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
 
-const abiCoder = ethers.utils.defaultAbiCoder;
 const AddressZero = ethers.constants.AddressZero;
 const EMPTY_DATA = '0x';
 
@@ -25,25 +23,22 @@ describe('Personal Space Admin Plugin Setup', function () {
   let adminSetup: PersonalSpaceAdminPluginSetup;
   let implementationAddress: string;
   let targetDao: any;
-  let minimum_data: any;
+  let prepareInstallationData: string;
 
   before(async () => {
     signers = await ethers.getSigners();
     ownerAddress = await signers[0].getAddress();
     targetDao = await deployTestDao(signers[0]);
 
-    minimum_data = abiCoder.encode(
-      getNamedTypesFromMetadata(
-        metadata.pluginSetup.prepareInstallation.inputs
-      ),
-      [ownerAddress]
-    );
-
     const PersonalSpaceAdminPluginSetup =
       new PersonalSpaceAdminPluginSetup__factory(signers[0]);
     adminSetup = await PersonalSpaceAdminPluginSetup.deploy();
 
     implementationAddress = await adminSetup.implementation();
+
+    prepareInstallationData = await adminSetup.encodeInstallationParams(
+      ownerAddress
+    );
   });
 
   it('does not support the empty interface', async () => {
@@ -70,21 +65,24 @@ describe('Personal Space Admin Plugin Setup', function () {
       await expect(
         adminSetup.prepareInstallation(
           targetDao.address,
-          minimum_data.substring(0, minimum_data.length - 2)
+          prepareInstallationData.substring(
+            0,
+            prepareInstallationData.length - 2
+          )
         )
       ).to.be.reverted;
 
       await expect(
-        adminSetup.prepareInstallation(targetDao.address, minimum_data)
+        adminSetup.prepareInstallation(
+          targetDao.address,
+          prepareInstallationData
+        )
       ).not.to.be.reverted;
     });
 
     it('reverts if encoded address in `_data` is zero', async () => {
-      const dataWithAddressZero = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          metadata.pluginSetup.prepareInstallation.inputs
-        ),
-        [AddressZero]
+      const dataWithAddressZero = await adminSetup.encodeInstallationParams(
+        AddressZero
       );
 
       await expect(
@@ -108,7 +106,7 @@ describe('Personal Space Admin Plugin Setup', function () {
         preparedSetupData: {helpers, permissions},
       } = await adminSetup.callStatic.prepareInstallation(
         targetDao.address,
-        minimum_data
+        prepareInstallationData
       );
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
@@ -143,7 +141,7 @@ describe('Personal Space Admin Plugin Setup', function () {
         nonce,
       });
 
-      await adminSetup.prepareInstallation(daoAddress, minimum_data);
+      await adminSetup.prepareInstallation(daoAddress, prepareInstallationData);
 
       const factory = new PersonalSpaceAdminPlugin__factory(signers[0]);
       const adminAddressContract = factory.attach(anticipatedPluginAddress);

@@ -93,7 +93,7 @@ There's an optional feature, where a predefined address can execute the actions 
 ### Emitting content and managing subspaces
 
 1. When a proposal regarding the space is passed, the `MainVotingPlugin` will call `execute()` on the DAO
-2. The actions from the proposal will target the `processGeoProposal()`, `acceptSubspace()` or `removeSubspace()` functions on the `SpacePlugin`.
+2. The actions from the proposal will target the `publishEdits()`, `acceptSubspace()` or `removeSubspace()` functions on the `SpacePlugin`.
 3. The `SpacePlugin` will be called by the DAO and emit the corresponding events
 4. An external indexer will fetch all these events and update the current state of this specific space
 
@@ -254,13 +254,13 @@ This plugin is upgradeable.
 #### Methods
 
 ```solidity
-function initialize(IDAO _dao, string _firstBlockContentUri, address predecessorSpace);
+function initialize(IDAO _dao, string _firstContentUri, address predecessorSpace);
 
-function processGeoProposal(uint32 _blockIndex, uint32 _itemIndex, string _contentUri);
+function publishEdits(string _contentUri);
 
-function acceptSubspace(address _dao);
+function acceptSubspace(address _subspaceDao);
 
-function removeSubspace(address _dao);
+function removeSubspace(address _subspaceDao);
 ```
 
 Inherited:
@@ -282,15 +282,15 @@ function implementation() returns (address);
 #### Events
 
 ```solidity
-event GeoProposalProcessed(uint32 blockIndex, uint32 itemIndex, string contentUri);
-event SuccessorSpaceCreated(address predecessorSpace);
-event SubspaceAccepted(address dao);
-event SubspaceRemoved(address dao);
+event EditsPublished(address dao, string contentUri);
+event SuccessorSpaceCreated(address dao, address predecessorSpaceDao);
+event SubspaceAccepted(address dao, address subspaceDao);
+event SubspaceRemoved(address dao, address subspaceDao);
 ```
 
 #### Permissions
 
-- The DAO can call `processGeoProposal()` on the plugin
+- The DAO can call `publishEdits()` on the plugin
 - The DAO can accept/remove a subspace on the plugin
 - The DAO can upgrade the plugin
 - See [Plugin upgrader](#plugin-upgrader) (optional)

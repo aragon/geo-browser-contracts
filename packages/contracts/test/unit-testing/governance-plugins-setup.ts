@@ -1,4 +1,3 @@
-import buildMetadata from '../../src/governance/governance-build-metadata.json';
 import {
   DAO,
   GovernancePluginsSetup,
@@ -6,9 +5,8 @@ import {
   MainVotingPlugin__factory,
 } from '../../typechain';
 import {deployTestDao} from '../helpers/test-dao';
-import {getNamedTypesFromMetadata, Operation} from '../helpers/types';
+import {Operation} from '../helpers/types';
 import {
-  abiCoder,
   ADDRESS_ZERO,
   EXECUTE_PERMISSION_ID,
   NO_CONDITION,
@@ -47,22 +45,15 @@ describe('Governance Plugins Setup', function () {
     it('returns the plugin, helpers, and permissions (no pluginUpgrader)', async () => {
       const pluginUpgrader = ADDRESS_ZERO;
 
-      // Params: (MajorityVotingBase.VotingSettings, address[], uint64, address)
-      const initData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs
-        ),
-        [
-          {
-            votingMode: VotingMode.EarlyExecution,
-            supportThreshold: pctToRatio(25),
-            minParticipation: pctToRatio(50),
-            duration: 60 * 60 * 24 * 5,
-          },
-          [alice.address],
-          60 * 60 * 24,
-          pluginUpgrader,
-        ]
+      const initData = await governancePluginsSetup.encodeInstallationParams(
+        {
+          votingMode: VotingMode.EarlyExecution,
+          supportThreshold: pctToRatio(25),
+          duration: 60 * 60 * 24 * 5,
+        },
+        [alice.address],
+        60 * 60 * 24,
+        pluginUpgrader
       );
       const nonce = await ethers.provider.getTransactionCount(
         governancePluginsSetup.address
@@ -148,21 +139,15 @@ describe('Governance Plugins Setup', function () {
       const pluginUpgrader = bob.address;
 
       // Params: (MajorityVotingBase.VotingSettings, address, address)
-      const initData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareInstallation.inputs
-        ),
-        [
-          {
-            votingMode: VotingMode.EarlyExecution,
-            supportThreshold: pctToRatio(25),
-            minParticipation: pctToRatio(50),
-            duration: 60 * 60 * 24 * 5,
-          },
-          [alice.address],
-          60 * 60 * 24,
-          pluginUpgrader,
-        ]
+      const initData = await governancePluginsSetup.encodeInstallationParams(
+        {
+          votingMode: VotingMode.EarlyExecution,
+          supportThreshold: pctToRatio(25),
+          duration: 60 * 60 * 24 * 5,
+        },
+        [alice.address],
+        60 * 60 * 24,
+        pluginUpgrader
       );
       const nonce = await ethers.provider.getTransactionCount(
         governancePluginsSetup.address
@@ -267,12 +252,8 @@ describe('Governance Plugins Setup', function () {
       ).deploy();
 
       const pluginUpgrader = ADDRESS_ZERO;
-      const uninstallData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs
-        ),
-        [pluginUpgrader]
-      );
+      const uninstallData =
+        await governancePluginsSetup.encodeUninstallationParams(pluginUpgrader);
       const permissions =
         await governancePluginsSetup.callStatic.prepareUninstallation(
           dao.address,
@@ -332,12 +313,8 @@ describe('Governance Plugins Setup', function () {
       ).deploy();
 
       const pluginUpgrader = bob.address;
-      const uninstallData = abiCoder.encode(
-        getNamedTypesFromMetadata(
-          buildMetadata.pluginSetup.prepareUninstallation.inputs
-        ),
-        [pluginUpgrader]
-      );
+      const uninstallData =
+        await governancePluginsSetup.encodeUninstallationParams(pluginUpgrader);
       const permissions =
         await governancePluginsSetup.callStatic.prepareUninstallation(
           dao.address,

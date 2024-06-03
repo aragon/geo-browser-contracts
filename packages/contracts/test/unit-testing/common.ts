@@ -2,7 +2,6 @@ import {BigNumber} from '@ethersproject/bignumber';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
 
-export const abiCoder = ethers.utils.defaultAbiCoder;
 export const EMPTY_DATA = '0x';
 export const ZERO_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -11,6 +10,7 @@ export const ONE_BYTES32 =
 
 export const DEPLOYER_PERMISSION_ID = ethers.utils.id('DEPLOYER_PERMISSION');
 export const EDITOR_PERMISSION_ID = ethers.utils.id('EDITOR_PERMISSION');
+export const MEMBER_PERMISSION_ID = ethers.utils.id('MEMBER_PERMISSION');
 
 export const CONTENT_PERMISSION_ID = ethers.utils.id('CONTENT_PERMISSION');
 export const SUBSPACE_PERMISSION_ID = ethers.utils.id('SUBSPACE_PERMISSION');
@@ -87,13 +87,11 @@ export enum VotingMode {
 export type VotingSettings = {
   votingMode: number;
   supportThreshold: BigNumber;
-  minParticipation: BigNumber;
   duration: number;
 };
 
 export const defaultMainVotingSettings: VotingSettings = {
   duration: 60 * 60, // 1 second
-  minParticipation: pctToRatio(30), // 30%
   supportThreshold: pctToRatio(50), // 50% + 1
   votingMode: VotingMode.EarlyExecution,
 };

@@ -27,13 +27,13 @@ dotenvConfig({path: resolve(__dirname, dotenvConfigPath)});
 
 if (!process.env.PRIVATE_KEY) {
   throw new Error('PRIVATE_KEY in .env not set');
-} else if (!process.env.INFURA_API_KEY) {
-  throw new Error('INFURA_API_KEY in .env not set');
+} else if (!process.env.ALCHEMY_API_KEY) {
+  throw new Error('ALCHEMY_API_KEY in .env not set');
 }
 
 const {
   NETWORK_NAME,
-  INFURA_API_KEY,
+  ALCHEMY_API_KEY,
   MANAGING_DAO_ADDRESS,
   PLUGIN_SETUP_PROCESSOR_ADDRESS,
   GOVERNANCE_PLUGIN_REPO_ADDRESS,
@@ -52,16 +52,16 @@ const MGMT_DAO_INITIAL_EDITORS = process.env.MGMT_DAO_INITIAL_EDITORS
   ? process.env.MGMT_DAO_INITIAL_EDITORS.split(',')
   : ([] as string[]);
 
-const infuraProvider = new providers.InfuraProvider(
+const infuraProvider = new providers.AlchemyProvider(
   NETWORK_NAME,
-  INFURA_API_KEY
+  ALCHEMY_API_KEY
 );
 const deployer = new Wallet(process.env.PRIVATE_KEY!).connect(infuraProvider);
 
 async function main() {
   if (
     !NETWORK_NAME ||
-    !INFURA_API_KEY ||
+    !ALCHEMY_API_KEY ||
     !MANAGING_DAO_ADDRESS ||
     !PLUGIN_SETUP_PROCESSOR_ADDRESS ||
     !GOVERNANCE_PLUGIN_REPO_ADDRESS

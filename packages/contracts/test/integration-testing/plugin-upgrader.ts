@@ -33,7 +33,6 @@ import {
   UPGRADE_PLUGIN_PERMISSION_ID,
   ZERO_BYTES32,
 } from '../unit-testing/common';
-// import { getNamedTypesFromMetadata } from "../helpers/types";
 import {
   DAO,
   PluginRepo__factory,
@@ -51,7 +50,6 @@ const release = 1;
 const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   duration: 60 * 60 * 24,
-  minParticipation: 1,
   supportThreshold: 1,
   votingMode: 0,
 };
