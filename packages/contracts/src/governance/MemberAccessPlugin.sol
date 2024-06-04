@@ -8,12 +8,14 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {PluginUUPSUpgradeable} from "@aragon/osx/core/plugin/PluginUUPSUpgradeable.sol";
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
+import {Addresslist} from "./base/Addresslist.sol";
 import {IMultisig} from "./base/IMultisig.sol";
+import {IEditors} from "../base/IEditors.sol";
 import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
 
 bytes4 constant MEMBER_ACCESS_INTERFACE_ID = MemberAccessPlugin.initialize.selector ^
     MemberAccessPlugin.updateMultisigSettings.selector ^
-    MemberAccessPlugin.proposeNewMember.selector ^
+    MemberAccessPlugin.proposeAddMember.selector ^
     MemberAccessPlugin.getProposal.selector;
 
 /// @title Member access plugin (Multisig) - Release 1, Build 1
@@ -25,6 +27,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @notice The ID of the permission required to call the `addAddresses` functions.
     bytes32 public constant UPDATE_MULTISIG_SETTINGS_PERMISSION_ID =
         keccak256("UPDATE_MULTISIG_SETTINGS_PERMISSION");
+
+    /// @notice The ID of the permission required to create new membership proposals.
+    bytes32 public constant PROPOSER_PERMISSION_ID = keccak256("PROPOSER_PERMISSION");
 
     /// @notice The minimum total amount of approvals required for proposals created by a non-editor
     uint16 internal constant MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR = uint16(1);
@@ -48,6 +53,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         ProposalParameters parameters;
         mapping(address => bool) approvers;
         IDAO.Action[] actions;
+        MainVotingPlugin mainVotingPlugin;
         uint256 failsafeActionMap;
     }
 
@@ -68,7 +74,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @param mainVotingPlugin The address of the main voting plugin. Used to apply permissions for it.
     struct MultisigSettings {
         uint64 proposalDuration;
-        MainVotingPlugin mainVotingPlugin;
     }
 
     /// @notice A mapping between proposal IDs and proposal information.
@@ -81,9 +86,8 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @dev This variable prevents a proposal from being created in the same block in which the multisig settings change.
     uint64 public lastMultisigSettingsChange;
 
-    /// @notice Thrown when a sender is not allowed to create a proposal.
-    /// @param sender The sender address.
-    error ProposalCreationForbidden(address sender);
+    /// @notice Thrown when creating a proposal at the same block that the settings were changed.
+    error ProposalCreationForbiddenOnSameBlock();
 
     /// @notice Thrown if an approver is not allowed to cast an approve. This can be because the proposal
     /// - is not open,
@@ -97,14 +101,8 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @param proposalId The ID of the proposal.
     error ProposalExecutionForbidden(uint256 proposalId);
 
-    /// @notice Thrown when attempting to use addAddresses.
-    error AddresslistDisabled();
-
-    /// @notice Thrown when attempting to use an invalid contract.
-    error InvalidContract();
-
-    /// @notice Thrown when attempting request membership for a current member.
-    error AlreadyMember(address _member);
+    /// @notice Thrown when called from an incompatible contract.
+    error InvalidCallerInterface();
 
     /// @notice Emitted when a proposal is approved by an editor.
     /// @param proposalId The ID of the proposal.
@@ -118,8 +116,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
     /// @notice Emitted when the plugin settings are set.
     /// @param proposalDuration The amount of time before a non-approved proposal expires.
-    /// @param mainVotingPlugin The address of the main voting plugin for the space. Used to apply permissions for it.
-    event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
+    event MultisigSettingsUpdated(uint64 proposalDuration);
 
     /// @notice Initializes Release 1, Build 1.
     /// @dev This method is required to support [ERC-1822](https://eips.ethereum.org/EIPS/eip-1822).
@@ -154,14 +151,35 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _updateMultisigSettings(_multisigSettings);
     }
 
-    /// @notice Creates a new multisig proposal wrapped by proposeNewMember.
+    /// @notice Creates a proposal to add a new member.
     /// @param _metadata The metadata of the proposal.
-    /// @param _actions A list of actions wrapped by proposeNewMember.
+    /// @param _proposedMember The address of the member who may eveutnally be added.
+    /// @param _proposer The address to use as the proposal creator.
     /// @return proposalId The ID of the proposal.
-    function createProposal(
+    function proposeAddMember(
         bytes calldata _metadata,
-        IDAO.Action[] memory _actions
-    ) internal returns (uint256 proposalId) {
+        address _proposedMember,
+        address _proposer
+    ) external auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
+        // Check that the caller supports the `addMember` function
+        if (
+            !MainVotingPlugin(msg.sender).supportsInterface(MAIN_SPACE_VOTING_INTERFACE_ID) ||
+            !MainVotingPlugin(msg.sender).supportsInterface(type(IEditors).interfaceId) ||
+            !MainVotingPlugin(msg.sender).supportsInterface(type(Addresslist).interfaceId)
+        ) {
+            revert InvalidCallerInterface();
+        }
+
+        // Build the list of actions
+        IDAO.Action[] memory _actions = new IDAO.Action[](1);
+
+        _actions[0] = IDAO.Action({
+            to: address(msg.sender), // We are called by the MainVotingPlugin
+            value: 0,
+            data: abi.encodeCall(MainVotingPlugin.addMember, (_proposedMember))
+        });
+
+        // Create proposal
         uint64 snapshotBlock;
         unchecked {
             snapshotBlock = block.number.toUint64() - 1; // The snapshot block must be mined already to protect the transaction against backrunning transactions causing census changes.
@@ -170,7 +188,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         // Revert if the settings have been changed in the same block as this proposal should be created in.
         // This prevents a malicious party from voting with previous addresses and the new settings.
         if (lastMultisigSettingsChange > snapshotBlock) {
-            revert ProposalCreationForbidden(msg.sender);
+            revert ProposalCreationForbiddenOnSameBlock();
         }
 
         uint64 _startDate = block.timestamp.toUint64();
@@ -180,7 +198,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
         emit ProposalCreated({
             proposalId: proposalId,
-            creator: msg.sender,
+            creator: _proposer,
             metadata: _metadata,
             startDate: _startDate,
             endDate: _endDate,
@@ -195,6 +213,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
 
+        proposal_.mainVotingPlugin = MainVotingPlugin(msg.sender);
         for (uint256 i; i < _actions.length; ) {
             proposal_.actions.push(_actions[i]);
             unchecked {
@@ -202,8 +221,12 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             }
         }
 
-        if (isEditor(msg.sender)) {
-            if (multisigSettings.mainVotingPlugin.addresslistLength() < 2) {
+        // Another editor needs to approve. Set the minApprovals accordingly
+        /// @dev The _proposer parameter is technically trusted.
+        /// @dev However, this function is protected by PROPOSER_PERMISSION_ID and only the MainVoting plugin is granted this permission.
+        /// @dev See GovernancePluginsSetup.sol
+        if (MainVotingPlugin(msg.sender).isEditor(_proposer)) {
+            if (MainVotingPlugin(msg.sender).addresslistLength() < 2) {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR;
             } else {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_EDITOR_OF_MANY;
@@ -214,30 +237,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         } else {
             proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR;
         }
-    }
-
-    /// @notice Creates a proposal to add a new member.
-    /// @param _metadata The metadata of the proposal.
-    /// @param _proposedMember The address of the member who may eveutnally be added.
-    /// @return proposalId The ID of the proposal.
-    function proposeNewMember(
-        bytes calldata _metadata,
-        address _proposedMember
-    ) external returns (uint256 proposalId) {
-        if (isMember(_proposedMember)) {
-            revert AlreadyMember(_proposedMember);
-        }
-
-        // Build the list of actions
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-
-        _actions[0] = IDAO.Action({
-            to: address(multisigSettings.mainVotingPlugin),
-            value: 0,
-            data: abi.encodeCall(MainVotingPlugin.addMember, (_proposedMember))
-        });
-
-        return createProposal(_metadata, _actions);
     }
 
     /// @inheritdoc IMultisig
@@ -331,18 +330,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         _execute(_proposalId);
     }
 
-    /// @notice Returns whether the given address holds membership permission on the main voting plugin
-    function isMember(address _account) public view returns (bool) {
-        // Does the address hold the member or editor permission on the main voting plugin?
-        return multisigSettings.mainVotingPlugin.isMember(_account);
-    }
-
-    /// @notice Returns whether the given address holds editor permission on the main voting plugin
-    function isEditor(address _account) public view returns (bool) {
-        // Does the address hold the permission on the main voting plugin?
-        return multisigSettings.mainVotingPlugin.isEditor(_account);
-    }
-
     /// @notice Internal function to execute a vote. It assumes the queried proposal exists.
     /// @param _proposalId The ID of the proposal.
     function _execute(uint256 _proposalId) internal {
@@ -368,7 +355,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         if (!_isProposalOpen(proposal_)) {
             // The proposal was executed already
             return false;
-        } else if (!isEditor(_account)) {
+        } else if (!proposal_.mainVotingPlugin.isEditor(_account)) {
             // The approver has no voting power.
             return false;
         } else if (proposal_.approvers[_account]) {
@@ -407,21 +394,10 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @notice Internal function to update the plugin settings.
     /// @param _multisigSettings The new settings.
     function _updateMultisigSettings(MultisigSettings calldata _multisigSettings) internal {
-        if (
-            !MainVotingPlugin(_multisigSettings.mainVotingPlugin).supportsInterface(
-                MAIN_SPACE_VOTING_INTERFACE_ID
-            )
-        ) {
-            revert InvalidContract();
-        }
-
         multisigSettings = _multisigSettings;
         lastMultisigSettingsChange = block.number.toUint64();
 
-        emit MultisigSettingsUpdated({
-            proposalDuration: _multisigSettings.proposalDuration,
-            mainVotingPlugin: address(_multisigSettings.mainVotingPlugin)
-        });
+        emit MultisigSettingsUpdated({proposalDuration: _multisigSettings.proposalDuration});
     }
 
     /// @dev This empty reserved space is put in place to allow future versions to add new
