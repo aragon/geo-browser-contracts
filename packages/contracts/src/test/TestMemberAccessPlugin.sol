@@ -15,4 +15,12 @@ contract TestMemberAccessPlugin is MemberAccessPlugin {
 
         _updateMultisigSettings(_multisigSettings);
     }
+
+    function devProposeAddMember(
+        bytes calldata _metadata,
+        address _proposedMember,
+        address _proposer
+    ) public returns (uint256 proposalId) {
+        return proposeAddMember(_metadata, _proposedMember, _proposer);
+    }
 }

@@ -160,7 +160,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         bytes calldata _metadata,
         address _proposedMember,
         address _proposer
-    ) external auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
+    ) public auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that the caller supports the `addMember` function
         if (
             !MainVotingPlugin(msg.sender).supportsInterface(MAIN_SPACE_VOTING_INTERFACE_ID) ||

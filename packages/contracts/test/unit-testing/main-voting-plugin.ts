@@ -43,6 +43,7 @@ import {
   VotingSettings,
   ZERO_BYTES32,
   SUBSPACE_PERMISSION_ID,
+  PROPOSER_PERMISSION_ID,
 } from './common';
 import {defaultMainVotingSettings} from './common';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
@@ -137,6 +138,12 @@ describe('Main Voting Plugin', function () {
     await dao.grant(spacePlugin.address, dao.address, SUBSPACE_PERMISSION_ID);
     // The DAO is ROOT on itself
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
+    // The plugin can propose members on the member access helper
+    await dao.grant(
+      memberAccessPlugin.address,
+      mainVotingPlugin.address,
+      PROPOSER_PERMISSION_ID
+    );
     // Alice can make the DAO execute arbitrary stuff (test)
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
 
