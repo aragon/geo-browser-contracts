@@ -10,7 +10,7 @@ import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
-import {MemberAccessPlugin} from "./MemberAccessPlugin.sol";
+import {MemberAccessPlugin, MEMBER_ACCESS_INTERFACE_ID} from "./MemberAccessPlugin.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -74,6 +74,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Raised when a content proposal is called with empty data
     error EmptyContent();
 
+    /// @notice Thrown when the given contract doesn't support a required interface.
+    error InvalidInterface(address);
+
     /// @notice Raised when a non-editor attempts to call a restricted function.
     error Unauthorized();
 
@@ -111,6 +114,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         _addAddresses(_initialEditors);
         emit EditorsAdded(_initialEditors);
 
+        if (!_memberAccessPlugin.supportsInterface(MEMBER_ACCESS_INTERFACE_ID)) {
+            revert InvalidInterface(address(_memberAccessPlugin));
+        }
         memberAccessPlugin = _memberAccessPlugin;
     }
 

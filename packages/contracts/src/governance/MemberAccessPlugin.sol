@@ -102,7 +102,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     error ProposalExecutionForbidden(uint256 proposalId);
 
     /// @notice Thrown when called from an incompatible contract.
-    error InvalidCallerInterface();
+    error InvalidInterface();
 
     /// @notice Emitted when a proposal is approved by an editor.
     /// @param proposalId The ID of the proposal.
@@ -167,7 +167,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             !MainVotingPlugin(msg.sender).supportsInterface(type(IEditors).interfaceId) ||
             !MainVotingPlugin(msg.sender).supportsInterface(type(Addresslist).interfaceId)
         ) {
-            revert InvalidCallerInterface();
+            revert InvalidInterface();
         }
 
         // Build the list of actions
@@ -233,17 +233,22 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             }
 
             // If the creator is an editor, we assume that the editor approves
-            approve(proposalId);
+            _approve(proposalId, _proposer);
         } else {
             proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR;
         }
     }
 
     /// @inheritdoc IMultisig
-    /// @dev The second parameter is left empty to keep compatibility with the existing multisig interface
+    /// @param _proposalId The Id of the proposal to approve.
     function approve(uint256 _proposalId) public {
-        if (!_canApprove(_proposalId, msg.sender)) {
-            revert ApprovalCastForbidden(_proposalId, msg.sender);
+        _approve(_proposalId, msg.sender);
+    }
+
+    /// @notice Internal implementation, allowing proposeAddMember() to specify the proposer.
+    function _approve(uint256 _proposalId, address _approver) internal {
+        if (!_canApprove(_proposalId, _approver)) {
+            revert ApprovalCastForbidden(_proposalId, _approver);
         }
 
         Proposal storage proposal_ = proposals[_proposalId];
@@ -254,9 +259,9 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             proposal_.approvals += 1;
         }
 
-        proposal_.approvers[msg.sender] = true;
+        proposal_.approvers[_approver] = true;
 
-        emit Approved({proposalId: _proposalId, editor: msg.sender});
+        emit Approved({proposalId: _proposalId, editor: _approver});
 
         if (_canExecute(_proposalId)) {
             _execute(_proposalId);
@@ -264,6 +269,7 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     }
 
     /// @notice Rejects the given proposal immediately.
+    /// @param _proposalId The Id of the proposal to reject.
     function reject(uint256 _proposalId) public {
         if (!_canApprove(_proposalId, msg.sender)) {
             revert ApprovalCastForbidden(_proposalId, msg.sender);

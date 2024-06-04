@@ -156,11 +156,6 @@ describe('Main Voting Plugin', function () {
   describe('initialize', async () => {
     it('reverts if trying to re-initialize', async () => {
       await expect(
-        memberAccessPlugin.initialize(dao.address, {
-          proposalDuration: 60 * 60 * 24 * 5,
-        })
-      ).to.be.revertedWith('Initializable: contract is already initialized');
-      await expect(
         mainVotingPlugin.initialize(
           dao.address,
           defaultMainVotingSettings,
@@ -168,13 +163,47 @@ describe('Main Voting Plugin', function () {
           memberAccessPlugin.address
         )
       ).to.be.revertedWith('Initializable: contract is already initialized');
+    });
+
+    it('Fails to initialize with an incompatible main voting plugin', async () => {
+      // ok
+      mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
+        new MainVotingPlugin__factory(alice)
+      );
       await expect(
-        spacePlugin.initialize(
+        mainVotingPlugin.initialize(
           dao.address,
-          defaultInput.contentUri,
-          ADDRESS_ZERO
+          defaultMainVotingSettings,
+          [alice.address],
+          memberAccessPlugin.address
         )
-      ).to.be.revertedWith('Initializable: contract is already initialized');
+      ).to.not.be.reverted;
+
+      // not ok
+      mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
+        new MainVotingPlugin__factory(alice)
+      );
+      await expect(
+        mainVotingPlugin.initialize(
+          dao.address,
+          defaultMainVotingSettings,
+          [alice.address],
+          bob.address
+        )
+      ).to.be.reverted;
+
+      // not ok
+      mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
+        new MainVotingPlugin__factory(alice)
+      );
+      await expect(
+        mainVotingPlugin.initialize(
+          dao.address,
+          defaultMainVotingSettings,
+          [alice.address],
+          spacePlugin.address
+        )
+      ).to.be.reverted;
     });
 
     it('The plugin has one editor after created', async () => {

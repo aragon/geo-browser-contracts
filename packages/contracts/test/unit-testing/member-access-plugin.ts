@@ -28,6 +28,7 @@ import {
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
   mineBlock,
+  PROPOSER_PERMISSION_ID,
   ROOT_PERMISSION_ID,
   UPDATE_ADDRESSES_PERMISSION_ID,
   UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
@@ -142,6 +143,12 @@ describe('Member Access Plugin', function () {
     );
     // The DAO is ROOT on itself
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
+    // The plugin can propose members on the member access helper
+    await dao.grant(
+      memberAccessPlugin.address,
+      mainVotingPlugin.address,
+      PROPOSER_PERMISSION_ID
+    );
     // Alice can make the DAO execute arbitrary stuff (test)
     await dao.grant(dao.address, alice.address, EXECUTE_PERMISSION_ID);
 
@@ -153,36 +160,12 @@ describe('Member Access Plugin', function () {
   });
 
   describe('initialize', () => {
-    it('Fails to initialize with an incompatible main voting plugin', async () => {
-      // ok
-      memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-        new MemberAccessPlugin__factory(alice)
-      );
+    it('reverts if trying to re-initialize', async () => {
       await expect(
         memberAccessPlugin.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         })
-      ).to.not.be.reverted;
-
-      // not ok
-      memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-        new MemberAccessPlugin__factory(alice)
-      );
-      await expect(
-        memberAccessPlugin.initialize(dao.address, {
-          proposalDuration: 60 * 60 * 24 * 5,
-        })
-      ).to.be.reverted;
-
-      // not ok
-      memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-        new MemberAccessPlugin__factory(alice)
-      );
-      await expect(
-        memberAccessPlugin.initialize(dao.address, {
-          proposalDuration: 60 * 60 * 24 * 5,
-        })
-      ).to.be.reverted;
+      ).to.be.revertedWith('Initializable: contract is already initialized');
     });
   });
 
