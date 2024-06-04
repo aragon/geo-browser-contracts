@@ -221,7 +221,8 @@ contract GovernancePluginsSetup is PluginSetup {
             where: _memberAccessPlugin,
             who: _payload.plugin,
             condition: address(0),
-            permissionId: MemberAccessPlugin(_memberAccessPlugin).PROPOSER_PERMISSION_ID()
+            permissionId: MemberAccessPlugin(memberAccessPluginImplementation)
+                .PROPOSER_PERMISSION_ID()
         });
 
         // The plugin can no longer execute on the DAO

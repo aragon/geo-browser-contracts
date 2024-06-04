@@ -304,8 +304,8 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin,
-          mainVotingPlugin,
+          memberAccessPlugin.address,
+          mainVotingPlugin.address,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
         ],
@@ -372,8 +372,8 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin,
-          mainVotingPlugin,
+          memberAccessPlugin.address,
+          mainVotingPlugin.address,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
         ],
