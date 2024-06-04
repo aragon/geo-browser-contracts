@@ -453,7 +453,7 @@ describe('Main Voting Plugin', function () {
     });
   });
 
-  context.skip('One editor', () => {
+  context('One editor', () => {
     it('Proposals take immediate effect when created by the only editor', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
@@ -489,7 +489,7 @@ describe('Main Voting Plugin', function () {
     });
   });
 
-  context.skip('Multiple editors', () => {
+  context('Multiple editors', () => {
     it('Proposals created by a member require editor votes', async () => {
       let pid = 0;
       // Carol member
@@ -558,7 +558,7 @@ describe('Main Voting Plugin', function () {
     });
   });
 
-  context.skip('Canceling', () => {
+  context('Canceling', () => {
     it('Proposals created by a member can be canceled before they end', async () => {
       const proposalId = 0;
       await expect(
@@ -940,7 +940,7 @@ describe('Main Voting Plugin', function () {
     });
   });
 
-  context.skip('After proposals', () => {
+  context('After proposals', () => {
     it('Adding an editor increases the editorCount', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
@@ -1316,7 +1316,7 @@ describe('Main Voting Plugin', function () {
 
 // TESTS REPLIACTED FROM THE ORIGINAL ADDRESS LIST PLUGIN
 
-describe.skip('Tests replicated from the original AddressList plugin', async () => {
+describe('Tests replicated from the original AddressList plugin', async () => {
   let signers: SignerWithAddress[];
   let dao: DAO;
   let mainVotingPlugin: MainVotingPlugin;
