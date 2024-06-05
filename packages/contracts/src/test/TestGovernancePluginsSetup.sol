@@ -7,10 +7,10 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
-import {TestMemberAccessPlugin} from "./TestMemberAccessPlugin.sol";
 import {MemberAccessExecuteCondition} from "../conditions/MemberAccessExecuteCondition.sol";
 import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
 import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
+import {MemberAccessPlugin} from "../governance/MemberAccessPlugin.sol";
 import {MajorityVotingBase} from "../governance/base/MajorityVotingBase.sol";
 
 // Not ideal, but to test this E2E, the contract needs to be cloned
@@ -27,7 +27,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
     constructor(PluginSetupProcessor pluginSetupProcessorAddress) {
         pluginSetupProcessor = address(pluginSetupProcessorAddress);
         mainVotingPluginImplementationAddr = address(new MainVotingPlugin());
-        memberAccessPluginImplementationAddr = address(new TestMemberAccessPlugin());
+        memberAccessPluginImplementationAddr = address(new MemberAccessPlugin());
     }
 
     /// @inheritdoc IPluginSetup
@@ -45,12 +45,12 @@ contract TestGovernancePluginsSetup is PluginSetup {
         ) = decodeInstallationParams(_data);
 
         // Deploy the member access plugin
-        TestMemberAccessPlugin.MultisigSettings memory _multisigSettings;
+        MemberAccessPlugin.MultisigSettings memory _multisigSettings;
         _multisigSettings.proposalDuration = _memberAccessProposalDuration;
 
         address _memberAccessPlugin = createERC1967Proxy(
             memberAccessPluginImplementation(),
-            abi.encodeCall(TestMemberAccessPlugin.initialize, (IDAO(_dao), _multisigSettings))
+            abi.encodeCall(MemberAccessPlugin.initialize, (IDAO(_dao), _multisigSettings))
         );
 
         // Deploy the main voting plugin
@@ -62,7 +62,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
                     IDAO(_dao),
                     _votingSettings,
                     _initialEditors,
-                    TestMemberAccessPlugin(_memberAccessPlugin)
+                    MemberAccessPlugin(_memberAccessPlugin)
                 )
             )
         );
@@ -111,7 +111,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
             where: _memberAccessPlugin,
             who: mainVotingPlugin,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: TestMemberAccessPlugin(_memberAccessPlugin).PROPOSER_PERMISSION_ID()
+            permissionId: MemberAccessPlugin(_memberAccessPlugin).PROPOSER_PERMISSION_ID()
         });
 
         // The member access plugin needs to execute on the DAO
@@ -128,7 +128,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
             where: _memberAccessPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: TestMemberAccessPlugin(_memberAccessPlugin)
+            permissionId: MemberAccessPlugin(_memberAccessPlugin)
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
 
@@ -246,7 +246,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
             where: _memberAccessPlugin,
             who: _payload.plugin,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: TestMemberAccessPlugin(_memberAccessPlugin).PROPOSER_PERMISSION_ID()
+            permissionId: MemberAccessPlugin(_memberAccessPlugin).PROPOSER_PERMISSION_ID()
         });
 
         // The plugin can no longer execute on the DAO
@@ -263,7 +263,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
             where: _memberAccessPlugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: TestMemberAccessPlugin(memberAccessPluginImplementation())
+            permissionId: MemberAccessPlugin(memberAccessPluginImplementation())
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
 
