@@ -107,7 +107,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
 
         // The member access plugin needs to execute on the DAO
         permissions[3] = PermissionLib.MultiTargetPermission({
-            operation: PermissionLib.Operation.GrantWithCondition,
+            operation: PermissionLib.Operation.Grant,
             where: _memberAccessPlugin,
             who: mainVotingPlugin,
             condition: PermissionLib.NO_CONDITION,
@@ -254,7 +254,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
             operation: PermissionLib.Operation.Revoke,
             where: _dao,
             who: _memberAccessPlugin,
-            condition: address(0),
+            condition: PermissionLib.NO_CONDITION,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO can no longer update the plugin settings
@@ -262,7 +262,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
             operation: PermissionLib.Operation.Revoke,
             where: _memberAccessPlugin,
             who: _dao,
-            condition: address(0),
+            condition: PermissionLib.NO_CONDITION,
             permissionId: TestMemberAccessPlugin(memberAccessPluginImplementation())
                 .UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         });
@@ -274,7 +274,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
                 operation: PermissionLib.Operation.Revoke,
                 where: _dao,
                 who: _pluginUpgrader,
-                condition: address(0),
+                condition: PermissionLib.NO_CONDITION,
                 permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
             });
         }
