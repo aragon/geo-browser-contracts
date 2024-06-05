@@ -270,7 +270,7 @@ describe('Member Access Condition', function () {
     });
   });
 
-  describe('Direct add are not allowed', () => {
+  describe("Direct add's are not allowed", () => {
     it('Should reject adding and removing directly, rather than executing', async () => {
       // Valid
       expect(

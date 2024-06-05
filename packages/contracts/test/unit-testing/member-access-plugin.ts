@@ -50,8 +50,8 @@ export const defaultInitData: InitData = {
 
 export const multisigInterface = new ethers.utils.Interface([
   'function initialize(address,tuple(uint64,address))',
-  'function updateMultisigSettings(tuple(uint64,address))',
-  'function proposeNewMember(bytes,address)',
+  'function updateMultisigSettings(tuple(uint64))',
+  'function proposeAddMember(bytes,address,address)',
   'function getProposal(uint256)',
 ]);
 const mainVotingPluginInterface = MainVotingPlugin__factory.createInterface();
@@ -763,7 +763,7 @@ describe('Member Access Plugin', function () {
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
       )
-        .to.be.revertedWithCustomError(memberAccessPlugin, 'AlreadyMember')
+        .to.be.revertedWithCustomError(mainVotingPlugin, 'AlreadyAMember')
         .withArgs(alice.address);
 
       await expect(
@@ -771,7 +771,7 @@ describe('Member Access Plugin', function () {
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), bob.address)
       )
-        .to.be.revertedWithCustomError(memberAccessPlugin, 'AlreadyMember')
+        .to.be.revertedWithCustomError(mainVotingPlugin, 'AlreadyAMember')
         .withArgs(bob.address);
     });
 
@@ -841,32 +841,6 @@ describe('Member Access Plugin', function () {
 
       await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
       await expect(memberAccessPlugin.execute(pid)).to.be.reverted;
-    });
-
-    it('Fails to update the settings to use an incompatible main voting plugin', async () => {
-      const actionsWith = (days: number) => {
-        return [
-          {
-            to: memberAccessPlugin.address,
-            value: 0,
-            data: MemberAccessPlugin__factory.createInterface().encodeFunctionData(
-              'updateMultisigSettings',
-              [
-                {
-                  proposalDuration: 60 * 60 * 24 * days,
-                },
-              ]
-            ),
-          },
-        ] as IDAO.ActionStruct[];
-      };
-
-      await expect(dao.execute(ZERO_BYTES32, actionsWith(1), 0)).to.be.reverted;
-      await expect(dao.execute(ZERO_BYTES32, actionsWith(4), 0)).to.be.reverted;
-      await expect(dao.execute(ZERO_BYTES32, actionsWith(10), 0)).to.be
-        .reverted;
-      await expect(dao.execute(ZERO_BYTES32, actionsWith(222), 0)).to.be
-        .reverted;
     });
 
     it('Only the DAO can call the plugin to update the settings', async () => {
@@ -983,7 +957,7 @@ describe('Member Access Plugin', function () {
           memberAccessPlugin.initialize(dao.address, multisigSettings)
         )
           .to.emit(memberAccessPlugin, 'MultisigSettingsUpdated')
-          .withArgs(60 * 60 * 24 * 5, mainVotingPlugin.address);
+          .withArgs(60 * 60 * 24 * 5);
       });
     });
 
@@ -1045,7 +1019,7 @@ describe('Member Access Plugin', function () {
           memberAccessPlugin.updateMultisigSettings(multisigSettings)
         )
           .to.emit(memberAccessPlugin, 'MultisigSettingsUpdated')
-          .withArgs(60 * 60 * 24 * 5, mainVotingPlugin.address);
+          .withArgs(60 * 60 * 24 * 5);
       });
     });
 
@@ -1119,7 +1093,7 @@ describe('Member Access Plugin', function () {
         )
           .to.revertedWithCustomError(
             memberAccessPlugin,
-            'ProposalCreationForbidden'
+            'ProposalCreationForbiddenOnSameBlock'
           )
           .withArgs(alice.address);
 
