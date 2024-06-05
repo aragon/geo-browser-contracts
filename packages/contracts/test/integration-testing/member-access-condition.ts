@@ -4,8 +4,8 @@ import {
   MainVotingPlugin,
   MainVotingPlugin__factory,
   MajorityVotingBase,
-  TestMemberAccessPlugin,
-  TestMemberAccessPlugin__factory,
+  MemberAccessPlugin,
+  MemberAccessPlugin__factory,
   PluginRepo,
 } from '../../typechain';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
@@ -16,13 +16,6 @@ import {
 } from '../../utils/helpers';
 import {installPlugin} from '../helpers/setup';
 import {deployTestDao} from '../helpers/test-dao';
-import {
-  EXECUTE_PERMISSION_ID,
-  ROOT_PERMISSION_ID,
-  UPGRADE_PLUGIN_PERMISSION_ID,
-  ONE_BYTES32,
-  ADDRESS_ONE,
-} from '../unit-testing/common';
 import {
   DAO,
   PluginRepo__factory,
@@ -62,7 +55,7 @@ describe('Member Access Condition E2E', () => {
   let pluginSetup: TestGovernancePluginsSetup;
   let gpsFactory: TestGovernancePluginsSetup__factory;
   let mainVotingPlugin: MainVotingPlugin;
-  let memberAccessPlugin: TestMemberAccessPlugin;
+  // let memberAccessPlugin: MemberAccessPlugin;
 
   before(async () => {
     [deployer, pluginUpgrader, alice, bob] = await ethers.getSigners();
@@ -153,22 +146,18 @@ describe('Member Access Condition E2E', () => {
       installation.preparedEvent.args.plugin,
       deployer
     );
-    memberAccessPlugin = TestMemberAccessPlugin__factory.connect(
-      installation.preparedEvent.args.preparedSetupData.helpers[0],
-      deployer
-    );
+    // memberAccessPlugin = MemberAccessPlugin__factory.connect(
+    //   installation.preparedEvent.args.preparedSetupData.helpers[0],
+    //   deployer
+    // );
   });
 
   it('Executing a proposal to add membership works', async () => {
     expect(await mainVotingPlugin.isMember(alice.address)).to.eq(false);
+    expect(await mainVotingPlugin.isEditor(deployer.address)).to.eq(true);
 
-    await expect(
-      memberAccessPlugin.devProposeAddMember(
-        '0x',
-        alice.address,
-        deployer.address
-      )
-    ).to.not.be.reverted;
+    await expect(mainVotingPlugin.proposeAddMember('0x', alice.address)).to.not
+      .be.reverted;
 
     expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
   });
