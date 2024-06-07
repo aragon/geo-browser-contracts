@@ -10,6 +10,7 @@ import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
+import {MemberAccessPlugin, MEMBER_ACCESS_INTERFACE_ID} from "./MemberAccessPlugin.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -18,6 +19,7 @@ bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.sel
     MainVotingPlugin.proposeEdits.selector ^
     MainVotingPlugin.proposeAcceptSubspace.selector ^
     MainVotingPlugin.proposeRemoveSubspace.selector ^
+    MainVotingPlugin.proposeAddMember.selector ^
     MainVotingPlugin.proposeRemoveMember.selector ^
     MainVotingPlugin.proposeAddEditor.selector ^
     MainVotingPlugin.proposeRemoveEditor.selector ^
@@ -45,6 +47,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Whether an address is considered as a space member (not editor)
     mapping(address => bool) internal members;
 
+    /// @notice The address of the plugin where new memberships are approved, using a different set of rules.
+    MemberAccessPlugin public memberAccessPlugin;
+
     /// @notice Emitted when the creator cancels a proposal
     event ProposalCanceled(uint256 proposalId);
 
@@ -68,6 +73,9 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
     /// @notice Raised when a content proposal is called with empty data
     error EmptyContent();
+
+    /// @notice Thrown when the given contract doesn't support a required interface.
+    error InvalidInterface(address);
 
     /// @notice Raised when a non-editor attempts to call a restricted function.
     error Unauthorized();
@@ -98,12 +106,18 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     function initialize(
         IDAO _dao,
         VotingSettings calldata _votingSettings,
-        address[] calldata _initialEditors
+        address[] calldata _initialEditors,
+        MemberAccessPlugin _memberAccessPlugin
     ) external initializer {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
         _addAddresses(_initialEditors);
         emit EditorsAdded(_initialEditors);
+
+        if (!_memberAccessPlugin.supportsInterface(MEMBER_ACCESS_INTERFACE_ID)) {
+            revert InvalidInterface(address(_memberAccessPlugin));
+        }
+        memberAccessPlugin = _memberAccessPlugin;
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -339,19 +353,18 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @notice Creates a proposal to add a new member.
     /// @param _metadata The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eveutnally be added.
+    /// @return proposalId NOTE: The proposal ID will belong to the Multisig plugin, not to this contract.
     function proposeAddMember(
         bytes calldata _metadata,
         address _proposedMember
-    ) public onlyMembers returns (uint256 proposalId) {
+    ) public returns (uint256 proposalId) {
         if (isMember(_proposedMember)) {
             revert AlreadyAMember(_proposedMember);
         }
 
-        proposalId = _proposeWrappedAction(
-            _metadata,
-            address(this),
-            abi.encodeCall(MainVotingPlugin.addMember, (_proposedMember))
-        );
+        /// @dev Creating the actual proposal on a separate plugin because the approval rules differ.
+        /// @dev Keeping all wrappers on the MainVoting plugin, even if one type of approvals are handled on the MemberAccess plugin.
+        return memberAccessPlugin.proposeAddMember(_metadata, _proposedMember, msg.sender);
     }
 
     /// @notice Creates a proposal to remove an existing member.
@@ -554,5 +567,5 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @dev This empty reserved space is put in place to allow future versions to add new
     /// variables without shifting down storage in the inheritance chain.
     /// https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-    uint256[48] private __gap;
+    uint256[47] private __gap;
 }

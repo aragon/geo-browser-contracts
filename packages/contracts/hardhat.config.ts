@@ -7,6 +7,7 @@ import '@typechain/hardhat';
 import {config as dotenvConfig} from 'dotenv';
 import 'hardhat-deploy';
 import 'hardhat-gas-reporter';
+import 'hardhat-tracer';
 import {extendEnvironment, HardhatUserConfig} from 'hardhat/config';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import type {NetworkUserConfig} from 'hardhat/types';

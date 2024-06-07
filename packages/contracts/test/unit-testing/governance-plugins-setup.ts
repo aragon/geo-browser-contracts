@@ -11,6 +11,7 @@ import {
   EXECUTE_PERMISSION_ID,
   NO_CONDITION,
   pctToRatio,
+  PROPOSER_PERMISSION_ID,
   UPDATE_ADDRESSES_PERMISSION_ID,
   UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
   UPDATE_VOTING_SETTINGS_PERMISSION_ID,
@@ -58,12 +59,12 @@ describe('Governance Plugins Setup', function () {
       const nonce = await ethers.provider.getTransactionCount(
         governancePluginsSetup.address
       );
-      const anticipatedMainVotingPluginAddress =
+      const anticipatedMemberAccessPluginAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce,
         });
-      const anticipatedMemberAccessPluginAddress =
+      const anticipatedMainVotingPluginAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
@@ -86,7 +87,7 @@ describe('Governance Plugins Setup', function () {
       const [memberAccessPlugin] = helpers;
       expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
 
-      expect(permissions.length).to.be.equal(5);
+      expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
@@ -108,6 +109,13 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          memberAccessPlugin,
+          mainVotingPlugin,
+          NO_CONDITION,
+          PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.GrantWithCondition,
@@ -152,12 +160,12 @@ describe('Governance Plugins Setup', function () {
       const nonce = await ethers.provider.getTransactionCount(
         governancePluginsSetup.address
       );
-      const anticipatedMainVotingPluginAddress =
+      const anticipatedMemberAccessPluginAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce,
         });
-      const anticipatedMemberAccessPluginAddress =
+      const anticipatedMainVotingPluginAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
@@ -185,7 +193,7 @@ describe('Governance Plugins Setup', function () {
       const [memberAccessPlugin] = helpers;
       expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
 
-      expect(permissions.length).to.be.equal(6);
+      expect(permissions.length).to.be.equal(7);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
@@ -207,6 +215,13 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          memberAccessPlugin,
+          mainVotingPlugin,
+          NO_CONDITION,
+          PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.GrantWithCondition,
@@ -264,7 +279,7 @@ describe('Governance Plugins Setup', function () {
           }
         );
 
-      expect(permissions.length).to.be.equal(5);
+      expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
@@ -286,6 +301,13 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          memberAccessPlugin.address,
+          mainVotingPlugin.address,
+          NO_CONDITION,
+          PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
@@ -325,7 +347,7 @@ describe('Governance Plugins Setup', function () {
           }
         );
 
-      expect(permissions.length).to.be.equal(6);
+      expect(permissions.length).to.be.equal(7);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
@@ -347,6 +369,13 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          memberAccessPlugin.address,
+          mainVotingPlugin.address,
+          NO_CONDITION,
+          PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.Revoke,

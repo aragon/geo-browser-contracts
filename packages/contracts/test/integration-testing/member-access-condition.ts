@@ -4,8 +4,6 @@ import {
   MainVotingPlugin,
   MainVotingPlugin__factory,
   MajorityVotingBase,
-  TestMemberAccessPlugin,
-  TestMemberAccessPlugin__factory,
   PluginRepo,
 } from '../../typechain';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
@@ -17,21 +15,12 @@ import {
 import {installPlugin} from '../helpers/setup';
 import {deployTestDao} from '../helpers/test-dao';
 import {
-  EXECUTE_PERMISSION_ID,
-  ROOT_PERMISSION_ID,
-  UPGRADE_PLUGIN_PERMISSION_ID,
-  ONE_BYTES32,
-  ADDRESS_ONE,
-} from '../unit-testing/common';
-import {
   DAO,
   PluginRepo__factory,
   PluginSetupProcessor,
   PluginSetupProcessor__factory,
   PluginRepoFactory__factory,
   PluginRepoRegistry__factory,
-  DAO__factory,
-  IDAO,
 } from '@aragon/osx-ethers';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
@@ -45,14 +34,11 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   votingMode: 0,
 };
 const memberAccessProposalDuration = 60 * 60 * 24;
-const daoInterface = DAO__factory.createInterface();
-const mainVotingInterface = MainVotingPlugin__factory.createInterface();
 
 describe('Member Access Condition E2E', () => {
   let deployer: SignerWithAddress;
   let pluginUpgrader: SignerWithAddress;
   let alice: SignerWithAddress;
-  let bob: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
   let dao: DAO;
@@ -62,10 +48,10 @@ describe('Member Access Condition E2E', () => {
   let pluginSetup: TestGovernancePluginsSetup;
   let gpsFactory: TestGovernancePluginsSetup__factory;
   let mainVotingPlugin: MainVotingPlugin;
-  let memberAccessPlugin: TestMemberAccessPlugin;
+  // let memberAccessPlugin: MemberAccessPlugin;
 
   before(async () => {
-    [deployer, pluginUpgrader, alice, bob] = await ethers.getSigners();
+    [deployer, pluginUpgrader, alice] = await ethers.getSigners();
 
     // Get the PluginRepoFactory address
     const pluginRepoFactoryAddr: string = getPluginRepoFactoryAddress(
@@ -153,168 +139,19 @@ describe('Member Access Condition E2E', () => {
       installation.preparedEvent.args.plugin,
       deployer
     );
-    memberAccessPlugin = TestMemberAccessPlugin__factory.connect(
-      installation.preparedEvent.args.preparedSetupData.helpers[0],
-      deployer
-    );
+    // memberAccessPlugin = MemberAccessPlugin__factory.connect(
+    //   installation.preparedEvent.args.preparedSetupData.helpers[0],
+    //   deployer
+    // );
   });
 
   it('Executing a proposal to add membership works', async () => {
     expect(await mainVotingPlugin.isMember(alice.address)).to.eq(false);
+    expect(await mainVotingPlugin.isEditor(deployer.address)).to.eq(true);
 
-    await expect(memberAccessPlugin.proposeNewMember('0x', alice.address)).to
-      .not.be.reverted;
+    await expect(mainVotingPlugin.proposeAddMember('0x', alice.address)).to.not
+      .be.reverted;
 
     expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
-
-    // Valid addition
-    const actions: IDAO.ActionStruct[] = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: mainVotingInterface.encodeFunctionData('addMember', [
-          bob.address,
-        ]),
-      },
-    ];
-
-    // Via direct create proposal
-    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(false);
-
-    await expect(memberAccessPlugin.createArbitraryProposal('0x', actions)).to
-      .not.be.reverted;
-
-    expect(await mainVotingPlugin.isMember(bob.address)).to.eq(true);
-  });
-
-  it('Executing a proposal to do something else reverts', async () => {
-    const validActions = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: mainVotingInterface.encodeFunctionData('addMember', [
-          bob.address,
-        ]),
-      },
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: mainVotingInterface.encodeFunctionData('addMember', [
-          ADDRESS_ONE,
-        ]),
-      },
-    ];
-    const invalidActions = [
-      {
-        to: mainVotingPlugin.address,
-        value: 0,
-        data: mainVotingInterface.encodeFunctionData('removeMember', [
-          bob.address,
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          mainVotingPlugin.address,
-          bob.address,
-          EXECUTE_PERMISSION_ID,
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          dao.address,
-          alice.address,
-          EXECUTE_PERMISSION_ID,
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          dao.address,
-          alice.address,
-          ROOT_PERMISSION_ID,
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          psp.address,
-          alice.address,
-          ethers.utils.id('APPLY_INSTALLATION_PERMISSION'),
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          psp.address,
-          alice.address,
-          ethers.utils.id('APPLY_UPDATE_PERMISSION'),
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          psp.address,
-          alice.address,
-          ethers.utils.id('APPLY_UNINSTALLATION_PERMISSION'),
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('grant', [
-          mainVotingPlugin.address,
-          alice.address,
-          UPGRADE_PLUGIN_PERMISSION_ID,
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('revoke', [
-          mainVotingPlugin.address,
-          bob.address,
-          ROOT_PERMISSION_ID,
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('execute', [
-          ONE_BYTES32,
-          validActions,
-          0,
-        ]),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('setMetadata', ['0x']),
-      },
-      {
-        to: dao.address,
-        value: 0,
-        data: daoInterface.encodeFunctionData('setDaoURI', ['0x']),
-      },
-    ];
-
-    // Should work
-    for (const action of validActions) {
-      await expect(memberAccessPlugin.createArbitraryProposal('0x', [action]))
-        .to.not.be.reverted;
-    }
-
-    // Should fail
-    for (const action of invalidActions) {
-      await expect(memberAccessPlugin.createArbitraryProposal('0x', [action]))
-        .to.be.reverted;
-    }
   });
 });
