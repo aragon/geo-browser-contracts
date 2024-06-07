@@ -170,7 +170,47 @@ describe('Member Access Plugin', function () {
   });
 
   describe('Before approving', () => {
-    it('Allows any address to request membership', async () => {
+    it('Only addresses with PROPOSER_PERMISSION_ID can propose members', async () => {
+      // ok
+      await expect(
+        mainVotingPlugin.proposeAddMember(toUtf8Bytes('ipfs://'), carol.address)
+      ).to.not.be.reverted;
+
+      await dao.revoke(
+        memberAccessPlugin.address,
+        mainVotingPlugin.address,
+        PROPOSER_PERMISSION_ID
+      );
+
+      // Now it fails
+      await expect(
+        mainVotingPlugin.proposeAddMember(toUtf8Bytes('ipfs://'), dave.address)
+      ).to.be.reverted;
+    });
+
+    it('Only callers implementing multisig can propose members', async () => {
+      // From a compatible plugin
+      await expect(
+        mainVotingPlugin.proposeAddMember(toUtf8Bytes('ipfs://'), carol.address)
+      ).to.not.be.reverted;
+
+      await dao.grant(
+        memberAccessPlugin.address,
+        alice.address,
+        PROPOSER_PERMISSION_ID
+      );
+
+      // Fail despite the permission
+      await expect(
+        memberAccessPlugin.proposeAddMember(
+          toUtf8Bytes('ipfs://'),
+          dave.address,
+          alice.address
+        )
+      ).to.be.reverted;
+    });
+
+    it('Allows any address to request membership via the MainVoting plugin', async () => {
       // Random
       expect(await mainVotingPlugin.isMember(carol.address)).to.be.false;
       pid = await memberAccessPlugin.proposalCount();

@@ -1663,6 +1663,25 @@ describe('Main Voting Plugin', function () {
     });
   });
 
+  context('Joining a space via MemberAccessPlugin', () => {
+    it('Proposing new members via MemberAccess plugin grants membership', async () => {
+      expect(await mainVotingPlugin.isMember(carol.address)).to.be.false;
+      await mainVotingPlugin.proposeAddMember(
+        toUtf8Bytes('ipfs://'),
+        carol.address
+      );
+      expect(await mainVotingPlugin.isMember(carol.address)).to.be.true;
+
+      // 2
+      expect(await mainVotingPlugin.isMember(ADDRESS_THREE)).to.be.false;
+      await mainVotingPlugin.proposeAddMember(
+        toUtf8Bytes('ipfs://'),
+        ADDRESS_THREE
+      );
+      expect(await mainVotingPlugin.isMember(ADDRESS_THREE)).to.be.true;
+    });
+  });
+
   context('Leaving a space', () => {
     it('Completely removes an editor', async () => {
       await makeEditor(bob.address);
