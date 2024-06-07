@@ -32,7 +32,7 @@
     "mocha": "^10.1.0",
     "solhint": "^3.4.0",
     "solhint-plugin-prettier": "^0.0.5",
-    "solidity-coverage": "^0.8.2",
+    "solidity-coverage": "^0.8.12",
     "tmp-promise": "^3.0.3"
   },
   "dependencies": {
