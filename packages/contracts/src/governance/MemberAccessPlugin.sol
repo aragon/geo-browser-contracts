@@ -71,7 +71,6 @@ contract MemberAccessPlugin is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
     /// @notice A container for the plugin settings.
     /// @param proposalDuration The amount of time before a non-approved proposal expires.
-    /// @param mainVotingPlugin The address of the main voting plugin. Used to apply permissions for it.
     struct MultisigSettings {
         uint64 proposalDuration;
     }

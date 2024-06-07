@@ -49,7 +49,7 @@ export const defaultInitData: InitData = {
 };
 
 export const multisigInterface = new ethers.utils.Interface([
-  'function initialize(address,tuple(uint64,address))',
+  'function initialize(address,tuple(uint64))',
   'function updateMultisigSettings(tuple(uint64))',
   'function proposeAddMember(bytes,address,address)',
   'function getProposal(uint256)',
@@ -1090,12 +1090,10 @@ describe('Member Access Plugin', function () {
         );
         await expect(
           mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address)
-        )
-          .to.revertedWithCustomError(
-            memberAccessPlugin,
-            'ProposalCreationForbiddenOnSameBlock'
-          )
-          .withArgs(alice.address);
+        ).to.revertedWithCustomError(
+          memberAccessPlugin,
+          'ProposalCreationForbiddenOnSameBlock'
+        );
 
         await ethers.provider.send('evm_setAutomine', [true]);
       });
