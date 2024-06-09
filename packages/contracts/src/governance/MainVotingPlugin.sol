@@ -248,7 +248,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
     /// @inheritdoc MajorityVotingBase
     function createProposal(
-        bytes calldata _metadata,
+        bytes calldata _metadataContentUri,
         IDAO.Action[] calldata _actions,
         uint256 _allowFailureMap,
         VoteOption _voteOption,
@@ -262,7 +262,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
         proposalId = _createProposal({
             _creator: msg.sender,
-            _metadata: _metadata,
+            _metadata: _metadataContentUri,
             _startDate: _startDate,
             _endDate: _startDate + duration(),
             _actions: _actions,
@@ -297,10 +297,12 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     }
 
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
-    /// @param _contentUri The URI of the IPFS content to publish
+    /// @param _metadataContentUri The metadata of the proposal.
+    /// @param _editsContentUri The URI of the IPFS content to publish
     /// @param _spacePlugin The address of the space plugin where changes will be executed
     function proposeEdits(
-        string memory _contentUri,
+        bytes calldata _metadataContentUri,
+        string memory _editsContentUri,
         address _spacePlugin
     ) public onlyMembers returns (uint256 proposalId) {
         if (_spacePlugin == address(0)) {
@@ -308,16 +310,18 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         }
 
         proposalId = _proposeWrappedAction(
-            "",
+            _metadataContentUri,
             _spacePlugin,
-            abi.encodeCall(SpacePlugin.publishEdits, (_contentUri))
+            abi.encodeCall(SpacePlugin.publishEdits, (_editsContentUri))
         );
     }
 
     /// @notice Creates a proposal to make the DAO accept the given DAO as a subspace.
+    /// @param _metadataContentUri The metadata of the proposal.
     /// @param _subspaceDao The address of the DAO that holds the new subspace
     /// @param _spacePlugin The address of the space plugin where changes will be executed
     function proposeAcceptSubspace(
+        bytes calldata _metadataContentUri,
         IDAO _subspaceDao,
         address _spacePlugin
     ) public onlyMembers returns (uint256 proposalId) {
@@ -326,16 +330,18 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         }
 
         proposalId = _proposeWrappedAction(
-            "",
+            _metadataContentUri,
             _spacePlugin,
             abi.encodeCall(SpacePlugin.acceptSubspace, (address(_subspaceDao)))
         );
     }
 
     /// @notice Creates a proposal to make the DAO remove the given DAO as a subspace.
+    /// @param _metadataContentUri The metadata of the proposal.
     /// @param _subspaceDao The address of the DAO that holds the subspace to remove
     /// @param _spacePlugin The address of the space plugin where changes will be executed
     function proposeRemoveSubspace(
+        bytes calldata _metadataContentUri,
         IDAO _subspaceDao,
         address _spacePlugin
     ) public onlyMembers returns (uint256 proposalId) {
@@ -344,18 +350,18 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         }
 
         proposalId = _proposeWrappedAction(
-            "",
+            _metadataContentUri,
             _spacePlugin,
             abi.encodeCall(SpacePlugin.removeSubspace, (address(_subspaceDao)))
         );
     }
 
     /// @notice Creates a proposal to add a new member.
-    /// @param _metadata The metadata of the proposal.
+    /// @param _metadataContentUri The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eveutnally be added.
     /// @return proposalId NOTE: The proposal ID will belong to the Multisig plugin, not to this contract.
     function proposeAddMember(
-        bytes calldata _metadata,
+        bytes calldata _metadataContentUri,
         address _proposedMember
     ) public returns (uint256 proposalId) {
         if (isMember(_proposedMember)) {
@@ -364,14 +370,15 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
         /// @dev Creating the actual proposal on a separate plugin because the approval rules differ.
         /// @dev Keeping all wrappers on the MainVoting plugin, even if one type of approvals are handled on the MemberAccess plugin.
-        return memberAccessPlugin.proposeAddMember(_metadata, _proposedMember, msg.sender);
+        return
+            memberAccessPlugin.proposeAddMember(_metadataContentUri, _proposedMember, msg.sender);
     }
 
     /// @notice Creates a proposal to remove an existing member.
-    /// @param _metadata The metadata of the proposal.
+    /// @param _metadataContentUri The metadata of the proposal.
     /// @param _member The address of the member who may eveutnally be removed.
     function proposeRemoveMember(
-        bytes calldata _metadata,
+        bytes calldata _metadataContentUri,
         address _member
     ) public returns (uint256 proposalId) {
         if (!isEditor(msg.sender)) {
@@ -381,17 +388,17 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         }
 
         proposalId = _proposeWrappedAction(
-            _metadata,
+            _metadataContentUri,
             address(this),
             abi.encodeCall(MainVotingPlugin.removeMember, (_member))
         );
     }
 
     /// @notice Creates a proposal to remove an existing member.
-    /// @param _metadata The metadata of the proposal.
+    /// @param _metadataContentUri The metadata of the proposal.
     /// @param _proposedEditor The address of the wallet who may eveutnally be made an editor.
     function proposeAddEditor(
-        bytes calldata _metadata,
+        bytes calldata _metadataContentUri,
         address _proposedEditor
     ) public onlyMembers returns (uint256 proposalId) {
         if (isEditor(_proposedEditor)) {
@@ -399,17 +406,17 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         }
 
         proposalId = _proposeWrappedAction(
-            _metadata,
+            _metadataContentUri,
             address(this),
             abi.encodeCall(MainVotingPlugin.addEditor, (_proposedEditor))
         );
     }
 
     /// @notice Creates a proposal to remove an existing editor.
-    /// @param _metadata The metadata of the proposal.
+    /// @param _metadataContentUri The metadata of the proposal.
     /// @param _editor The address of the editor who may eveutnally be removed.
     function proposeRemoveEditor(
-        bytes calldata _metadata,
+        bytes calldata _metadataContentUri,
         address _editor
     ) public onlyMembers returns (uint256 proposalId) {
         if (!isEditor(_editor)) {
@@ -417,7 +424,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         }
 
         proposalId = _proposeWrappedAction(
-            _metadata,
+            _metadataContentUri,
             address(this),
             abi.encodeCall(MainVotingPlugin.removeEditor, (_editor))
         );
@@ -439,11 +446,11 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     }
 
     /// @notice Creates a proposal with the given calldata as the only action.
-    /// @param _metadata The IPFS URI of the metadata.
+    /// @param _metadataContentUri The IPFS URI of the metadata.
     /// @param _to The contract to call with the action.
     /// @param _data The calldata to eventually invoke.
     function _proposeWrappedAction(
-        bytes memory _metadata,
+        bytes memory _metadataContentUri,
         address _to,
         bytes memory _data
     ) internal returns (uint256 proposalId) {
@@ -470,7 +477,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         emit ProposalCreated({
             proposalId: proposalId,
             creator: msg.sender,
-            metadata: _metadata,
+            metadata: _metadataContentUri,
             startDate: _startDate,
             endDate: proposal_.parameters.endDate,
             actions: proposal_.actions,
