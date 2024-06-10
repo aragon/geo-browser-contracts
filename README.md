@@ -41,15 +41,15 @@ In standard spaces, _members_ can create proposals while _editors_ can vote on t
 
 The most typical case will be telling the Space Plugin to emit the event of a proposal being processed. It can include emitting a new hash for the contents or accepting a subspace.
 
-<img src="./img/std-1.svg">
+<img src="./img/standard-1.svg">
 
 The Main Voting Plugin can also pass proposals that change its own settings.
 
-<img src="./img/std-2.svg">
+<img src="./img/standard-2.svg">
 
 To manage who can create proposals, the Member Access Plugin allows anyone to request becoming a member. Editors can approve or reject incoming proposals.
 
-<img src="./img/std-3.svg">
+<img src="./img/standard-3.svg">
 
 ### Personal Space
 
@@ -75,8 +75,9 @@ There's an optional feature, where a predefined address can execute the actions 
 
 ### Joining a space
 
-1. Someone calls `proposeNewMember()` on the `MemberAccessPlugin`
+1. Someone calls `proposeAddMember()` on the `MainVotingPlugin`
    - If the caller is the only editor, the proposal succeeds immediately
+   - The proposal is created on the `MemberAccessPlugin` because the governance rules differ from the rest of proposals
 2. One of the editors calls `approve()` or `reject()`
    - Calling `approve()` makes the proposal succeed
    - Calling `reject()` cancels the proposal
@@ -147,6 +148,12 @@ See the `MemberAccessExecuteCondition` contract. It restricts what the [MemberAc
 [Learn more about OSx permissions](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/)
 
 ### Permissions being used
+
+For standard governance spaces:
+<img src="./img/permission-overview-std.svg">
+
+For personal spaces:
+<img src="./img/permission-overview-personal.svg">
 
 Below are all the permissions that a [PluginSetup](#plugin-setup-contracts) contract may want to request:
 
