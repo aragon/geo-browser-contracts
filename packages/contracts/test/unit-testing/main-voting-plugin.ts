@@ -54,6 +54,7 @@ import {ethers} from 'hardhat';
 
 type InitData = {contentUri: string};
 const mainVotingPluginInterface = MainVotingPlugin__factory.createInterface();
+const spacePluginInterface = SpacePlugin__factory.createInterface();
 
 describe('Main Voting Plugin', function () {
   let signers: SignerWithAddress[];
@@ -256,6 +257,28 @@ describe('Main Voting Plugin', function () {
   });
 
   context('Before proposals', () => {
+    it('Voting on a non-created proposal reverts', async () => {
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+
+      await expect(mainVotingPlugin.vote(0, VoteOption.Yes, false)).to.be
+        .reverted;
+      await expect(mainVotingPlugin.vote(10, VoteOption.No, false)).to.be
+        .reverted;
+      await expect(mainVotingPlugin.vote(50, VoteOption.Abstain, false)).to.be
+        .reverted;
+      await expect(mainVotingPlugin.vote(500, VoteOption.None, false)).to.be
+        .reverted;
+
+      await expect(mainVotingPlugin.vote(0, VoteOption.Yes, true)).to.be
+        .reverted;
+      await expect(mainVotingPlugin.vote(1, VoteOption.No, true)).to.be
+        .reverted;
+      await expect(mainVotingPlugin.vote(2, VoteOption.Abstain, true)).to.be
+        .reverted;
+      await expect(mainVotingPlugin.vote(3, VoteOption.None, true)).to.be
+        .reverted;
+    });
+
     it('Only members can create proposals', async () => {
       await expect(
         mainVotingPlugin.connect(alice).createProposal(
@@ -313,7 +336,11 @@ describe('Main Voting Plugin', function () {
       await expect(
         mainVotingPlugin
           .connect(alice)
-          .proposeEdits('ipfs://', spacePlugin.address)
+          .proposeEdits(
+            toUtf8Bytes('ipfs://meta'),
+            'ipfs://edits',
+            spacePlugin.address
+          )
       ).to.not.be.reverted;
 
       expect(await mainVotingPlugin.proposalCount()).to.equal(
@@ -324,7 +351,11 @@ describe('Main Voting Plugin', function () {
       await expect(
         mainVotingPlugin
           .connect(bob)
-          .proposeAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+          .proposeAcceptSubspace(
+            toUtf8Bytes('ipfs://meta-2'),
+            ADDRESS_THREE,
+            spacePlugin.address
+          )
       ).to.not.be.reverted;
 
       expect(await mainVotingPlugin.proposalCount()).to.equal(
@@ -334,7 +365,11 @@ describe('Main Voting Plugin', function () {
       await expect(
         mainVotingPlugin
           .connect(bob)
-          .proposeRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
+          .proposeRemoveSubspace(
+            toUtf8Bytes('ipfs://more-meta-here'),
+            bob.address,
+            spacePlugin.address
+          )
       ).to.not.be.reverted;
 
       expect(await mainVotingPlugin.proposalCount()).to.equal(
@@ -344,7 +379,11 @@ describe('Main Voting Plugin', function () {
       await expect(
         mainVotingPlugin
           .connect(carol)
-          .proposeEdits('ipfs://', spacePlugin.address)
+          .proposeEdits(
+            toUtf8Bytes('ipfs://meta'),
+            'ipfs://edits',
+            spacePlugin.address
+          )
       )
         .to.be.revertedWithCustomError(mainVotingPlugin, 'NotAMember')
         .withArgs(carol.address);
@@ -352,7 +391,11 @@ describe('Main Voting Plugin', function () {
       await expect(
         mainVotingPlugin
           .connect(dave)
-          .proposeAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+          .proposeAcceptSubspace(
+            toUtf8Bytes('ipfs://'),
+            ADDRESS_THREE,
+            spacePlugin.address
+          )
       )
         .to.be.revertedWithCustomError(mainVotingPlugin, 'NotAMember')
         .withArgs(dave.address);
@@ -360,7 +403,11 @@ describe('Main Voting Plugin', function () {
       await expect(
         mainVotingPlugin
           .connect(dave)
-          .proposeRemoveSubspace(ADDRESS_TWO, spacePlugin.address)
+          .proposeRemoveSubspace(
+            toUtf8Bytes('ipfs://'),
+            ADDRESS_ONE,
+            spacePlugin.address
+          )
       )
         .to.be.revertedWithCustomError(mainVotingPlugin, 'NotAMember')
         .withArgs(dave.address);
@@ -591,6 +638,379 @@ describe('Main Voting Plugin', function () {
         mainVotingPlugin.connect(bob).vote(pid, VoteOption.Yes, false)
       ).to.not.be.reverted;
       expect(await mainVotingPlugin.canExecute(pid)).to.eq(true);
+    });
+
+    it("At least an editor who didn't create the proposal must vote", async () => {
+      let pid: number;
+      // Alice, Bob and Carol: editors
+      await proposeNewEditor(bob.address);
+      await proposeNewEditor(carol.address);
+      pid = (await mainVotingPlugin.proposalCount()).toNumber() - 1;
+      await expect(
+        mainVotingPlugin.connect(bob).vote(pid, VoteOption.Yes, true)
+      ).to.not.be.reverted;
+
+      // Proposal 1
+      await expect(createDummyProposal(alice, false)).to.not.be.reverted;
+      pid++;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Alice votes Yes
+      await expect(mainVotingPlugin.vote(pid, VoteOption.Yes, false)).to.not.be
+        .reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Bob votes No (50/50)
+      await expect(
+        mainVotingPlugin.connect(bob).vote(pid, VoteOption.No, false)
+      ).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Carol votes Yes (66% yes)
+      await expect(
+        mainVotingPlugin.connect(carol).vote(pid, VoteOption.Yes, false)
+      ).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(true);
+
+      // Proposal 2
+      await expect(createDummyProposal(alice, true)).to.not.be.reverted;
+      pid++;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(false);
+
+      // Bob votes (66% yes)
+      await expect(
+        mainVotingPlugin.connect(bob).vote(pid, VoteOption.Yes, false)
+      ).to.not.be.reverted;
+      expect(await mainVotingPlugin.canExecute(pid)).to.eq(true);
+    });
+  });
+
+  context('Proposal wrappers', () => {
+    it('proposeEdits creates a proposal with the right values', async () => {
+      let pid = 0;
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      await expect(
+        mainVotingPlugin.proposeEdits(
+          toUtf8Bytes('ipfs://metadata'),
+          'ipfs://edits-uri',
+          spacePlugin.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(1);
+
+      let proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(spacePlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        spacePluginInterface.encodeFunctionData('publishEdits', [
+          'ipfs://edits-uri',
+        ])
+      );
+
+      // 2
+      pid++;
+
+      await expect(
+        mainVotingPlugin.proposeEdits(
+          toUtf8Bytes('ipfs://more-metadata-here'),
+          'ipfs://more-edits-uri',
+          '0x5555555555666666666677777777778888888888'
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(2);
+
+      proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(
+        '0x5555555555666666666677777777778888888888'
+      );
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        spacePluginInterface.encodeFunctionData('publishEdits', [
+          'ipfs://more-edits-uri',
+        ])
+      );
+    });
+
+    it('proposeAcceptSubspace creates a proposal with the right values', async () => {
+      let pid = 0;
+      let newSubspacePluginAddress =
+        '0x1234567890123456789012345678901234567890';
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      await expect(
+        mainVotingPlugin.proposeAcceptSubspace(
+          toUtf8Bytes('ipfs://'),
+          newSubspacePluginAddress,
+          spacePlugin.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(1);
+
+      let proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(spacePlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        spacePluginInterface.encodeFunctionData('acceptSubspace', [
+          newSubspacePluginAddress,
+        ])
+      );
+
+      // 2
+      pid++;
+      newSubspacePluginAddress = '0x0123456789012345678901234567890123456789';
+
+      await expect(
+        mainVotingPlugin.proposeAcceptSubspace(
+          toUtf8Bytes('ipfs://more-data-here'),
+          newSubspacePluginAddress,
+          '0x5555555555666666666677777777778888888888'
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(2);
+
+      proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(
+        '0x5555555555666666666677777777778888888888'
+      );
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        spacePluginInterface.encodeFunctionData('acceptSubspace', [
+          newSubspacePluginAddress,
+        ])
+      );
+    });
+
+    it('proposeRemoveSubspace creates a proposal with the right values', async () => {
+      let pid = 0;
+      let subspaceToRemove = '0x1234567890123456789012345678901234567890';
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      await expect(
+        mainVotingPlugin.proposeRemoveSubspace(
+          toUtf8Bytes('ipfs://'),
+          subspaceToRemove,
+          spacePlugin.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(1);
+
+      let proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(spacePlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        spacePluginInterface.encodeFunctionData('removeSubspace', [
+          subspaceToRemove,
+        ])
+      );
+
+      // 2
+      pid++;
+      subspaceToRemove = '0x0123456789012345678901234567890123456789';
+
+      await expect(
+        mainVotingPlugin.proposeRemoveSubspace(
+          toUtf8Bytes('ipfs://more-data-here'),
+          subspaceToRemove,
+          '0x5555555555666666666677777777778888888888'
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(2);
+
+      proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(
+        '0x5555555555666666666677777777778888888888'
+      );
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        spacePluginInterface.encodeFunctionData('removeSubspace', [
+          subspaceToRemove,
+        ])
+      );
+    });
+
+    it('proposeAddMember creates a proposal on the MemberAccessPlugin', async () => {
+      let msPid = 1;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      expect((await memberAccessPlugin.proposalCount()).toNumber()).to.eq(1);
+      await expect(
+        mainVotingPlugin.proposeAddMember(
+          toUtf8Bytes('ipfs://meta'),
+          carol.address
+        )
+      ).to.not.be.reverted;
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      expect((await memberAccessPlugin.proposalCount()).toNumber()).to.eq(2);
+
+      let proposal = await memberAccessPlugin.getProposal(msPid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('addMember', [
+          carol.address,
+        ])
+      );
+
+      // 2
+      msPid++;
+      await expect(
+        mainVotingPlugin.proposeAddMember(
+          toUtf8Bytes('ipfs://more-meta'),
+          ADDRESS_THREE
+        )
+      ).to.not.be.reverted;
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      expect((await memberAccessPlugin.proposalCount()).toNumber()).to.eq(3);
+
+      proposal = await memberAccessPlugin.getProposal(msPid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('addMember', [
+          ADDRESS_THREE,
+        ])
+      );
+    });
+
+    it('proposeRemoveMember creates a proposal with the right values', async () => {
+      let pid = 0;
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      await expect(
+        mainVotingPlugin.proposeRemoveMember(
+          toUtf8Bytes('ipfs://meta'),
+          alice.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(1);
+
+      let proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('removeMember', [
+          alice.address,
+        ])
+      );
+
+      // 2
+      pid++;
+
+      await expect(
+        mainVotingPlugin.proposeRemoveMember(
+          toUtf8Bytes('ipfs://more-meta'),
+          bob.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(2);
+
+      proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('removeMember', [
+          bob.address,
+        ])
+      );
+    });
+
+    it('proposeAddEditor creates a proposal with the right values', async () => {
+      let pid = 0;
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      await expect(
+        mainVotingPlugin.proposeAddEditor(
+          toUtf8Bytes('ipfs://meta'),
+          carol.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(1);
+
+      let proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('addEditor', [
+          carol.address,
+        ])
+      );
+
+      // 2
+      pid++;
+
+      await expect(
+        mainVotingPlugin.proposeAddEditor(
+          toUtf8Bytes('ipfs://more-meta'),
+          bob.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(2);
+
+      proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('addEditor', [bob.address])
+      );
+    });
+
+    it('proposeRemoveEditor creates a proposal with the right values', async () => {
+      let pid = 0;
+      await makeEditor(bob.address);
+
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
+      await expect(
+        mainVotingPlugin.proposeRemoveEditor(
+          toUtf8Bytes('ipfs://meta'),
+          alice.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(1);
+
+      let proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('removeEditor', [
+          alice.address,
+        ])
+      );
+
+      // 2
+      pid++;
+
+      await expect(
+        mainVotingPlugin.proposeRemoveEditor(
+          toUtf8Bytes('ipfs://more-meta'),
+          bob.address
+        )
+      ).to.not.be.reverted;
+      expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(2);
+
+      proposal = await mainVotingPlugin.getProposal(pid);
+      expect(proposal.actions.length).to.eq(1);
+      expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
+      expect(proposal.actions[0].value.toNumber()).to.eq(0);
+      expect(proposal.actions[0].data).to.eq(
+        mainVotingPluginInterface.encodeFunctionData('removeEditor', [
+          bob.address,
+        ])
+      );
     });
   });
 
@@ -1240,6 +1660,84 @@ describe('Main Voting Plugin', function () {
       ];
 
       await expect(dao.execute(ZERO_BYTES32, actions, 0)).to.not.be.reverted;
+    });
+  });
+
+  context('Joining a space via MemberAccessPlugin', () => {
+    it('Proposing new members via MemberAccess plugin grants membership', async () => {
+      expect(await mainVotingPlugin.isMember(carol.address)).to.be.false;
+      await mainVotingPlugin.proposeAddMember(
+        toUtf8Bytes('ipfs://'),
+        carol.address
+      );
+      expect(await mainVotingPlugin.isMember(carol.address)).to.be.true;
+
+      // 2
+      expect(await mainVotingPlugin.isMember(ADDRESS_THREE)).to.be.false;
+      await mainVotingPlugin.proposeAddMember(
+        toUtf8Bytes('ipfs://'),
+        ADDRESS_THREE
+      );
+      expect(await mainVotingPlugin.isMember(ADDRESS_THREE)).to.be.true;
+    });
+  });
+
+  context('Leaving a space', () => {
+    it('Completely removes an editor', async () => {
+      await makeEditor(bob.address);
+
+      // Bob leaves
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.true;
+      expect(await mainVotingPlugin.isMember(bob.address)).to.be.true;
+
+      await expect(mainVotingPlugin.connect(bob).leaveSpace()).to.not.be
+        .reverted;
+
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+      expect(await mainVotingPlugin.isMember(bob.address)).to.be.false;
+
+      // Alice leaves
+      expect(await mainVotingPlugin.isEditor(alice.address)).to.be.true;
+      expect(await mainVotingPlugin.isMember(alice.address)).to.be.true;
+
+      await expect(mainVotingPlugin.leaveSpace()).to.not.be.reverted;
+
+      expect(await mainVotingPlugin.isEditor(alice.address)).to.be.false;
+      expect(await mainVotingPlugin.isMember(alice.address)).to.be.false;
+    });
+
+    it('Allows a member to leave', async () => {
+      await mainVotingPlugin.proposeAddMember(
+        toUtf8Bytes('ipfs://'),
+        carol.address
+      );
+
+      // Bob leaves
+      expect(await mainVotingPlugin.isMember(bob.address)).to.be.true;
+      await expect(mainVotingPlugin.connect(bob).leaveSpace()).to.not.be
+        .reverted;
+      expect(await mainVotingPlugin.isMember(bob.address)).to.be.false;
+
+      // Carol leaves
+      expect(await mainVotingPlugin.isMember(carol.address)).to.be.true;
+      await expect(mainVotingPlugin.connect(carol).leaveSpace()).to.not.be
+        .reverted;
+      expect(await mainVotingPlugin.isMember(carol.address)).to.be.false;
+    });
+
+    it('Allows an editor to give editorship away', async () => {
+      await makeEditor(bob.address);
+
+      // Bob leaves as admin
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.true;
+      await expect(mainVotingPlugin.connect(bob).leaveSpaceAsEditor()).to.not.be
+        .reverted;
+      expect(await mainVotingPlugin.isEditor(bob.address)).to.be.false;
+
+      // Alice leaves as editor
+      expect(await mainVotingPlugin.isEditor(alice.address)).to.be.true;
+      await expect(mainVotingPlugin.leaveSpaceAsEditor()).to.not.be.reverted;
+      expect(await mainVotingPlugin.isEditor(alice.address)).to.be.false;
     });
   });
 
