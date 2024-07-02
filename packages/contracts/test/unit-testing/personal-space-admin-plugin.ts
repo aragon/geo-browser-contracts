@@ -272,10 +272,10 @@ describe('Personal Space Admin Plugin', function () {
             .connect(account)
             .submitRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
         ).to.not.be.reverted;
-        expect(await personalSpaceVotingPlugin.proposalCount()).to.equal(
-          BigNumber.from(3)
-        );
       }
+      expect(await personalSpaceVotingPlugin.proposalCount()).to.equal(
+        BigNumber.from(6)
+      );
 
       // Non members
       await expect(
