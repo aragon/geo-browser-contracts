@@ -30,6 +30,16 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
             this.submitRemoveEditor.selector ^
             this.leaveSpace.selector;
 
+    /// @notice Raised when a wallet who is not an editor or a member attempts to do something
+    error NotAMember(address caller);
+
+    modifier onlyMembers() {
+        if (!isMember(msg.sender)) {
+            revert NotAMember(msg.sender);
+        }
+        _;
+    }
+
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.
     /// @dev This method is required to support [ERC-1167](https://eips.ethereum.org/EIPS/eip-1167).
@@ -86,10 +96,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
     /// @notice Creates and executes a proposal that makes the DAO emit new content on the given space.
     /// @param _contentUri The URI of the IPFS content to publish
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function submitEdits(
-        string memory _contentUri,
-        address _spacePlugin
-    ) public auth(MEMBER_PERMISSION_ID) {
+    function submitEdits(string memory _contentUri, address _spacePlugin) public onlyMembers {
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
         _actions[0].to = _spacePlugin;
@@ -105,10 +112,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
     /// @notice Creates and executes a proposal that makes the DAO accept the given DAO as a subspace.
     /// @param _subspaceDao The address of the DAO that holds the new subspace
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function submitAcceptSubspace(
-        IDAO _subspaceDao,
-        address _spacePlugin
-    ) public auth(MEMBER_PERMISSION_ID) {
+    function submitAcceptSubspace(IDAO _subspaceDao, address _spacePlugin) public onlyMembers {
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
         _actions[0].to = _spacePlugin;
         _actions[0].data = abi.encodeCall(SpacePlugin.acceptSubspace, (address(_subspaceDao)));
@@ -123,10 +127,7 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
     /// @notice Creates and executes a proposal that makes the DAO remove the given DAO as a subspace.
     /// @param _subspaceDao The address of the DAO that holds the subspace to remove
     /// @param _spacePlugin The address of the space plugin where changes will be executed
-    function submitRemoveSubspace(
-        IDAO _subspaceDao,
-        address _spacePlugin
-    ) public auth(MEMBER_PERMISSION_ID) {
+    function submitRemoveSubspace(IDAO _subspaceDao, address _spacePlugin) public onlyMembers {
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
         _actions[0].to = _spacePlugin;
         _actions[0].data = abi.encodeCall(SpacePlugin.removeSubspace, (address(_subspaceDao)));

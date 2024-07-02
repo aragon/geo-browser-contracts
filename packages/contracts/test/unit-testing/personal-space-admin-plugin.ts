@@ -255,25 +255,27 @@ describe('Personal Space Admin Plugin', function () {
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
     });
 
-    it('Only members can call content proposal wrappers', async () => {
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(bob)
-          .submitEdits('ipfs://', spacePlugin.address)
-      ).to.not.be.reverted;
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(bob)
-          .submitAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
-      ).to.not.be.reverted;
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(bob)
-          .submitRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
-      ).to.not.be.reverted;
-      expect(await personalSpaceVotingPlugin.proposalCount()).to.equal(
-        BigNumber.from(3)
-      );
+    it('Only members or editors can call content proposal wrappers', async () => {
+      for (const account of [alice, bob]) {
+        await expect(
+          personalSpaceVotingPlugin
+            .connect(account)
+            .submitEdits('ipfs://', spacePlugin.address)
+        ).to.not.be.reverted;
+        await expect(
+          personalSpaceVotingPlugin
+            .connect(account)
+            .submitAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+        ).to.not.be.reverted;
+        await expect(
+          personalSpaceVotingPlugin
+            .connect(account)
+            .submitRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
+        ).to.not.be.reverted;
+        expect(await personalSpaceVotingPlugin.proposalCount()).to.equal(
+          BigNumber.from(3)
+        );
+      }
 
       // Non members
       await expect(

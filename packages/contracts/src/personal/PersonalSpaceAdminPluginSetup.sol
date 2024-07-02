@@ -51,7 +51,7 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
         PermissionLib.MultiTargetPermission[]
             memory permissions = new PermissionLib.MultiTargetPermission[](2);
 
-        // Grant `ADMIN_EXECUTE_PERMISSION` of the plugin to the editor.
+        // Grant `EDITOR_PERMISSION` of the plugin to the editor.
         permissions[0] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Grant,
             plugin,
@@ -73,7 +73,7 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
     }
 
     /// @inheritdoc IPluginSetup
-    /// @dev Currently, there is no reliable way to revoke the `ADMIN_EXECUTE_PERMISSION_ID` from all addresses it has been granted to. Accordingly, only the `EXECUTE_PERMISSION_ID` is revoked for this uninstallation.
+    /// @dev There is no reliable way to revoke `EDITOR_PERMISSION_ID` from all addresses it has been granted to. Removing `EXECUTE_PERMISSION_ID` only, as being an editor or a member is useless without EXECUTE.
     function prepareUninstallation(
         address _dao,
         SetupPayload calldata _payload
