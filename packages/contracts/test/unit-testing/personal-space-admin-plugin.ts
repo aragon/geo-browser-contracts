@@ -255,24 +255,26 @@ describe('Personal Space Admin Plugin', function () {
       ).to.emit(personalSpaceVotingPlugin, 'ProposalCreated');
     });
 
-    it('Only members can call content proposal wrappers', async () => {
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(bob)
-          .submitEdits('ipfs://', spacePlugin.address)
-      ).to.not.be.reverted;
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(bob)
-          .submitAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
-      ).to.not.be.reverted;
-      await expect(
-        personalSpaceVotingPlugin
-          .connect(bob)
-          .submitRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
-      ).to.not.be.reverted;
+    it('Only members or editors can call content proposal wrappers', async () => {
+      for (const account of [alice, bob]) {
+        await expect(
+          personalSpaceVotingPlugin
+            .connect(account)
+            .submitEdits('ipfs://', spacePlugin.address)
+        ).to.not.be.reverted;
+        await expect(
+          personalSpaceVotingPlugin
+            .connect(account)
+            .submitAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
+        ).to.not.be.reverted;
+        await expect(
+          personalSpaceVotingPlugin
+            .connect(account)
+            .submitRemoveSubspace(ADDRESS_THREE, spacePlugin.address)
+        ).to.not.be.reverted;
+      }
       expect(await personalSpaceVotingPlugin.proposalCount()).to.equal(
-        BigNumber.from(3)
+        BigNumber.from(6)
       );
 
       // Non members
@@ -281,46 +283,22 @@ describe('Personal Space Admin Plugin', function () {
           .connect(carol)
           .submitEdits('ipfs://', spacePlugin.address)
       )
-        .to.be.revertedWithCustomError(
-          personalSpaceVotingPlugin,
-          'DaoUnauthorized'
-        )
-        .withArgs(
-          dao.address,
-          personalSpaceVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID
-        );
+        .to.be.revertedWithCustomError(personalSpaceVotingPlugin, 'NotAMember')
+        .withArgs(carol.address);
       await expect(
         personalSpaceVotingPlugin
           .connect(carol)
           .submitAcceptSubspace(ADDRESS_TWO, spacePlugin.address)
       )
-        .to.be.revertedWithCustomError(
-          personalSpaceVotingPlugin,
-          'DaoUnauthorized'
-        )
-        .withArgs(
-          dao.address,
-          personalSpaceVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID
-        );
+        .to.be.revertedWithCustomError(personalSpaceVotingPlugin, 'NotAMember')
+        .withArgs(carol.address);
       await expect(
         personalSpaceVotingPlugin
           .connect(carol)
           .submitRemoveSubspace(ADDRESS_TWO, spacePlugin.address)
       )
-        .to.be.revertedWithCustomError(
-          personalSpaceVotingPlugin,
-          'DaoUnauthorized'
-        )
-        .withArgs(
-          dao.address,
-          personalSpaceVotingPlugin.address,
-          carol.address,
-          MEMBER_PERMISSION_ID
-        );
+        .to.be.revertedWithCustomError(personalSpaceVotingPlugin, 'NotAMember')
+        .withArgs(carol.address);
     });
 
     it('Only editors can call permission proposal wrappers', async () => {
