@@ -24,11 +24,14 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
             this.submitEdits.selector ^
             this.submitAcceptSubspace.selector ^
             this.submitRemoveSubspace.selector ^
-            this.submitNewMember.selector ^
+            this.addMember.selector ^
             this.submitRemoveMember.selector ^
             this.submitNewEditor.selector ^
             this.submitRemoveEditor.selector ^
             this.leaveSpace.selector;
+
+    /// @notice The ID of the permission required to call the `addMember` function.
+    bytes32 public constant ADD_MEMBER_PERMISSION_ID = keccak256("ADD_MEMBER_PERMISSION");
 
     /// @notice Raised when a wallet who is not an editor or a member attempts to do something
     error NotAMember(address caller);
@@ -139,9 +142,9 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
         // The event will be emitted by the space plugin
     }
 
-    /// @notice Creates and executes a proposal that makes the DAO grant membership permission to the given address
+    /// @notice Creates and executes a proposal that makes the DAO grant membership permission to the given address.
     /// @param _newMember The address to grant member permission to
-    function submitNewMember(address _newMember) public auth(EDITOR_PERMISSION_ID) {
+    function addMember(address _newMember) public auth(ADD_MEMBER_PERMISSION_ID) {
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
         _actions[0].to = address(dao());
         _actions[0].data = abi.encodeCall(
