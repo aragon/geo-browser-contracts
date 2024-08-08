@@ -10,7 +10,7 @@ import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
-import {MemberAccessPlugin, MEMBER_ACCESS_INTERFACE_ID} from "./MemberAccessPlugin.sol";
+import {MainMemberAddHelper, MAIN_MEMBER_ADD_INTERFACE_ID} from "./MainMemberAddHelper.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -48,7 +48,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     mapping(address => bool) internal members;
 
     /// @notice The address of the plugin where new memberships are approved, using a different set of rules.
-    MemberAccessPlugin public memberAccessPlugin;
+    MainMemberAddHelper public mainMemberAddHelper;
 
     /// @notice Emitted when the creator cancels a proposal
     event ProposalCanceled(uint256 proposalId);
@@ -107,17 +107,17 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         IDAO _dao,
         VotingSettings calldata _votingSettings,
         address[] calldata _initialEditors,
-        MemberAccessPlugin _memberAccessPlugin
+        MainMemberAddHelper _mainMemberAddHelper
     ) external initializer {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
         _addAddresses(_initialEditors);
         emit EditorsAdded(_initialEditors);
 
-        if (!_memberAccessPlugin.supportsInterface(MEMBER_ACCESS_INTERFACE_ID)) {
-            revert InvalidInterface(address(_memberAccessPlugin));
+        if (!_mainMemberAddHelper.supportsInterface(MAIN_MEMBER_ADD_INTERFACE_ID)) {
+            revert InvalidInterface(address(_mainMemberAddHelper));
         }
-        memberAccessPlugin = _memberAccessPlugin;
+        mainMemberAddHelper = _mainMemberAddHelper;
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -371,7 +371,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         /// @dev Creating the actual proposal on a separate plugin because the approval rules differ.
         /// @dev Keeping all wrappers on the MainVoting plugin, even if one type of approvals are handled on the MemberAccess plugin.
         return
-            memberAccessPlugin.proposeAddMember(_metadataContentUri, _proposedMember, msg.sender);
+            mainMemberAddHelper.proposeAddMember(_metadataContentUri, _proposedMember, msg.sender);
     }
 
     /// @notice Creates a proposal to remove an existing member.

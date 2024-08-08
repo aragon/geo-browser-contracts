@@ -9,7 +9,10 @@ import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PersonalSpaceAdminPlugin} from "./PersonalSpaceAdminPlugin.sol";
+import {PersonalMemberAddHelper} from "./PersonalMemberAddHelper.sol";
 import {EDITOR_PERMISSION_ID} from "../constants.sol";
+
+uint64 constant MEMBER_ADD_PROPOSAL_DURATION = 7 days;
 
 /// @title PersonalSpaceAdminPluginSetup
 /// @author Aragon - 2023
@@ -18,15 +21,17 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
     using Clones for address;
 
     /// @notice The address of the `PersonalSpaceAdminPlugin` plugin logic contract to be cloned.
-    address private immutable implementation_;
+    address private immutable pluginImplementation;
+    address public immutable helperImplementation;
 
     /// @notice Thrown if the editor address is zero.
     /// @param editor The initial editor address.
     error EditorAddressInvalid(address editor);
 
-    /// @notice The constructor setting the `PersonalSpaceAdminPlugin` implementation contract to clone from.
+    /// @notice The constructor setting the `PersonalSpaceAdminPlugin` and `PersonalMemberAddHelper` implementation contract to clone from.
     constructor() {
-        implementation_ = address(new PersonalSpaceAdminPlugin());
+        pluginImplementation = address(new PersonalSpaceAdminPlugin());
+        helperImplementation = address(new PersonalMemberAddHelper());
     }
 
     /// @inheritdoc IPluginSetup
@@ -41,15 +46,21 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
             revert EditorAddressInvalid({editor: editor});
         }
 
-        // Clone plugin contract.
-        plugin = implementation_.clone();
+        // Clone the contracts
+        plugin = pluginImplementation.clone();
+        address helper = helperImplementation.clone();
 
-        // Initialize cloned plugin contract.
+        // Initialize the cloned contracts
         PersonalSpaceAdminPlugin(plugin).initialize(IDAO(_dao), editor);
+
+        PersonalMemberAddHelper.Settings memory _helperSettings = PersonalMemberAddHelper.Settings({
+            proposalDuration: MEMBER_ADD_PROPOSAL_DURATION
+        });
+        PersonalMemberAddHelper(helper).initialize(IDAO(_dao), _helperSettings);
 
         // Prepare permissions
         PermissionLib.MultiTargetPermission[]
-            memory permissions = new PermissionLib.MultiTargetPermission[](2);
+            memory permissions = new PermissionLib.MultiTargetPermission[](4);
 
         // Grant `EDITOR_PERMISSION` of the plugin to the editor.
         permissions[0] = PermissionLib.MultiTargetPermission(
@@ -60,8 +71,26 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
             EDITOR_PERMISSION_ID
         );
 
-        // Grant `EXECUTE_PERMISSION` on the DAO to the plugin.
+        // Grant `PROPOSER_PERMISSION` on the helper to the plugin.
         permissions[1] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Grant,
+            helper,
+            plugin,
+            PermissionLib.NO_CONDITION,
+            PersonalMemberAddHelper(helper).PROPOSER_PERMISSION_ID()
+        );
+
+        // Grant `UPDATE_PLUGIN_SETTINGS_PERMISSION` on the helper to the plugin.
+        permissions[2] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Grant,
+            helper,
+            _dao,
+            PermissionLib.NO_CONDITION,
+            PersonalMemberAddHelper(helper).UPDATE_SETTINGS_PERMISSION_ID()
+        );
+
+        // Grant `EXECUTE_PERMISSION` on the DAO to the plugin.
+        permissions[3] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Grant,
             _dao,
             plugin,
@@ -70,6 +99,9 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
         );
 
         preparedSetupData.permissions = permissions;
+
+        preparedSetupData.helpers = new address[](1);
+        preparedSetupData.helpers[0] = helper;
     }
 
     /// @inheritdoc IPluginSetup
@@ -93,7 +125,7 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
 
     /// @inheritdoc IPluginSetup
     function implementation() external view returns (address) {
-        return implementation_;
+        return pluginImplementation;
     }
 
     /// @notice Encodes the given installation parameters into a byte array
