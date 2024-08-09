@@ -11,10 +11,10 @@ import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
 import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
 
-/// @title PersonalSpaceAdminPlugin
+/// @title PersonalAdminPlugin
 /// @author Aragon - 2023
 /// @notice The admin governance plugin giving execution permission on the DAO to a single address.
-contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, IMembers {
+contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, IMembers {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.

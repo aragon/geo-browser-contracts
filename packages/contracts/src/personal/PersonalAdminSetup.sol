@@ -8,19 +8,19 @@ import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/Plug
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
-import {PersonalSpaceAdminPlugin} from "./PersonalSpaceAdminPlugin.sol";
+import {PersonalAdminPlugin} from "./PersonalAdminPlugin.sol";
 import {PersonalMemberAddHelper} from "./PersonalMemberAddHelper.sol";
 import {EDITOR_PERMISSION_ID} from "../constants.sol";
 
 uint64 constant MEMBER_ADD_PROPOSAL_DURATION = 7 days;
 
-/// @title PersonalSpaceAdminPluginSetup
+/// @title PersonalAdminSetup
 /// @author Aragon - 2023
-/// @notice The setup contract of the `PersonalSpaceAdminPlugin` plugin.
-contract PersonalSpaceAdminPluginSetup is PluginSetup {
+/// @notice The setup contract of the `PersonalAdminPlugin` plugin.
+contract PersonalAdminSetup is PluginSetup {
     using Clones for address;
 
-    /// @notice The address of the `PersonalSpaceAdminPlugin` plugin logic contract to be cloned.
+    /// @notice The address of the `PersonalAdminPlugin` plugin logic contract to be cloned.
     address private immutable pluginImplementation;
     address public immutable helperImplementation;
 
@@ -28,9 +28,9 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
     /// @param editor The initial editor address.
     error EditorAddressInvalid(address editor);
 
-    /// @notice The constructor setting the `PersonalSpaceAdminPlugin` and `PersonalMemberAddHelper` implementation contract to clone from.
+    /// @notice The constructor setting the `PersonalAdminPlugin` and `PersonalMemberAddHelper` implementation contract to clone from.
     constructor() {
-        pluginImplementation = address(new PersonalSpaceAdminPlugin());
+        pluginImplementation = address(new PersonalAdminPlugin());
         helperImplementation = address(new PersonalMemberAddHelper());
     }
 
@@ -39,7 +39,7 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
         address _dao,
         bytes calldata _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
-        // Decode `_data` to extract the params needed for cloning and initializing the `PersonalSpaceAdminPlugin` plugin.
+        // Decode `_data` to extract the params needed for cloning and initializing the `PersonalAdminPlugin` plugin.
         address editor = decodeInstallationParams(_data);
 
         if (editor == address(0)) {
@@ -51,7 +51,7 @@ contract PersonalSpaceAdminPluginSetup is PluginSetup {
         address helper = helperImplementation.clone();
 
         // Initialize the cloned contracts
-        PersonalSpaceAdminPlugin(plugin).initialize(IDAO(_dao), editor);
+        PersonalAdminPlugin(plugin).initialize(IDAO(_dao), editor);
 
         PersonalMemberAddHelper.Settings memory _helperSettings = PersonalMemberAddHelper.Settings({
             proposalDuration: MEMBER_ADD_PROPOSAL_DURATION

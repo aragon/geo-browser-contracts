@@ -1,14 +1,14 @@
 import {
-  GovernancePluginsSetupParams,
-  PersonalSpaceAdminPluginSetupParams,
+  StdGovernanceSetupParams,
+  PersonalAdminSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
 import {
-  GovernancePluginsSetup__factory,
-  MainVotingPlugin__factory,
-  MainMemberAddHelper__factory,
-  PersonalSpaceAdminPlugin__factory,
-  PersonalSpaceAdminPluginSetup__factory,
+  StdGovernanceSetup__factory,
+  StdGovernancePlugin__factory,
+  StdMemberAddHelper__factory,
+  PersonalAdminPlugin__factory,
+  PersonalAdminSetup__factory,
   SpacePlugin__factory,
   SpacePluginSetup__factory,
 } from '../../typechain';
@@ -65,17 +65,17 @@ async function concludePersonalSpaceVotingSetup(
   const [deployer] = await hre.ethers.getSigners();
 
   console.log(
-    `Concluding ${PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`
+    `Concluding ${PersonalAdminSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`
   );
 
   const setupDeployment = await deployments.get(
-    PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME
+    PersonalAdminSetupParams.PLUGIN_SETUP_CONTRACT_NAME
   );
-  const setup = PersonalSpaceAdminPluginSetup__factory.connect(
+  const setup = PersonalAdminSetup__factory.connect(
     setupDeployment.address,
     deployer
   );
-  const implementation = PersonalSpaceAdminPlugin__factory.connect(
+  const implementation = PersonalAdminPlugin__factory.connect(
     await setup.implementation(),
     deployer
   );
@@ -101,25 +101,25 @@ async function concludeGovernanceSetup(hre: HardhatRuntimeEnvironment) {
   const [deployer] = await hre.ethers.getSigners();
 
   console.log(
-    `Concluding ${GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`
+    `Concluding ${StdGovernanceSetupParams.PLUGIN_SETUP_CONTRACT_NAME} deployment.\n`
   );
 
   const setupDeployment = await deployments.get(
-    GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME
+    StdGovernanceSetupParams.PLUGIN_SETUP_CONTRACT_NAME
   );
-  const setup = GovernancePluginsSetup__factory.connect(
+  const setup = StdGovernanceSetup__factory.connect(
     setupDeployment.address,
     deployer
   );
-  const mainVotingPluginImplementation = MainVotingPlugin__factory.connect(
-    await setup.implementation(),
-    deployer
-  );
-  const mainMemberAddHelperImplementation =
-    MainMemberAddHelper__factory.connect(
-      await setup.helperImplementation(),
+  const stdGovernancePluginImplementation =
+    StdGovernancePlugin__factory.connect(
+      await setup.implementation(),
       deployer
     );
+  const stdMemberAddHelperImplementation = StdMemberAddHelper__factory.connect(
+    await setup.helperImplementation(),
+    deployer
+  );
 
   // Add a timeout for polygon because the call to `implementation()` can fail for newly deployed contracts in the first few seconds
   if (network.name === 'polygon') {
@@ -132,11 +132,11 @@ async function concludeGovernanceSetup(hre: HardhatRuntimeEnvironment) {
     args: setupDeployment.args,
   });
   hre.aragonToVerifyContracts.push({
-    address: mainVotingPluginImplementation.address,
+    address: stdGovernancePluginImplementation.address,
     args: [],
   });
   hre.aragonToVerifyContracts.push({
-    address: mainMemberAddHelperImplementation.address,
+    address: stdMemberAddHelperImplementation.address,
     args: [],
   });
 }
@@ -144,7 +144,7 @@ async function concludeGovernanceSetup(hre: HardhatRuntimeEnvironment) {
 export default func;
 func.tags = [
   SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  PersonalAdminSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  StdGovernanceSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   'Verification',
 ];

@@ -1,12 +1,12 @@
-import {GovernancePluginsSetupParams} from '../../plugin-setup-params';
+import {StdGovernanceSetupParams} from '../../plugin-setup-params';
 import {
-  GovernancePluginsSetup,
-  GovernancePluginsSetup__factory,
-  MainVotingPlugin,
-  MainVotingPlugin__factory,
+  StdGovernanceSetup,
+  StdGovernanceSetup__factory,
+  StdGovernancePlugin,
+  StdGovernancePlugin__factory,
   MajorityVotingBase,
-  MainMemberAddHelper,
-  MainMemberAddHelper__factory,
+  StdMemberAddHelper,
+  StdMemberAddHelper__factory,
   PluginRepo,
 } from '../../typechain';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
@@ -34,7 +34,7 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
 };
 const minMemberAddProposalDuration = 60 * 60 * 24;
 
-describe('GovernancePluginsSetup processing', function () {
+describe('StdGovernanceSetup processing', function () {
   let deployer: SignerWithAddress;
 
   let psp: PluginSetupProcessor;
@@ -45,7 +45,7 @@ describe('GovernancePluginsSetup processing', function () {
     [deployer] = await ethers.getSigners();
 
     const pluginRepoInfo = getPluginRepoInfo(
-      GovernancePluginsSetupParams.PLUGIN_REPO_ENS_NAME,
+      StdGovernanceSetupParams.PLUGIN_REPO_ENS_NAME,
       'hardhat'
     );
     if (!pluginRepoInfo) {
@@ -86,15 +86,15 @@ describe('GovernancePluginsSetup processing', function () {
   });
 
   context('Build 1', async () => {
-    let setup: GovernancePluginsSetup;
+    let setup: StdGovernanceSetup;
     let pluginSetupRef: PluginSetupRefStruct;
-    let mainVotingPlugin: MainVotingPlugin;
-    let mainMemberAddHelper: MainMemberAddHelper;
+    let stdGovernancePlugin: StdGovernancePlugin;
+    let stdMemberAddHelper: StdMemberAddHelper;
     const pluginUpgrader = ADDRESS_ZERO;
 
     before(async () => {
       // Deploy setups.
-      setup = GovernancePluginsSetup__factory.connect(
+      setup = StdGovernanceSetup__factory.connect(
         (await pluginRepo['getLatestVersion(uint8)'](release)).pluginSetup,
         deployer
       );
@@ -118,31 +118,36 @@ describe('GovernancePluginsSetup processing', function () {
       );
       const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
-      mainVotingPlugin = MainVotingPlugin__factory.connect(
+      stdGovernancePlugin = StdGovernancePlugin__factory.connect(
         installation.preparedEvent.args.plugin,
         deployer
       );
-      mainMemberAddHelper = MainMemberAddHelper__factory.connect(
+      stdMemberAddHelper = StdMemberAddHelper__factory.connect(
         installation.preparedEvent.args.preparedSetupData.helpers[0],
         deployer
       );
     });
 
     it('installs & uninstalls', async () => {
-      expect(await mainVotingPlugin.implementation()).to.be.eq(
+      expect(await stdGovernancePlugin.implementation()).to.be.eq(
         await setup.implementation()
       );
-      expect(await mainMemberAddHelper.implementation()).to.be.eq(
+      expect(await stdMemberAddHelper.implementation()).to.be.eq(
         await setup.helperImplementation()
       );
-      expect(await mainVotingPlugin.dao()).to.be.eq(dao.address);
-      expect(await mainMemberAddHelper.dao()).to.be.eq(dao.address);
+      expect(await stdGovernancePlugin.dao()).to.be.eq(dao.address);
+      expect(await stdMemberAddHelper.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
       const data = await setup.encodeUninstallationParams(pluginUpgrader);
-      await uninstallPlugin(psp, dao, mainVotingPlugin, pluginSetupRef, data, [
-        mainMemberAddHelper.address,
-      ]);
+      await uninstallPlugin(
+        psp,
+        dao,
+        stdGovernancePlugin,
+        pluginSetupRef,
+        data,
+        [stdMemberAddHelper.address]
+      );
     });
   });
 });

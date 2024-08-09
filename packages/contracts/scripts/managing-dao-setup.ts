@@ -1,6 +1,6 @@
-import {GovernancePluginsSetupParams} from '../plugin-setup-params';
+import {StdGovernanceSetupParams} from '../plugin-setup-params';
 import {
-  GovernancePluginsSetup__factory,
+  StdGovernanceSetup__factory,
   MajorityVotingBase,
   PluginSetupProcessor__factory,
 } from '../typechain';
@@ -132,12 +132,12 @@ async function prepareInstallation() {
     deployer
   );
   const pluginSetupInfo = await pluginRepo['getLatestVersion(uint8)'](
-    GovernancePluginsSetupParams.VERSION.release
+    StdGovernanceSetupParams.VERSION.release
   );
   if (!pluginSetupInfo.pluginSetup) {
     throw new Error('The Governance plugin is not available');
   }
-  const pluginSetup = GovernancePluginsSetup__factory.connect(
+  const pluginSetup = StdGovernanceSetup__factory.connect(
     pluginSetupInfo.pluginSetup,
     deployer
   );
@@ -168,7 +168,7 @@ async function prepareInstallation() {
 
   const pluginSetupRef: PluginSetupRefStruct = {
     pluginSetupRepo: GOVERNANCE_PLUGIN_REPO_ADDRESS!,
-    versionTag: GovernancePluginsSetupParams.VERSION,
+    versionTag: StdGovernanceSetupParams.VERSION,
   };
 
   const tx = await psp.prepareInstallation(MANAGING_DAO_ADDRESS!, {
@@ -185,11 +185,11 @@ async function prepareInstallation() {
     throw new Error('Failed to get InstallationPrepared event');
   }
   console.log(
-    '- Deployed a MainVotingPlugin plugin at',
+    '- Deployed a StdGovernancePlugin plugin at',
     preparedEvent.args.plugin
   );
   console.log(
-    '- Deployed a MainMemberAddHelper plugin at',
+    '- Deployed a StdMemberAddHelper plugin at',
     preparedEvent.args.preparedSetupData.helpers[0]
   );
 
@@ -216,7 +216,7 @@ async function applyInstallation(
       permissions,
       pluginSetupRef: {
         pluginSetupRepo: GOVERNANCE_PLUGIN_REPO_ADDRESS!,
-        versionTag: GovernancePluginsSetupParams.VERSION,
+        versionTag: StdGovernanceSetupParams.VERSION,
       },
     };
 
@@ -330,7 +330,7 @@ async function checkManagingDaoPost(
   );
   if (!canExecute) {
     throw new Error(
-      'The MainVotingPlugin should have execute permission on the Managing DAO'
+      'The StdGovernancePlugin should have execute permission on the Managing DAO'
     );
   }
 

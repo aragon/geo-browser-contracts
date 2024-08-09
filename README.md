@@ -29,11 +29,11 @@ The current repository provides the plugins necessary to cover two use cases:
 
 1. A standard space where members propose changes and editors vote on them
    - Space plugin
-   - Member Access plugin
-   - Main Voting plugin
+   - Member Add plugin
+   - Standard Governance plugin
 2. A personal space, where editors apply changes immediately
    - Space plugin
-   - Personal Space Admin plugin
+   - Personal Admin plugin
 
 ### Standard Space
 
@@ -43,11 +43,11 @@ The most typical case will be telling the Space Plugin to emit the event of a pr
 
 <img src="./img/standard-1.svg">
 
-The Main Voting Plugin can also pass proposals that change its own settings.
+The Standard Governance Plugin can also pass proposals that change its own settings.
 
 <img src="./img/standard-2.svg">
 
-To manage who can create proposals, the Member Access Plugin allows anyone to request becoming a member. Editors can approve or reject incoming proposals.
+To manage who can create proposals, the Member Add Plugin allows anyone to request becoming a member. Editors can approve or reject incoming proposals.
 
 <img src="./img/standard-3.svg">
 
@@ -71,18 +71,18 @@ There's an optional feature, where a predefined address can execute the actions 
 
 ### Space genesis
 
-1. When the `MainVotingPlugin` is installed, an initial editor is defined
+1. When the `StdGovernancePlugin` is installed, an initial editor is defined
 
 ### Joining a space
 
-1. Someone calls `proposeAddMember()` on the `MainVotingPlugin`
+1. Someone calls `proposeAddMember()` on the `StdGovernancePlugin`
    - If the caller is the only editor, the proposal succeeds immediately
-   - The proposal is created on the `MainMemberAddHelper` because the governance rules differ from the rest of proposals
+   - The proposal is created on the `StdMemberAddHelper` because the governance rules differ from the rest of proposals
 2. One of the editors calls `approve()` or `reject()`
    - Calling `approve()` makes the proposal succeed
    - Calling `reject()` cancels the proposal
 3. A succeeded proposal is executed automatically
-   - This makes the DAO call `addMember()` on the main voting plugin
+   - This makes the DAO call `addMember()` on the standard governance plugin
 
 ### Creating proposals for a space
 
@@ -93,7 +93,7 @@ There's an optional feature, where a predefined address can execute the actions 
 
 ### Emitting content and managing subspaces
 
-1. When a proposal regarding the space is passed, the `MainVotingPlugin` will call `execute()` on the DAO
+1. When a proposal regarding the space is passed, the `StdGovernancePlugin` will call `execute()` on the DAO
 2. The actions from the proposal will target the `publishEdits()`, `acceptSubspace()` or `removeSubspace()` functions on the `SpacePlugin`.
 3. The `SpacePlugin` will be called by the DAO and emit the corresponding events
 4. An external indexer will fetch all these events and update the current state of this specific space
@@ -143,7 +143,7 @@ function grantWithCondition(
 );
 ```
 
-See the `MemberAddCondition` contract. It restricts what the [MainMemberAddHelper](#main-member-add-helper) can execute on the DAO.
+See the `MemberAddCondition` contract. It restricts what the [StdMemberAddHelper](#main-member-add-helper) can execute on the DAO.
 
 [Learn more about OSx permissions](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/)
 
@@ -159,7 +159,7 @@ Below are all the permissions that a [PluginSetup](#plugin-setup-contracts) cont
 
 Proposal:
 
-- `EDITOR_PERMISSION` is required to execute proposals on the [PersonalSpaceAdminPlugin](#personal-space-admin-plugin)
+- `EDITOR_PERMISSION` is required to execute proposals on the [PersonalAdminPlugin](#personal-space-admin-plugin)
 - `EXECUTE_PERMISSION` is required to make the DAO `execute` a set of actions
   - Only plugins should have this permission
   - Some plugins should restrict it with a condition
@@ -173,10 +173,10 @@ Spaces:
 
 Governance settings:
 
-- `UPDATE_VOTING_SETTINGS_PERMISSION_ID` is required to change the settings of the [MainVotingPlugin](#main-voting-plugin)
-- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove members or editors on the [MainVotingPlugin](#main-voting-plugin)
+- `UPDATE_VOTING_SETTINGS_PERMISSION_ID` is required to change the settings of the [StdGovernancePlugin](#main-voting-plugin)
+- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove members or editors on the [StdGovernancePlugin](#main-voting-plugin)
   - Typically called by the DAO via proposal
-- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [MainMemberAddHelper](#main-member-add-helper)
+- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [StdMemberAddHelper](#main-member-add-helper)
   - Typically called by the DAO via proposal
 
 Permission management:
@@ -221,13 +221,13 @@ It uses the generated typechain artifacts, which contain the interfaces for the 
 
 ## Adding members and editors
 
-On Spaces with the standard governance, a [MainMemberAddHelper](#main-member-add-helper) and a [MainVotingPlugin](#main-voting-plugin) will be installed.
+On Spaces with the standard governance, a [StdMemberAddHelper](#main-member-add-helper) and a [StdGovernancePlugin](#main-voting-plugin) will be installed.
 
 ### Members
 
 - Send a transaction to call `proposeNewMember()`
 - Have an editor (different to the proposer) calling `approve()` for this proposal
-- This will add the requested address to the members list on the main voting contract
+- This will add the requested address to the members list on the standard governance contract
 
 The same applies to remove members with `proposeRemoveMember()`
 
@@ -243,7 +243,7 @@ The same procedure applies to removing editors with `removeEditor()`
 
 ## Adding editors (personal spaces)
 
-- Execute a proposal with an action to call `grant(address(mainVotingPlugin), targetAddress, EDITOR_PERMISSION_ID)`
+- Execute a proposal with an action to call `grant(address(stdGovernancePlugin), targetAddress, EDITOR_PERMISSION_ID)`
 - With the permission granted, `targetAddress` can immediately start executing proposals
 
 The same applies for removing a member.
@@ -304,7 +304,7 @@ event SubspaceRemoved(address dao, address subspaceDao);
 
 ### Main Member Add Helper
 
-Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to `addMember()` on the main voting plugin and Editors can approve or reject it. Once approved, the member create proposals on the main voting plugin.
+Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to `addMember()` on the standard governance plugin and Editors can approve or reject it. Once approved, the member create proposals on the standard governance plugin.
 
 #### Methods
 
@@ -374,7 +374,7 @@ event Approved(uint256 indexed proposalId, address indexed editor);
 
 event Rejected(uint256 indexed proposalId, address indexed editor);
 
-event MultisigSettingsUpdated(uint64 proposalDuration, address mainVotingPlugin);
+event MultisigSettingsUpdated(uint64 proposalDuration, address stdGovernancePlugin);
 ```
 
 Inherited:
@@ -394,7 +394,7 @@ event ProposalExecuted(uint256 indexed proposalId);
 - The DAO can upgrade the plugin
 - See [Plugin upgrader](#plugin-upgrader) (optional)
 
-### Main Voting plugin
+### Standard Governance plugin
 
 It's the main governance plugin for standard spaces, where all proposals are voted by editors. It is a adapted version of Aragon's [AddresslistVoting plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/majority-voting/addresslist/AddresslistVoting.sol). Only members (or editors) can create proposals and they can only be executed after a qualified majority has voted for it.
 
@@ -522,7 +522,7 @@ event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint
 - The DAO can upgrade the plugin
 - See [Plugin upgrader](#plugin-upgrader) (optional)
 
-### Personal Space Admin Plugin
+### Personal Admin Plugin
 
 Governance plugin providing the default implementation for personal spaces, where addresses with editor permissioin can apply proposals right away. It is a adapted version of Aragon's [Admin plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/admin/Admin.sol).
 
@@ -643,9 +643,9 @@ The same also applies to `prepareUpdate` (if present) and to `prepareUninstallat
 
 ### Available setup contracts
 
-#### GovernancePluginsSetup
+#### StdGovernanceSetup
 
-[This contract](./packages/contracts/src/governance/GovernancePluginsSetup.sol) handles the install/update/uninstall scripts for `MainVotingPlugin` and `MainMemberAddHelper`
+[This contract](./packages/contracts/src/governance/StdGovernanceSetup.sol) handles the install/update/uninstall scripts for `StdGovernancePlugin` and `StdMemberAddHelper`
 
 The second plugin needs to know the address of the first one, therefore the setup deploys them together.
 
@@ -653,16 +653,16 @@ Note:
 
 When preparing the installation, an `InstallationPrepared` event is emitted. Using Typechain with Ethers:
 
-- `event.args.preparedSetupData.plugin` contains the address of the Main Voting plugin
-- `event.args.preparedSetupData.helpers` contains an array with the address of the Member Access plugin
+- `event.args.preparedSetupData.plugin` contains the address of the Standard Governance plugin
+- `event.args.preparedSetupData.helpers` contains an array with the address of the Member Add plugin
 
 #### SpacePluginSetup
 
 [This contract](./packages/contracts/src/space/SpacePluginSetup.sol) implements the deployment script for the `SpacePlugin` contract.
 
-#### PersonalSpaceAdminPluginSetup
+#### PersonalAdminSetup
 
-[This contract](./packages/contracts/src/personal/PersonalSpaceAdminPluginSetup.sol) implements the deployment script for the `PersonalSpaceAdminPlugin` contract.
+[This contract](./packages/contracts/src/personal/PersonalAdminSetup.sol) implements the deployment script for the `PersonalAdminPlugin` contract.
 
 ## Deploying a DAO
 

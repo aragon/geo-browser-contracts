@@ -11,17 +11,17 @@ import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgr
 import {Addresslist} from "./base/Addresslist.sol";
 import {IMultisig} from "./base/IMultisig.sol";
 import {IEditors} from "../base/IEditors.sol";
-import {MainVotingPlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./MainVotingPlugin.sol";
+import {StdGovernancePlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./StdGovernancePlugin.sol";
 
-bytes4 constant MAIN_MEMBER_ADD_INTERFACE_ID = MainMemberAddHelper.initialize.selector ^
-    MainMemberAddHelper.updateMultisigSettings.selector ^
-    MainMemberAddHelper.proposeAddMember.selector ^
-    MainMemberAddHelper.getProposal.selector;
+bytes4 constant MAIN_MEMBER_ADD_INTERFACE_ID = StdMemberAddHelper.initialize.selector ^
+    StdMemberAddHelper.updateMultisigSettings.selector ^
+    StdMemberAddHelper.proposeAddMember.selector ^
+    StdMemberAddHelper.getProposal.selector;
 
-/// @title Member access plugin (Multisig) - Release 1, Build 1
+/// @title Member add plugin (Multisig) - Release 1, Build 1
 /// @author Aragon - 2023
 /// @notice The on-chain multisig governance plugin in which a proposal passes if X out of Y approvals are met.
-contract MainMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
+contract StdMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgradeable {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The ID of the permission required to call the `addAddresses` functions.
@@ -54,7 +54,7 @@ contract MainMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrad
         ProposalParameters parameters;
         mapping(address => bool) approvers;
         IDAO.Action[] actions;
-        MainVotingPlugin destinationPlugin;
+        StdGovernancePlugin destinationPlugin;
         uint256 failsafeActionMap;
     }
 
@@ -163,9 +163,9 @@ contract MainMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrad
     ) public auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that the caller supports the `addMember` function
         if (
-            !MainVotingPlugin(msg.sender).supportsInterface(MAIN_SPACE_VOTING_INTERFACE_ID) ||
-            !MainVotingPlugin(msg.sender).supportsInterface(type(IEditors).interfaceId) ||
-            !MainVotingPlugin(msg.sender).supportsInterface(type(Addresslist).interfaceId)
+            !StdGovernancePlugin(msg.sender).supportsInterface(MAIN_SPACE_VOTING_INTERFACE_ID) ||
+            !StdGovernancePlugin(msg.sender).supportsInterface(type(IEditors).interfaceId) ||
+            !StdGovernancePlugin(msg.sender).supportsInterface(type(Addresslist).interfaceId)
         ) {
             revert InvalidInterface();
         }
@@ -174,9 +174,9 @@ contract MainMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrad
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
         _actions[0] = IDAO.Action({
-            to: address(msg.sender), // We are called by the MainVotingPlugin
+            to: address(msg.sender), // We are called by the StdGovernancePlugin
             value: 0,
-            data: abi.encodeCall(MainVotingPlugin.addMember, (_proposedMember))
+            data: abi.encodeCall(StdGovernancePlugin.addMember, (_proposedMember))
         });
 
         // Create proposal
@@ -213,7 +213,7 @@ contract MainMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrad
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
 
-        proposal_.destinationPlugin = MainVotingPlugin(msg.sender);
+        proposal_.destinationPlugin = StdGovernancePlugin(msg.sender);
         for (uint256 i; i < _actions.length; ) {
             proposal_.actions.push(_actions[i]);
             unchecked {
@@ -224,9 +224,9 @@ contract MainMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrad
         // Another editor needs to approve. Set the minApprovals accordingly
         /// @dev The _proposer parameter is technically trusted.
         /// @dev However, this function is protected by PROPOSER_PERMISSION_ID and only the MainVoting plugin is granted this permission.
-        /// @dev See GovernancePluginsSetup.sol
-        if (MainVotingPlugin(msg.sender).isEditor(_proposer)) {
-            if (MainVotingPlugin(msg.sender).addresslistLength() < 2) {
+        /// @dev See StdGovernanceSetup.sol
+        if (StdGovernancePlugin(msg.sender).isEditor(_proposer)) {
+            if (StdGovernancePlugin(msg.sender).addresslistLength() < 2) {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR;
             } else {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_EDITOR_OF_MANY;

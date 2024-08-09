@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionCondition} from "@aragon/osx/core/permission/PermissionCondition.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
+import {StdGovernancePlugin} from "../standard/StdGovernancePlugin.sol";
 
 /// @notice Restricts execution to only calls to `addMember`
 contract MemberAddCondition is PermissionCondition {
@@ -44,8 +44,8 @@ contract MemberAddCondition is PermissionCondition {
         // Decode the call being requested (both have the same parameters)
         (bytes4 _requestedSelector, ) = _decodeAddMemberCalldata(_actions[0].data);
 
-        // Note: The selectors of MainVotingPlugin.addMember and PersonalSpaceAdminPlugin.addMember are the same. Checking only once.
-        if (_requestedSelector != MainVotingPlugin.addMember.selector) return false;
+        // Note: The selectors of StdGovernancePlugin.addMember and PersonalAdminPlugin.addMember are the same. Checking only once.
+        if (_requestedSelector != StdGovernancePlugin.addMember.selector) return false;
 
         return true;
     }

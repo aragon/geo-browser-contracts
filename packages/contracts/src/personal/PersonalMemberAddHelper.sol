@@ -9,7 +9,7 @@ import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.s
 import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgradeable.sol";
 import {PluginCloneable} from "@aragon/osx/core/plugin/PluginCloneable.sol";
 import {IEditors} from "../base/IEditors.sol";
-import {PersonalSpaceAdminPlugin} from "./PersonalSpaceAdminPlugin.sol";
+import {PersonalAdminPlugin} from "./PersonalAdminPlugin.sol";
 
 bytes4 constant PERSONAL_MEMBER_ADD_INTERFACE_ID = PersonalMemberAddHelper.initialize.selector ^
     PersonalMemberAddHelper.updateSettings.selector ^
@@ -40,7 +40,7 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
         bool executed;
         ProposalParameters parameters;
         IDAO.Action[] actions;
-        PersonalSpaceAdminPlugin destinationPlugin;
+        PersonalAdminPlugin destinationPlugin;
         uint256 failsafeActionMap;
     }
 
@@ -140,7 +140,7 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
         address _proposer
     ) public auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that the caller supports the `addMember` function
-        if (!PersonalSpaceAdminPlugin(msg.sender).supportsInterface(type(IEditors).interfaceId)) {
+        if (!PersonalAdminPlugin(msg.sender).supportsInterface(type(IEditors).interfaceId)) {
             revert InvalidInterface();
         }
 
@@ -148,9 +148,9 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
 
         _actions[0] = IDAO.Action({
-            to: address(msg.sender), // We are called by the PersonalSpaceAdminPlugin
+            to: address(msg.sender), // We are called by the PersonalAdminPlugin
             value: 0,
-            data: abi.encodeCall(PersonalSpaceAdminPlugin.addMember, (_proposedMember))
+            data: abi.encodeCall(PersonalAdminPlugin.addMember, (_proposedMember))
         });
 
         // Create proposal
@@ -186,7 +186,7 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
         proposal_.parameters.startDate = _startDate;
         proposal_.parameters.endDate = _endDate;
 
-        proposal_.destinationPlugin = PersonalSpaceAdminPlugin(msg.sender);
+        proposal_.destinationPlugin = PersonalAdminPlugin(msg.sender);
         for (uint256 i; i < _actions.length; ) {
             proposal_.actions.push(_actions[i]);
             unchecked {
@@ -195,7 +195,7 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
         }
 
         // An editor needs to approve. If the proposer is an editor, approve right away.
-        if (PersonalSpaceAdminPlugin(msg.sender).isEditor(_proposer)) {
+        if (PersonalAdminPlugin(msg.sender).isEditor(_proposer)) {
             _approve(proposalId, _proposer);
         }
     }

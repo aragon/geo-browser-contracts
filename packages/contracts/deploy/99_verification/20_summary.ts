@@ -1,4 +1,4 @@
-import {GovernancePluginsSetupParams} from '../../plugin-setup-params';
+import {StdGovernanceSetupParams} from '../../plugin-setup-params';
 import {isLocalChain} from '../../utils/hardhat';
 import {getPluginRepoInfo} from '../../utils/plugin-repo-info';
 import {DeployFunction} from 'hardhat-deploy/types';
@@ -6,7 +6,7 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const pluginRepoInfo = getPluginRepoInfo(
-    GovernancePluginsSetupParams.PLUGIN_REPO_ENS_NAME,
+    StdGovernanceSetupParams.PLUGIN_REPO_ENS_NAME,
     hre.network.name
   );
   if (!pluginRepoInfo)

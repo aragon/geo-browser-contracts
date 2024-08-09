@@ -3,13 +3,13 @@ import {
   IERC165Upgradeable__factory,
   PersonalSpaceAdminCloneFactory,
   PersonalSpaceAdminCloneFactory__factory,
-  PersonalSpaceAdminPlugin,
-  PersonalSpaceAdminPlugin__factory,
+  PersonalAdminPlugin,
+  PersonalAdminPlugin__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from '../../typechain';
 import {ExecutedEvent} from '../../typechain/@aragon/osx/core/dao/IDAO';
-import {ProposalCreatedEvent} from '../../typechain/src/personal/PersonalSpaceAdminPlugin';
+import {ProposalCreatedEvent} from '../../typechain/src/personal/PersonalAdminPlugin';
 import {
   deployWithProxy,
   findEvent,
@@ -57,12 +57,12 @@ export const psvpInterface = new ethers.utils.Interface([
   'function leaveSpace()',
 ]);
 
-describe('Personal Space Admin Plugin', function () {
+describe('Personal Admin Plugin', function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
   let dao: DAO;
-  let personalSpaceVotingPlugin: PersonalSpaceAdminPlugin;
+  let personalSpaceVotingPlugin: PersonalAdminPlugin;
   let personalSpaceVotingCloneFactory: PersonalSpaceAdminCloneFactory;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -103,9 +103,7 @@ describe('Personal Space Admin Plugin', function () {
     );
 
     // Personal Space Voting
-    const PersonalSpaceVotingFactory = new PersonalSpaceAdminPlugin__factory(
-      alice
-    );
+    const PersonalSpaceVotingFactory = new PersonalAdminPlugin__factory(alice);
     const nonce = await ethers.provider.getTransactionCount(
       personalSpaceVotingCloneFactory.address
     );
@@ -151,7 +149,7 @@ describe('Personal Space Admin Plugin', function () {
   describe('initialize: ', async () => {
     it('reverts if trying to re-initialize', async () => {
       // recreate
-      const PersonalSpaceVotingFactory = new PersonalSpaceAdminPlugin__factory(
+      const PersonalSpaceVotingFactory = new PersonalAdminPlugin__factory(
         alice
       );
       const nonce = await ethers.provider.getTransactionCount(

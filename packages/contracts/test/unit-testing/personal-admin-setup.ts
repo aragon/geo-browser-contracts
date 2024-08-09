@@ -1,12 +1,12 @@
 import {
-  PersonalSpaceAdminPlugin__factory,
-  PersonalSpaceAdminPluginSetup,
-  PersonalSpaceAdminPluginSetup__factory,
+  PersonalAdminPlugin__factory,
+  PersonalAdminSetup,
+  PersonalAdminSetup__factory,
 } from '../../typechain';
 import {getInterfaceID} from '../../utils/interfaces';
 import {deployTestDao} from '../helpers/test-dao';
 import {Operation} from '../helpers/types';
-import {psvpInterface} from './personal-space-admin-plugin';
+import {psvpInterface} from './personal-admin-plugin';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
 
@@ -17,10 +17,10 @@ const EMPTY_DATA = '0x';
 const EDITOR_PERMISSION_ID = ethers.utils.id('EDITOR_PERMISSION');
 const EXECUTE_PERMISSION_ID = ethers.utils.id('EXECUTE_PERMISSION');
 
-describe('Personal Space Admin Plugin Setup', function () {
+describe('Personal Admin Plugin Setup', function () {
   let ownerAddress: string;
   let signers: any;
-  let adminSetup: PersonalSpaceAdminPluginSetup;
+  let adminSetup: PersonalAdminSetup;
   let implementationAddress: string;
   let targetDao: any;
   let prepareInstallationData: string;
@@ -30,9 +30,8 @@ describe('Personal Space Admin Plugin Setup', function () {
     ownerAddress = await signers[0].getAddress();
     targetDao = await deployTestDao(signers[0]);
 
-    const PersonalSpaceAdminPluginSetup =
-      new PersonalSpaceAdminPluginSetup__factory(signers[0]);
-    adminSetup = await PersonalSpaceAdminPluginSetup.deploy();
+    const PersonalAdminSetup = new PersonalAdminSetup__factory(signers[0]);
+    adminSetup = await PersonalAdminSetup.deploy();
 
     implementationAddress = await adminSetup.implementation();
 
@@ -46,7 +45,7 @@ describe('Personal Space Admin Plugin Setup', function () {
   });
 
   it('creates admin address base with the correct interface', async () => {
-    const factory = new PersonalSpaceAdminPlugin__factory(signers[0]);
+    const factory = new PersonalAdminPlugin__factory(signers[0]);
     const adminAddressContract = factory.attach(implementationAddress);
 
     expect(
@@ -143,7 +142,7 @@ describe('Personal Space Admin Plugin Setup', function () {
 
       await adminSetup.prepareInstallation(daoAddress, prepareInstallationData);
 
-      const factory = new PersonalSpaceAdminPlugin__factory(signers[0]);
+      const factory = new PersonalAdminPlugin__factory(signers[0]);
       const adminAddressContract = factory.attach(anticipatedPluginAddress);
 
       expect(await adminAddressContract.dao()).to.be.equal(daoAddress);

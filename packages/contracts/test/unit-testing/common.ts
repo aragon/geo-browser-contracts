@@ -67,7 +67,7 @@ export async function advanceAfterVoteEnd(endDate: number) {
   expect(await getTime()).to.be.greaterThanOrEqual(endDate);
 }
 
-// MAIN VOTING PLUGIN
+// STD GOVERNANCE PLUGIN
 
 export const RATIO_BASE = ethers.BigNumber.from(10).pow(6); // 100% => 10**6
 export const pctToRatio = (x: number) => RATIO_BASE.mul(x).div(100);
@@ -91,7 +91,7 @@ export type VotingSettings = {
   duration: number;
 };
 
-export const defaultMainVotingSettings: VotingSettings = {
+export const defaultStdGovernanceSettings: VotingSettings = {
   duration: 60 * 60, // 1 second
   supportThreshold: pctToRatio(50), // 50% + 1
   votingMode: VotingMode.EarlyExecution,

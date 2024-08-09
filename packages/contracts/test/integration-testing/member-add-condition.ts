@@ -1,8 +1,8 @@
 import {
-  TestGovernancePluginsSetup,
-  TestGovernancePluginsSetup__factory,
-  MainVotingPlugin,
-  MainVotingPlugin__factory,
+  TestStdGovernanceSetup,
+  TestStdGovernanceSetup__factory,
+  StdGovernancePlugin,
+  StdGovernancePlugin__factory,
   MajorityVotingBase,
   PluginRepo,
 } from '../../typechain';
@@ -35,7 +35,7 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
 };
 const memberAddProposalDuration = 60 * 60 * 24;
 
-describe('Member Access Condition E2E', () => {
+describe('Member Add Condition E2E', () => {
   let deployer: SignerWithAddress;
   let pluginUpgrader: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -45,10 +45,10 @@ describe('Member Access Condition E2E', () => {
   let pluginRepo: PluginRepo;
 
   let pluginSetupRef: PluginSetupRefStruct;
-  let pluginSetup: TestGovernancePluginsSetup;
-  let gpsFactory: TestGovernancePluginsSetup__factory;
-  let mainVotingPlugin: MainVotingPlugin;
-  // let mainMemberAddHelper: MainMemberAddHelper;
+  let pluginSetup: TestStdGovernanceSetup;
+  let gpsFactory: TestStdGovernanceSetup__factory;
+  let stdGovernancePlugin: StdGovernancePlugin;
+  // let stdMemberAddHelper: StdMemberAddHelper;
 
   before(async () => {
     [deployer, pluginUpgrader, alice] = await ethers.getSigners();
@@ -88,7 +88,7 @@ describe('Member Access Condition E2E', () => {
     );
 
     // Deploy PluginSetup build 1
-    gpsFactory = new TestGovernancePluginsSetup__factory().connect(deployer);
+    gpsFactory = new TestStdGovernanceSetup__factory().connect(deployer);
     pluginSetup = await gpsFactory.deploy(psp.address);
 
     // Publish build 1
@@ -135,23 +135,23 @@ describe('Member Access Condition E2E', () => {
     // Internally call prepareInstallation, which deploys the condition
     const installation = await installPlugin(psp, dao, pluginSetupRef, data);
 
-    mainVotingPlugin = MainVotingPlugin__factory.connect(
+    stdGovernancePlugin = StdGovernancePlugin__factory.connect(
       installation.preparedEvent.args.plugin,
       deployer
     );
-    // mainMemberAddHelper = MainMemberAddHelper__factory.connect(
+    // stdMemberAddHelper = StdMemberAddHelper__factory.connect(
     //   installation.preparedEvent.args.preparedSetupData.helpers[0],
     //   deployer
     // );
   });
 
   it('Executing a proposal to add membership works', async () => {
-    expect(await mainVotingPlugin.isMember(alice.address)).to.eq(false);
-    expect(await mainVotingPlugin.isEditor(deployer.address)).to.eq(true);
+    expect(await stdGovernancePlugin.isMember(alice.address)).to.eq(false);
+    expect(await stdGovernancePlugin.isEditor(deployer.address)).to.eq(true);
 
-    await expect(mainVotingPlugin.proposeAddMember('0x', alice.address)).to.not
-      .be.reverted;
+    await expect(stdGovernancePlugin.proposeAddMember('0x', alice.address)).to
+      .not.be.reverted;
 
-    expect(await mainVotingPlugin.isMember(alice.address)).to.eq(true);
+    expect(await stdGovernancePlugin.isMember(alice.address)).to.eq(true);
   });
 });

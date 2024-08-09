@@ -2,7 +2,7 @@ import {
   DAO,
   DAO__factory,
   IDAO,
-  MainVotingPlugin__factory,
+  StdGovernancePlugin__factory,
   MemberAddCondition,
   MemberAddCondition__factory,
   TestMemberAddCondition__factory,
@@ -23,9 +23,10 @@ const ONE_BYTES32 =
 const PLUGIN_ADDR_1 = ADDRESS_ONE;
 const PLUGIN_ADDR_2 = ADDRESS_TWO;
 const daoInterface = DAO__factory.createInterface();
-const mainVotingPluginInterface = MainVotingPlugin__factory.createInterface();
+const stdGovernancePluginInterface =
+  StdGovernancePlugin__factory.createInterface();
 
-describe('Member Access Condition', function () {
+describe('Member Add Condition', function () {
   const pspAddress = getPluginSetupProcessorAddress(network.name, true);
 
   let alice: SignerWithAddress;
@@ -51,7 +52,7 @@ describe('Member Access Condition', function () {
       ];
 
       // Valid add
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'addMember',
         [carol.address]
       );
@@ -65,7 +66,7 @@ describe('Member Access Condition', function () {
       ).to.eq(true);
 
       // Invalid
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'removeMember',
         [carol.address]
       );
@@ -125,7 +126,7 @@ describe('Member Access Condition', function () {
       ];
 
       // Valid member add
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'addMember',
         [carol.address]
       );
@@ -139,7 +140,7 @@ describe('Member Access Condition', function () {
       ).to.eq(true);
 
       // Invalid
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'removeMember',
         [carol.address]
       );
@@ -153,7 +154,7 @@ describe('Member Access Condition', function () {
       ).to.eq(false);
 
       // Invalid (editor)
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'addEditor',
         [carol.address]
       );
@@ -167,7 +168,7 @@ describe('Member Access Condition', function () {
       ).to.eq(false);
 
       // Invalid (editor)
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'removeEditor',
         [carol.address]
       );
@@ -250,7 +251,7 @@ describe('Member Access Condition', function () {
         ADDRESS_ONE,
       ]) {
         // Valid add
-        actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
           'addMember',
           [grantedToAddress]
         );
@@ -278,7 +279,7 @@ describe('Member Access Condition', function () {
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
-          mainVotingPluginInterface.encodeFunctionData('addMember', [
+          stdGovernancePluginInterface.encodeFunctionData('addMember', [
             carol.address,
           ])
         )
@@ -299,16 +300,17 @@ describe('Member Access Condition', function () {
         {
           to: dao.address,
           value: 0,
-          data: mainVotingPluginInterface.encodeFunctionData('addMember', [
+          data: stdGovernancePluginInterface.encodeFunctionData('addMember', [
             pspAddress,
           ]),
         },
         {
           to: dao.address,
           value: 0,
-          data: mainVotingPluginInterface.encodeFunctionData('removeMember', [
-            pspAddress,
-          ]),
+          data: stdGovernancePluginInterface.encodeFunctionData(
+            'removeMember',
+            [pspAddress]
+          ),
         },
       ];
 
@@ -327,7 +329,7 @@ describe('Member Access Condition', function () {
         SOME_CONTRACT_ADDRESS
       );
 
-      const calldata = mainVotingPluginInterface.encodeFunctionData(
+      const calldata = stdGovernancePluginInterface.encodeFunctionData(
         'addMember',
         [pspAddress]
       );
