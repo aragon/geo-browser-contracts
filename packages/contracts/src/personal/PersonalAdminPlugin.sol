@@ -25,6 +25,7 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
             this.submitEdits.selector ^
             this.submitAcceptSubspace.selector ^
             this.submitRemoveSubspace.selector ^
+            this.proposeAddMember.selector ^
             this.addMember.selector ^
             this.submitRemoveMember.selector ^
             this.submitNewEditor.selector ^

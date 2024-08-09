@@ -55,7 +55,8 @@ export const psvpInterface = new ethers.utils.Interface([
   'function submitAcceptSubspace(address _subspaceDao, address _spacePlugin)',
   'function submitRemoveSubspace(address _subspaceDao, address _spacePlugin)',
   'function submitNewEditor(address _newEditor)',
-  'function submitNewMember(address _newMember)',
+  'function proposeAddMember(address _newMember)',
+  'function addMember(address _newMember)',
   'function submitRemoveEditor(address _editor)',
   'function submitRemoveMember(address _member)',
   'function leaveSpace()',
@@ -108,7 +109,7 @@ describe('Personal Admin Plugin', function () {
 
     // Personal admin (plugin)
     const PersonalAdminPluginFactory = new PersonalAdminPlugin__factory(alice);
-    let nonce = await ethers.provider.getTransactionCount(
+    const nonce = await ethers.provider.getTransactionCount(
       testCloneFactory.address
     );
     let anticipatedAddress = ethers.utils.getContractAddress({
@@ -335,7 +336,7 @@ describe('Personal Admin Plugin', function () {
         .be.reverted;
 
       expect(await personalAdminPlugin.proposalCount()).to.equal(
-        BigNumber.from(4)
+        BigNumber.from(3)
       );
 
       // Non editors
@@ -371,6 +372,10 @@ describe('Personal Admin Plugin', function () {
           carol.address,
           EDITOR_PERMISSION_ID
         );
+
+      expect(await personalAdminPlugin.proposalCount()).to.equal(
+        BigNumber.from(3)
+      );
     });
 
     it('Anyone can call proposeAddMember', async () => {
@@ -378,7 +383,7 @@ describe('Personal Admin Plugin', function () {
         await expect(
           personalAdminPlugin
             .connect(account)
-            .proposeAddMember('ipfs://', account.address)
+            .proposeAddMember('0x', account.address)
         ).to.not.be.reverted;
       }
       expect(await personalAdminPlugin.proposalCount()).to.equal(

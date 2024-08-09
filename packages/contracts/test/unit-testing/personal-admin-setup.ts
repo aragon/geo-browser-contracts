@@ -6,6 +6,11 @@ import {
 import {getInterfaceID} from '../../utils/interfaces';
 import {deployTestDao} from '../helpers/test-dao';
 import {Operation} from '../helpers/types';
+import {
+  ADD_MEMBER_PERMISSION_ID,
+  PROPOSER_PERMISSION_ID,
+  UPDATE_SETTINGS_PERMISSION_ID,
+} from './common';
 import {psvpInterface} from './personal-admin-plugin';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
@@ -46,10 +51,10 @@ describe('Personal Admin Plugin Setup', function () {
 
   it('creates admin address base with the correct interface', async () => {
     const factory = new PersonalAdminPlugin__factory(signers[0]);
-    const adminAddressContract = factory.attach(implementationAddress);
+    const personalAddressPlugin = factory.attach(implementationAddress);
 
     expect(
-      await adminAddressContract.supportsInterface(
+      await personalAddressPlugin.supportsInterface(
         getInterfaceID(psvpInterface)
       )
     ).to.be.eq(true);
@@ -99,6 +104,14 @@ describe('Personal Admin Plugin Setup', function () {
         from: adminSetup.address,
         nonce,
       });
+      const anticipatedHelperAddress = ethers.utils.getContractAddress({
+        from: adminSetup.address,
+        nonce: nonce + 1,
+      });
+      const anticipatedConditionAddress = ethers.utils.getContractAddress({
+        from: adminSetup.address,
+        nonce: nonce + 2,
+      });
 
       const {
         plugin,
@@ -109,9 +122,17 @@ describe('Personal Admin Plugin Setup', function () {
       );
 
       expect(plugin).to.be.equal(anticipatedPluginAddress);
-      expect(helpers.length).to.be.equal(0);
-      expect(permissions.length).to.be.equal(2);
+      expect(helpers.length).to.be.equal(1);
+      expect(helpers[0]).to.be.equal(anticipatedHelperAddress);
+      expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
+        [
+          Operation.Grant,
+          targetDao.address,
+          plugin,
+          AddressZero,
+          EXECUTE_PERMISSION_ID,
+        ],
         [
           Operation.Grant,
           plugin,
@@ -121,10 +142,31 @@ describe('Personal Admin Plugin Setup', function () {
         ],
         [
           Operation.Grant,
-          targetDao.address,
+          helpers[0],
           plugin,
           AddressZero,
+          PROPOSER_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          targetDao,
+          helpers[0],
+          anticipatedConditionAddress,
           EXECUTE_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          plugin,
+          targetDao,
+          AddressZero,
+          ADD_MEMBER_PERMISSION_ID,
+        ],
+        [
+          Operation.Grant,
+          helpers[0],
+          targetDao,
+          AddressZero,
+          UPDATE_SETTINGS_PERMISSION_ID,
         ],
       ]);
     });
@@ -157,17 +199,24 @@ describe('Personal Admin Plugin Setup', function () {
         targetDao.address,
         {
           plugin,
-          currentHelpers: [],
+          currentHelpers: ['0x1234567890123456789012345678901234567890'],
           data: EMPTY_DATA,
         }
       );
 
-      expect(permissions.length).to.be.equal(1);
+      expect(permissions.length).to.be.equal(0);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
           targetDao.address,
           plugin,
+          AddressZero,
+          EXECUTE_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          targetDao.address,
+          '0x1234567890123456789012345678901234567890',
           AddressZero,
           EXECUTE_PERMISSION_ID,
         ],

@@ -131,7 +131,7 @@ contract PersonalAdminSetup is PluginSetup {
         SetupPayload calldata _payload
     ) external view returns (PermissionLib.MultiTargetPermission[] memory permissions) {
         // Prepare permissions
-        permissions = new PermissionLib.MultiTargetPermission[](1);
+        permissions = new PermissionLib.MultiTargetPermission[](2);
 
         // Revoke EXECUTE on the DAO
         permissions[0] = PermissionLib.MultiTargetPermission(
@@ -139,6 +139,14 @@ contract PersonalAdminSetup is PluginSetup {
             _dao,
             _payload.plugin,
             PermissionLib.NO_CONDITION,
+            DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
+        );
+        // Revoke conditional EXECUTE on the DAO
+        permissions[1] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Revoke,
+            _dao,
+            _payload.currentHelpers[0],
+            address(0),
             DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         );
     }
