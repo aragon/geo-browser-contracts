@@ -1,6 +1,6 @@
 import {
-  GovernancePluginsSetupParams,
-  PersonalSpaceAdminPluginSetupParams,
+  StdGovernanceSetupParams,
+  PersonalAdminSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
 import {isLocalChain} from '../../utils/hardhat';
@@ -19,12 +19,8 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
   return deployRepo(hre, SpacePluginSetupParams.PLUGIN_REPO_ENS_NAME)
-    .then(() =>
-      deployRepo(hre, PersonalSpaceAdminPluginSetupParams.PLUGIN_REPO_ENS_NAME)
-    )
-    .then(() =>
-      deployRepo(hre, GovernancePluginsSetupParams.PLUGIN_REPO_ENS_NAME)
-    );
+    .then(() => deployRepo(hre, PersonalAdminSetupParams.PLUGIN_REPO_ENS_NAME))
+    .then(() => deployRepo(hre, StdGovernanceSetupParams.PLUGIN_REPO_ENS_NAME));
 };
 
 async function deployRepo(

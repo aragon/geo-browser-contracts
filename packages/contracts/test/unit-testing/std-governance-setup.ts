@@ -1,8 +1,8 @@
 import {
   DAO,
-  GovernancePluginsSetup,
-  GovernancePluginsSetup__factory,
-  MainVotingPlugin__factory,
+  StdGovernanceSetup,
+  StdGovernanceSetup__factory,
+  StdGovernancePlugin__factory,
 } from '../../typechain';
 import {deployTestDao} from '../helpers/test-dao';
 import {Operation} from '../helpers/types';
@@ -22,10 +22,10 @@ import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
 
-describe('Governance Plugins Setup', function () {
+describe('Standard Governance Setup', function () {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let governancePluginsSetup: GovernancePluginsSetup;
+  let stdGovernanceSetup: StdGovernanceSetup;
   let dao: DAO;
 
   before(async () => {
@@ -37,16 +37,16 @@ describe('Governance Plugins Setup', function () {
     const pspAddress =
       activeContractsList[hardhatForkNetwork].PluginSetupProcessor;
 
-    governancePluginsSetup = await new GovernancePluginsSetup__factory(
-      alice
-    ).deploy(pspAddress);
+    stdGovernanceSetup = await new StdGovernanceSetup__factory(alice).deploy(
+      pspAddress
+    );
   });
 
   describe('prepareInstallation', async () => {
     it('returns the plugin, helpers, and permissions (no pluginUpgrader)', async () => {
       const pluginUpgrader = ADDRESS_ZERO;
 
-      const initData = await governancePluginsSetup.encodeInstallationParams(
+      const initData = await stdGovernanceSetup.encodeInstallationParams(
         {
           votingMode: VotingMode.EarlyExecution,
           supportThreshold: pctToRatio(25),
@@ -57,85 +57,87 @@ describe('Governance Plugins Setup', function () {
         pluginUpgrader
       );
       const nonce = await ethers.provider.getTransactionCount(
-        governancePluginsSetup.address
+        stdGovernanceSetup.address
       );
-      const anticipatedMemberAccessPluginAddress =
+      const anticipatedStdMemberAddHelperAddress =
         ethers.utils.getContractAddress({
-          from: governancePluginsSetup.address,
+          from: stdGovernanceSetup.address,
           nonce,
         });
-      const anticipatedMainVotingPluginAddress =
+      const anticipatedStdGovernancePluginAddress =
         ethers.utils.getContractAddress({
-          from: governancePluginsSetup.address,
+          from: stdGovernanceSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedMemberAccessConditionAddress =
+      const anticipatedExecuteSelectorConditionAddress =
         ethers.utils.getContractAddress({
-          from: governancePluginsSetup.address,
+          from: stdGovernanceSetup.address,
           nonce: nonce + 2,
         });
 
       const {
-        mainVotingPlugin,
+        plugin: stdGovernancePlugin,
         preparedSetupData: {helpers, permissions},
-      } = await governancePluginsSetup.callStatic.prepareInstallation(
+      } = await stdGovernanceSetup.callStatic.prepareInstallation(
         dao.address,
         initData
       );
-      expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
+      expect(stdGovernancePlugin).to.be.equal(
+        anticipatedStdGovernancePluginAddress
+      );
       expect(helpers.length).to.be.equal(1);
-      const [memberAccessPlugin] = helpers;
-      expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
+      const [stdMemberAddHelper] = helpers;
+      expect(stdMemberAddHelper).to.eq(anticipatedStdMemberAddHelperAddress);
 
       expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
           dao.address,
-          mainVotingPlugin,
+          stdGovernancePlugin,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          mainVotingPlugin,
+          stdGovernancePlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          mainVotingPlugin,
+          stdGovernancePlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
-          mainVotingPlugin,
+          stdMemberAddHelper,
+          stdGovernancePlugin,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.GrantWithCondition,
           dao.address,
-          memberAccessPlugin,
-          anticipatedMemberAccessConditionAddress,
+          stdMemberAddHelper,
+          anticipatedExecuteSelectorConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
+          stdMemberAddHelper,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
         ],
       ]);
 
-      await governancePluginsSetup.prepareInstallation(dao.address, initData);
-      const myPlugin = new MainVotingPlugin__factory(alice).attach(
-        mainVotingPlugin
+      await stdGovernanceSetup.prepareInstallation(dao.address, initData);
+      const myPlugin = new StdGovernancePlugin__factory(alice).attach(
+        stdGovernancePlugin
       );
 
       // initialization is correct
@@ -147,7 +149,7 @@ describe('Governance Plugins Setup', function () {
       const pluginUpgrader = bob.address;
 
       // Params: (MajorityVotingBase.VotingSettings, address, address)
-      const initData = await governancePluginsSetup.encodeInstallationParams(
+      const initData = await stdGovernanceSetup.encodeInstallationParams(
         {
           votingMode: VotingMode.EarlyExecution,
           supportThreshold: pctToRatio(25),
@@ -158,81 +160,83 @@ describe('Governance Plugins Setup', function () {
         pluginUpgrader
       );
       const nonce = await ethers.provider.getTransactionCount(
-        governancePluginsSetup.address
+        stdGovernanceSetup.address
       );
-      const anticipatedMemberAccessPluginAddress =
+      const anticipatedStdMemberAddHelperAddress =
         ethers.utils.getContractAddress({
-          from: governancePluginsSetup.address,
+          from: stdGovernanceSetup.address,
           nonce,
         });
-      const anticipatedMainVotingPluginAddress =
+      const anticipatedStdGovernancePluginAddress =
         ethers.utils.getContractAddress({
-          from: governancePluginsSetup.address,
+          from: stdGovernanceSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedMemberAccessConditionAddress =
+      const anticipatedExecuteSelectorConditionAddress =
         ethers.utils.getContractAddress({
-          from: governancePluginsSetup.address,
+          from: stdGovernanceSetup.address,
           nonce: nonce + 2,
         });
       const anticipatedOnlyPluginUpgraderConditionAddress =
         ethers.utils.getContractAddress({
-          from: governancePluginsSetup.address,
+          from: stdGovernanceSetup.address,
           nonce: nonce + 3,
         });
 
       const {
-        mainVotingPlugin,
+        plugin: stdGovernancePlugin,
         preparedSetupData: {helpers, permissions},
-      } = await governancePluginsSetup.callStatic.prepareInstallation(
+      } = await stdGovernanceSetup.callStatic.prepareInstallation(
         dao.address,
         initData
       );
-      expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
+      expect(stdGovernancePlugin).to.be.equal(
+        anticipatedStdGovernancePluginAddress
+      );
       expect(helpers.length).to.be.equal(1);
-      const [memberAccessPlugin] = helpers;
-      expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
+      const [stdMemberAddHelper] = helpers;
+      expect(stdMemberAddHelper).to.eq(anticipatedStdMemberAddHelperAddress);
 
       expect(permissions.length).to.be.equal(7);
       expect(permissions).to.deep.equal([
         [
           Operation.Grant,
           dao.address,
-          mainVotingPlugin,
+          stdGovernancePlugin,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          mainVotingPlugin,
+          stdGovernancePlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          mainVotingPlugin,
+          stdGovernancePlugin,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
-          mainVotingPlugin,
+          stdMemberAddHelper,
+          stdGovernancePlugin,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.GrantWithCondition,
           dao.address,
-          memberAccessPlugin,
-          anticipatedMemberAccessConditionAddress,
+          stdMemberAddHelper,
+          anticipatedExecuteSelectorConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
+          stdMemberAddHelper,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
@@ -246,9 +250,9 @@ describe('Governance Plugins Setup', function () {
         ],
       ]);
 
-      await governancePluginsSetup.prepareInstallation(dao.address, initData);
-      const myPlugin = new MainVotingPlugin__factory(alice).attach(
-        mainVotingPlugin
+      await stdGovernanceSetup.prepareInstallation(dao.address, initData);
+      const myPlugin = new StdGovernancePlugin__factory(alice).attach(
+        stdGovernancePlugin
       );
 
       // initialization is correct
@@ -259,66 +263,64 @@ describe('Governance Plugins Setup', function () {
 
   describe('prepareUninstallation', async () => {
     it('returns the permissions (no pluginUpgrader)', async () => {
-      const mainVotingPlugin = await new MainVotingPlugin__factory(
+      const stdGovernancePlugin = await new StdGovernancePlugin__factory(
         alice
       ).deploy();
-      const memberAccessPlugin = await new MainVotingPlugin__factory(
+      const stdMemberAddHelper = await new StdGovernancePlugin__factory(
         alice
       ).deploy();
 
       const pluginUpgrader = ADDRESS_ZERO;
-      const uninstallData =
-        await governancePluginsSetup.encodeUninstallationParams(pluginUpgrader);
+      const uninstallData = await stdGovernanceSetup.encodeUninstallationParams(
+        pluginUpgrader
+      );
       const permissions =
-        await governancePluginsSetup.callStatic.prepareUninstallation(
-          dao.address,
-          {
-            plugin: mainVotingPlugin.address,
-            currentHelpers: [memberAccessPlugin.address],
-            data: uninstallData,
-          }
-        );
+        await stdGovernanceSetup.callStatic.prepareUninstallation(dao.address, {
+          plugin: stdGovernancePlugin.address,
+          currentHelpers: [stdMemberAddHelper.address],
+          data: uninstallData,
+        });
 
       expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
           dao.address,
-          mainVotingPlugin.address,
+          stdGovernancePlugin.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          mainVotingPlugin.address,
+          stdGovernancePlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          mainVotingPlugin.address,
+          stdGovernancePlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
-          mainVotingPlugin.address,
+          stdMemberAddHelper.address,
+          stdGovernancePlugin.address,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
           dao.address,
-          memberAccessPlugin.address,
+          stdMemberAddHelper.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
+          stdMemberAddHelper.address,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
@@ -327,66 +329,64 @@ describe('Governance Plugins Setup', function () {
     });
 
     it('returns the permissions (with a pluginUpgrader)', async () => {
-      const mainVotingPlugin = await new MainVotingPlugin__factory(
+      const stdGovernancePlugin = await new StdGovernancePlugin__factory(
         alice
       ).deploy();
-      const memberAccessPlugin = await new MainVotingPlugin__factory(
+      const stdMemberAddHelper = await new StdGovernancePlugin__factory(
         alice
       ).deploy();
 
       const pluginUpgrader = bob.address;
-      const uninstallData =
-        await governancePluginsSetup.encodeUninstallationParams(pluginUpgrader);
+      const uninstallData = await stdGovernanceSetup.encodeUninstallationParams(
+        pluginUpgrader
+      );
       const permissions =
-        await governancePluginsSetup.callStatic.prepareUninstallation(
-          dao.address,
-          {
-            plugin: mainVotingPlugin.address,
-            currentHelpers: [memberAccessPlugin.address],
-            data: uninstallData,
-          }
-        );
+        await stdGovernanceSetup.callStatic.prepareUninstallation(dao.address, {
+          plugin: stdGovernancePlugin.address,
+          currentHelpers: [stdMemberAddHelper.address],
+          data: uninstallData,
+        });
 
       expect(permissions.length).to.be.equal(7);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
           dao.address,
-          mainVotingPlugin.address,
+          stdGovernancePlugin.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          mainVotingPlugin.address,
+          stdGovernancePlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_VOTING_SETTINGS_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          mainVotingPlugin.address,
+          stdGovernancePlugin.address,
           dao.address,
           NO_CONDITION,
           UPDATE_ADDRESSES_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
-          mainVotingPlugin.address,
+          stdMemberAddHelper.address,
+          stdGovernancePlugin.address,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
           dao.address,
-          memberAccessPlugin.address,
+          stdMemberAddHelper.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
+          stdMemberAddHelper.address,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
