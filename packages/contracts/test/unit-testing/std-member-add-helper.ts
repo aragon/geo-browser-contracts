@@ -9,8 +9,8 @@ import {
   StdGovernancePlugin__factory,
   StdMemberAddHelper,
   StdMemberAddHelper__factory,
-  MemberAddCondition,
-  MemberAddCondition__factory,
+  ExecuteSelectorCondition,
+  ExecuteSelectorCondition__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from '../../typechain';
@@ -65,7 +65,7 @@ describe('Member Add Plugin', function () {
   let dave: SignerWithAddress;
   let dao: DAO;
   let stdMemberAddHelper: StdMemberAddHelper;
-  let memberAddCondition: MemberAddCondition;
+  let executeSelectorCondition: ExecuteSelectorCondition;
   let stdGovernancePlugin: StdGovernancePlugin;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -90,8 +90,11 @@ describe('Member Add Plugin', function () {
       new SpacePlugin__factory(alice)
     );
 
-    memberAddCondition = await new MemberAddCondition__factory(alice).deploy(
-      stdGovernancePlugin.address
+    executeSelectorCondition = await new ExecuteSelectorCondition__factory(
+      alice
+    ).deploy(
+      stdGovernancePlugin.address,
+      stdGovernancePluginInterface.getSighash('addMember')
     );
 
     // inits
@@ -115,7 +118,7 @@ describe('Member Add Plugin', function () {
       dao.address,
       stdMemberAddHelper.address,
       EXECUTE_PERMISSION_ID,
-      memberAddCondition.address
+      executeSelectorCondition.address
     );
     // The standard governance plugin can also execute on the DAO
     await dao.grant(
@@ -219,7 +222,7 @@ describe('Member Add Plugin', function () {
       ).to.be.reverted;
     });
 
-    it('Allows any address to request membership via the MainVoting plugin', async () => {
+    it('Allows any address to request membership via the StdGovernancePlugin', async () => {
       // Random
       expect(await stdGovernancePlugin.isMember(carol.address)).to.be.false;
       pid = await stdMemberAddHelper.proposalCount();

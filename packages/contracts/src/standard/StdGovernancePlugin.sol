@@ -195,6 +195,7 @@ contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMemb
 
     /// @notice Defines the given address as a new space member that can create proposals.
     /// @param _account The address of the space member to be added.
+    /// @dev Called by the DAO, via StdMemberAddHelper contract.
     function addMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
         if (members[_account]) return;
 
@@ -356,10 +357,10 @@ contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMemb
         );
     }
 
-    /// @notice Creates a proposal to add a new member.
+    /// @notice Creates a proposal on the StdMemberAddHelper to add a new member.
     /// @param _metadataContentUri The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eveutnally be added.
-    /// @return proposalId NOTE: The proposal ID will belong to the Multisig plugin, not to this contract.
+    /// @return proposalId NOTE: The proposal ID will belong to the helper, not to this contract.
     function proposeAddMember(
         bytes calldata _metadataContentUri,
         address _proposedMember
@@ -368,8 +369,8 @@ contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMemb
             revert AlreadyAMember(_proposedMember);
         }
 
-        /// @dev Creating the actual proposal on a separate plugin because the approval rules differ.
-        /// @dev Keeping all wrappers on the MainVoting plugin, even if one type of approvals are handled on the MainMemberAdd plugin.
+        /// @dev Creating the actual proposal on the helper because the approval rules differ.
+        /// @dev Keeping all wrappers on the this contract, even if one type of approvals is handled on the StdMemberAddHelper.
         return
             stdMemberAddHelper.proposeAddMember(_metadataContentUri, _proposedMember, msg.sender);
     }

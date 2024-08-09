@@ -28,6 +28,9 @@ export const UPDATE_ADDRESSES_PERMISSION_ID = ethers.utils.id(
 export const UPGRADE_PLUGIN_PERMISSION_ID = ethers.utils.id(
   'UPGRADE_PLUGIN_PERMISSION'
 );
+export const ADD_MEMBER_PERMISSION_ID = ethers.utils.id(
+  'ADD_MEMBER_PERMISSION'
+);
 export const PROPOSER_PERMISSION_ID = ethers.utils.id('PROPOSER_PERMISSION');
 export const ROOT_PERMISSION_ID = ethers.utils.id('ROOT_PERMISSION');
 

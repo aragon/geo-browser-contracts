@@ -143,7 +143,7 @@ function grantWithCondition(
 );
 ```
 
-See the `MemberAddCondition` contract. It restricts what the [StdMemberAddHelper](#main-member-add-helper) can execute on the DAO.
+See the `ExecuteSelectorCondition` contract. It restricts what the [StdMemberAddHelper](#main-member-add-helper) can execute on the DAO.
 
 [Learn more about OSx permissions](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/)
 

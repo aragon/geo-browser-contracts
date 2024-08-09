@@ -4,21 +4,23 @@ pragma solidity 0.8.17;
 
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionCondition} from "@aragon/osx/core/permission/PermissionCondition.sol";
-import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-import {StdGovernancePlugin} from "../standard/StdGovernancePlugin.sol";
 
-/// @notice Restricts execution to only calls to `addMember`
-contract MemberAddCondition is PermissionCondition {
+/// @notice Restricts execution to only a specific address and selector
+contract ExecuteSelectorCondition is PermissionCondition {
     /// @notice The address of the contract where the permission can be granted
     address private targetContract;
 
+    /// @notice The selector of the function that can be called
+    bytes4 private targetSelector;
+
     /// @notice The constructor of the condition
     /// @param _targetContract The address of the contract where the permission can be granted
-    constructor(address _targetContract) {
+    constructor(address _targetContract, bytes4 _targetSelector) {
         targetContract = _targetContract;
+        targetSelector = _targetSelector;
     }
 
-    /// @notice Checks whether the current action attempts to add members
+    /// @notice Checks whether the current action executes an allowed function
     function isGranted(
         address _where,
         address _who,
@@ -44,8 +46,7 @@ contract MemberAddCondition is PermissionCondition {
         // Decode the call being requested (both have the same parameters)
         (bytes4 _requestedSelector, ) = _decodeAddMemberCalldata(_actions[0].data);
 
-        // Note: The selectors of StdGovernancePlugin.addMember and PersonalAdminPlugin.addMember are the same. Checking only once.
-        if (_requestedSelector != StdGovernancePlugin.addMember.selector) return false;
+        if (_requestedSelector != targetSelector) return false;
 
         return true;
     }

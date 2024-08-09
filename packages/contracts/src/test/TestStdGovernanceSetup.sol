@@ -7,7 +7,7 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
-import {MemberAddCondition} from "../conditions/MemberAddCondition.sol";
+import {ExecuteSelectorCondition} from "../conditions/ExecuteSelectorCondition.sol";
 import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
 import {StdGovernancePlugin} from "../standard/StdGovernancePlugin.sol";
 import {StdMemberAddHelper} from "../standard/StdMemberAddHelper.sol";
@@ -67,8 +67,13 @@ contract TestStdGovernanceSetup is PluginSetup {
             )
         );
 
-        // Condition contract (member add helper execute)
-        address _memberAddCondition = address(new MemberAddCondition(stdGovernancePlugin));
+        // Condition contract (helper can only execute addMember on the plugin)
+        address _executeSelectorCondition = address(
+            new ExecuteSelectorCondition(
+                stdGovernancePlugin,
+                StdGovernancePlugin.addMember.selector
+            )
+        );
 
         // List the requested permissions
         PermissionLib.MultiTargetPermission[]
@@ -117,7 +122,7 @@ contract TestStdGovernanceSetup is PluginSetup {
             operation: PermissionLib.Operation.GrantWithCondition,
             where: _dao,
             who: _stdMemberAddHelper,
-            condition: _memberAddCondition,
+            condition: _executeSelectorCondition,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO needs to be able to update the member add helper settings

@@ -154,12 +154,12 @@ contract StdMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     /// @notice Creates a proposal to add a new member.
     /// @param _metadata The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eventually be added.
-    /// @param _proposer The address to use as the proposal creator.
+    /// @param _proposedBy The address who originated the transaction on the caller plugin.
     /// @return proposalId The ID of the proposal.
     function proposeAddMember(
         bytes calldata _metadata,
         address _proposedMember,
-        address _proposer
+        address _proposedBy
     ) public auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that the caller supports the `addMember` function
         if (
@@ -198,7 +198,7 @@ contract StdMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
 
         emit ProposalCreated({
             proposalId: proposalId,
-            creator: _proposer,
+            creator: _proposedBy,
             metadata: _metadata,
             startDate: _startDate,
             endDate: _endDate,
@@ -222,10 +222,10 @@ contract StdMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         }
 
         // Another editor needs to approve. Set the minApprovals accordingly
-        /// @dev The _proposer parameter is technically trusted.
-        /// @dev However, this function is protected by PROPOSER_PERMISSION_ID and only the MainVoting plugin is granted this permission.
+        /// @dev The _proposedBy parameter is technically trusted.
+        /// @dev However, this function is protected by PROPOSER_PERMISSION_ID and only the StdGovernancePlugin is granted such permission.
         /// @dev See StdGovernanceSetup.sol
-        if (StdGovernancePlugin(msg.sender).isEditor(_proposer)) {
+        if (StdGovernancePlugin(msg.sender).isEditor(_proposedBy)) {
             if (StdGovernancePlugin(msg.sender).addresslistLength() < 2) {
                 proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_SINGLE_EDITOR;
             } else {
@@ -233,7 +233,7 @@ contract StdMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
             }
 
             // If the creator is an editor, we assume that the editor approves
-            _approve(proposalId, _proposer);
+            _approve(proposalId, _proposedBy);
         } else {
             proposal_.parameters.minApprovals = MIN_APPROVALS_WHEN_CREATED_BY_NON_EDITOR;
         }

@@ -3,10 +3,10 @@ import {
   DAO__factory,
   IDAO,
   StdGovernancePlugin__factory,
-  MemberAddCondition,
-  MemberAddCondition__factory,
-  TestMemberAddCondition__factory,
-  TestMemberAddCondition,
+  ExecuteSelectorCondition,
+  ExecuteSelectorCondition__factory,
+  TestExecuteSelectorCondition__factory,
+  TestExecuteSelectorCondition,
 } from '../../typechain';
 import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
@@ -33,7 +33,7 @@ describe('Member Add Condition', function () {
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
   let dao: DAO;
-  let memberAddCondition: MemberAddCondition;
+  let executeSelectorCondition: ExecuteSelectorCondition;
 
   before(async () => {
     [alice, bob, carol] = await ethers.getSigners();
@@ -41,8 +41,11 @@ describe('Member Add Condition', function () {
   });
 
   beforeEach(async () => {
-    const factory = new MemberAddCondition__factory(alice);
-    memberAddCondition = await factory.deploy(SOME_CONTRACT_ADDRESS);
+    const factory = new ExecuteSelectorCondition__factory(alice);
+    executeSelectorCondition = await factory.deploy(
+      SOME_CONTRACT_ADDRESS,
+      stdGovernancePluginInterface.getSighash('addMember')
+    );
   });
 
   describe('Executing addMember on a certain contract', () => {
@@ -57,7 +60,7 @@ describe('Member Add Condition', function () {
         [carol.address]
       );
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -71,7 +74,7 @@ describe('Member Add Condition', function () {
         [carol.address]
       );
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -84,7 +87,7 @@ describe('Member Add Condition', function () {
         hexlify(toUtf8Bytes('ipfs://')),
       ]);
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -97,7 +100,7 @@ describe('Member Add Condition', function () {
         hexlify(toUtf8Bytes('ipfs://')),
       ]);
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -111,7 +114,7 @@ describe('Member Add Condition', function () {
         [ADDRESS_ONE]
       );
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -131,7 +134,7 @@ describe('Member Add Condition', function () {
         [carol.address]
       );
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -145,7 +148,7 @@ describe('Member Add Condition', function () {
         [carol.address]
       );
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -159,7 +162,7 @@ describe('Member Add Condition', function () {
         [carol.address]
       );
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -173,7 +176,7 @@ describe('Member Add Condition', function () {
         [carol.address]
       );
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -188,7 +191,7 @@ describe('Member Add Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -202,7 +205,7 @@ describe('Member Add Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -217,7 +220,7 @@ describe('Member Add Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -231,7 +234,7 @@ describe('Member Add Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -256,7 +259,7 @@ describe('Member Add Condition', function () {
           [grantedToAddress]
         );
         expect(
-          await memberAddCondition.isGranted(
+          await executeSelectorCondition.isGranted(
             ADDRESS_ONE, // where (used)
             ADDRESS_TWO, // who (used)
             EXECUTE_PERMISSION_ID, // permission (used)
@@ -275,7 +278,7 @@ describe('Member Add Condition', function () {
     it('Should reject adding and removing directly, rather than executing', async () => {
       // Valid
       expect(
-        await memberAddCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -288,11 +291,14 @@ describe('Member Add Condition', function () {
   });
 
   describe('Decoders (internal)', () => {
-    let testMemberAddCondition: TestMemberAddCondition;
+    let testExecuteSelectorCondition: TestExecuteSelectorCondition;
 
     beforeEach(async () => {
-      const factory = new TestMemberAddCondition__factory(alice);
-      testMemberAddCondition = await factory.deploy(SOME_CONTRACT_ADDRESS);
+      const factory = new TestExecuteSelectorCondition__factory(alice);
+      testExecuteSelectorCondition = await factory.deploy(
+        SOME_CONTRACT_ADDRESS,
+        stdGovernancePluginInterface.getSighash('addMember')
+      );
     });
 
     it('Should decode getSelector properly', async () => {
@@ -314,19 +320,20 @@ describe('Member Add Condition', function () {
         },
       ];
 
-      expect(await testMemberAddCondition.getSelector(actions[0].data)).to.eq(
-        (actions[0].data as string).slice(0, 10)
-      );
+      expect(
+        await testExecuteSelectorCondition.getSelector(actions[0].data)
+      ).to.eq((actions[0].data as string).slice(0, 10));
 
-      expect(await testMemberAddCondition.getSelector(actions[1].data)).to.eq(
-        (actions[1].data as string).slice(0, 10)
-      );
+      expect(
+        await testExecuteSelectorCondition.getSelector(actions[1].data)
+      ).to.eq((actions[1].data as string).slice(0, 10));
     });
 
     it('Should decode decodeGrantRevokeCalldata properly', async () => {
-      const factory = new TestMemberAddCondition__factory(alice);
-      const testMemberAddCondition = await factory.deploy(
-        SOME_CONTRACT_ADDRESS
+      const factory = new TestExecuteSelectorCondition__factory(alice);
+      const testExecuteSelectorCondition = await factory.deploy(
+        SOME_CONTRACT_ADDRESS,
+        stdGovernancePluginInterface.getSighash('addMember')
       );
 
       const calldata = stdGovernancePluginInterface.encodeFunctionData(
@@ -336,7 +343,7 @@ describe('Member Add Condition', function () {
 
       // 1
       const [selector, who] =
-        await testMemberAddCondition.decodeAddMemberCalldata(calldata);
+        await testExecuteSelectorCondition.decodeAddMemberCalldata(calldata);
       expect(selector).to.eq(calldata.slice(0, 10));
       expect(who).to.eq(pspAddress);
     });

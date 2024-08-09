@@ -132,12 +132,12 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
     /// @notice Creates a proposal to add a new member.
     /// @param _metadata The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eventually be added.
-    /// @param _proposer The address to use as the proposal creator.
+    /// @param _proposedBy The address who originated the transaction on the caller plugin.
     /// @return proposalId The ID of the proposal.
     function proposeAddMember(
         bytes calldata _metadata,
         address _proposedMember,
-        address _proposer
+        address _proposedBy
     ) public auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that the caller supports the `addMember` function
         if (!PersonalAdminPlugin(msg.sender).supportsInterface(type(IEditors).interfaceId)) {
@@ -172,7 +172,7 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
 
         emit ProposalCreated({
             proposalId: proposalId,
-            creator: _proposer,
+            creator: _proposedBy,
             metadata: _metadata,
             startDate: _startDate,
             endDate: _endDate,
@@ -195,8 +195,11 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
         }
 
         // An editor needs to approve. If the proposer is an editor, approve right away.
-        if (PersonalAdminPlugin(msg.sender).isEditor(_proposer)) {
-            _approve(proposalId, _proposer);
+        /// @dev The _proposedBy parameter is technically trusted.
+        /// @dev However, this function is protected by PROPOSER_PERMISSION_ID and only the PersonalAdminPlugin is granted such permission.
+        /// @dev See PersonalAdminSetup.sol
+        if (PersonalAdminPlugin(msg.sender).isEditor(_proposedBy)) {
+            _approve(proposalId, _proposedBy);
         }
     }
 

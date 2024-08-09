@@ -10,6 +10,7 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {PermissionLib} from "@aragon/osx/core/permission/PermissionLib.sol";
 import {PersonalAdminPlugin} from "./PersonalAdminPlugin.sol";
 import {PersonalMemberAddHelper} from "./PersonalMemberAddHelper.sol";
+import {ExecuteSelectorCondition} from "../conditions/ExecuteSelectorCondition.sol";
 import {EDITOR_PERMISSION_ID} from "../constants.sol";
 
 uint64 constant MEMBER_ADD_PROPOSAL_DURATION = 7 days;
@@ -58,44 +59,63 @@ contract PersonalAdminSetup is PluginSetup {
         });
         PersonalMemberAddHelper(helper).initialize(IDAO(_dao), _helperSettings);
 
+        // Condition contract (helper can only execute addMember on the plugin)
+        address _executeSelectorCondition = address(
+            new ExecuteSelectorCondition(plugin, PersonalAdminPlugin.addMember.selector)
+        );
+
         // Prepare permissions
         PermissionLib.MultiTargetPermission[]
-            memory permissions = new PermissionLib.MultiTargetPermission[](4);
+            memory permissions = new PermissionLib.MultiTargetPermission[](6);
 
-        // Grant `EDITOR_PERMISSION` of the plugin to the editor.
+        // The plugin has `EXECUTE_PERMISSION` on the DAO.
         permissions[0] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Grant,
+            _dao,
+            plugin,
+            PermissionLib.NO_CONDITION,
+            DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
+        );
+        // The first editor has `EDITOR_PERMISSION` on the plugin
+        permissions[1] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Grant,
             plugin,
             editor,
             PermissionLib.NO_CONDITION,
             EDITOR_PERMISSION_ID
         );
-
-        // Grant `PROPOSER_PERMISSION` on the helper to the plugin.
-        permissions[1] = PermissionLib.MultiTargetPermission(
+        // The plugin has `PROPOSER_PERMISSION` on the helper
+        permissions[2] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Grant,
             helper,
             plugin,
             PermissionLib.NO_CONDITION,
             PersonalMemberAddHelper(helper).PROPOSER_PERMISSION_ID()
         );
-
-        // Grant `UPDATE_PLUGIN_SETTINGS_PERMISSION` on the helper to the plugin.
-        permissions[2] = PermissionLib.MultiTargetPermission(
+        // The helper has conditional `EXECUTE_PERMISSION` on the DAO.
+        permissions[3] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Grant,
+            _dao,
+            helper,
+            // Conditional execution
+            _executeSelectorCondition,
+            DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
+        );
+        // The DAO has `ADD_MEMBER_PERMISSION` on the plugin
+        permissions[4] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Grant,
+            plugin,
+            _dao,
+            PermissionLib.NO_CONDITION,
+            PersonalAdminPlugin(plugin).ADD_MEMBER_PERMISSION_ID()
+        );
+        // The DAO has `UPDATE_SETTINGS_PERMISSION_ID` on the helper.
+        permissions[5] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Grant,
             helper,
             _dao,
             PermissionLib.NO_CONDITION,
             PersonalMemberAddHelper(helper).UPDATE_SETTINGS_PERMISSION_ID()
-        );
-
-        // Grant `EXECUTE_PERMISSION` on the DAO to the plugin.
-        permissions[3] = PermissionLib.MultiTargetPermission(
-            PermissionLib.Operation.Grant,
-            _dao,
-            plugin,
-            PermissionLib.NO_CONDITION,
-            DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         );
 
         preparedSetupData.permissions = permissions;

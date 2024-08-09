@@ -9,7 +9,7 @@ import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/Plug
 import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
 import {StdMemberAddHelper} from "./StdMemberAddHelper.sol";
 import {StdGovernancePlugin} from "./StdGovernancePlugin.sol";
-import {MemberAddCondition} from "../conditions/MemberAddCondition.sol";
+import {ExecuteSelectorCondition} from "../conditions/ExecuteSelectorCondition.sol";
 import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
 import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 
@@ -36,7 +36,7 @@ contract StdGovernanceSetup is PluginSetup {
     function prepareInstallation(
         address _dao,
         bytes memory _data
-    ) external returns (address stdGovernancePlugin, PreparedSetupData memory preparedSetupData) {
+    ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
         // Decode the custom installation parameters
         (
             MajorityVotingBase.VotingSettings memory _votingSettings,
@@ -45,8 +45,8 @@ contract StdGovernanceSetup is PluginSetup {
             address _pluginUpgrader
         ) = decodeInstallationParams(_data);
 
-        // Deploy the member add plugin
-        address _stdMemberAddHelper = createERC1967Proxy(
+        // Deploy the member add helper
+        address _helper = createERC1967Proxy(
             helperImplementation,
             abi.encodeCall(
                 StdMemberAddHelper.initialize,
@@ -59,22 +59,19 @@ contract StdGovernanceSetup is PluginSetup {
             )
         );
 
-        // Deploy the standard governance plugin
-        stdGovernancePlugin = createERC1967Proxy(
+        // Deploy the plugin
+        plugin = createERC1967Proxy(
             pluginImplementation,
             abi.encodeCall(
                 StdGovernancePlugin.initialize,
-                (
-                    IDAO(_dao),
-                    _votingSettings,
-                    _initialEditors,
-                    StdMemberAddHelper(_stdMemberAddHelper)
-                )
+                (IDAO(_dao), _votingSettings, _initialEditors, StdMemberAddHelper(_helper))
             )
         );
 
-        // Condition contract (member add plugin execute)
-        address _memberAddCondition = address(new MemberAddCondition(stdGovernancePlugin));
+        // Condition contract (helper can only execute addMember on the plugin)
+        address _executeSelectorCondition = address(
+            new ExecuteSelectorCondition(plugin, StdGovernancePlugin.addMember.selector)
+        );
 
         // List the requested permissions
         PermissionLib.MultiTargetPermission[]
@@ -82,54 +79,52 @@ contract StdGovernanceSetup is PluginSetup {
                 _pluginUpgrader == address(0x0) ? 6 : 7
             );
 
-        // The standard governance plugin can execute on the DAO
+        // The plugin has `EXECUTE_PERMISSION` on the DAO.
         permissions[0] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
             where: _dao,
-            who: stdGovernancePlugin,
+            who: plugin,
             condition: PermissionLib.NO_CONDITION,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
-        // The DAO can update the standard governance plugin settings
+        // The DAO has UPDATE_VOTING_SETTINGS_PERMISSION on the plugin
         permissions[1] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: stdGovernancePlugin,
+            where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: StdGovernancePlugin(pluginImplementation)
                 .UPDATE_VOTING_SETTINGS_PERMISSION_ID()
         });
-        // The DAO can manage the list of addresses
+        // The DAO has UPDATE_ADDRESSES_PERMISSION on the plugin
         permissions[2] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: stdGovernancePlugin,
+            where: plugin,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: StdGovernancePlugin(pluginImplementation).UPDATE_ADDRESSES_PERMISSION_ID()
         });
-
-        // The StdGovernancePlugin can create membership proposals on the StdMemberAddHelper
+        // The plugin has PROPOSER_PERMISSION on the helper
         permissions[3] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: _stdMemberAddHelper,
-            who: stdGovernancePlugin,
+            where: _helper,
+            who: plugin,
             condition: PermissionLib.NO_CONDITION,
-            permissionId: StdMemberAddHelper(_stdMemberAddHelper).PROPOSER_PERMISSION_ID()
+            permissionId: StdMemberAddHelper(_helper).PROPOSER_PERMISSION_ID()
         });
-
-        // The member add plugin needs to execute on the DAO
+        // The helper has conditional EXECUTE_PERMISSION on the DAO
         permissions[4] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.GrantWithCondition,
             where: _dao,
-            who: _stdMemberAddHelper,
+            who: _helper,
             // Conditional execution
-            condition: _memberAddCondition,
+            condition: _executeSelectorCondition,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
-        // The DAO needs to be able to update the member add plugin settings
+        // The DAO has UPDATE_MULTISIG_SETTINGS_PERMISSION_ID on the helper
         permissions[5] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Grant,
-            where: _stdMemberAddHelper,
+            where: _helper,
             who: _dao,
             condition: PermissionLib.NO_CONDITION,
             permissionId: StdMemberAddHelper(helperImplementation)
@@ -143,8 +138,8 @@ contract StdGovernanceSetup is PluginSetup {
             // pluginUpgrader can make the DAO execute applyUpdate
             // pluginUpgrader can make the DAO execute grant/revoke
             address[] memory _targetPluginAddresses = new address[](2);
-            _targetPluginAddresses[0] = stdGovernancePlugin;
-            _targetPluginAddresses[1] = _stdMemberAddHelper;
+            _targetPluginAddresses[0] = plugin;
+            _targetPluginAddresses[1] = _helper;
             OnlyPluginUpgraderCondition _onlyPluginUpgraderCondition = new OnlyPluginUpgraderCondition(
                     DAO(payable(_dao)),
                     PluginSetupProcessor(pluginSetupProcessor),
@@ -161,7 +156,7 @@ contract StdGovernanceSetup is PluginSetup {
 
         preparedSetupData.permissions = permissions;
         preparedSetupData.helpers = new address[](1);
-        preparedSetupData.helpers[0] = _stdMemberAddHelper;
+        preparedSetupData.helpers[0] = _helper;
     }
 
     /// @inheritdoc IPluginSetup
@@ -175,13 +170,13 @@ contract StdGovernanceSetup is PluginSetup {
 
         // Decode incoming params
         address _pluginUpgrader = decodeUninstallationParams(_payload.data);
-        address _stdMemberAddHelper = _payload.currentHelpers[0];
+        address _helper = _payload.currentHelpers[0];
 
         permissionChanges = new PermissionLib.MultiTargetPermission[](
             _pluginUpgrader == address(0x0) ? 6 : 7
         );
 
-        // Standard governance plugin permissions
+        // plugin permissions
 
         // The plugin can no longer execute on the DAO
         permissionChanges[0] = PermissionLib.MultiTargetPermission({
@@ -214,7 +209,7 @@ contract StdGovernanceSetup is PluginSetup {
         // The StdGovernancePlugin can no longer propose on the StdMemberAddHelper
         permissionChanges[3] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
-            where: _stdMemberAddHelper,
+            where: _helper,
             who: _payload.plugin,
             condition: address(0),
             permissionId: StdMemberAddHelper(helperImplementation).PROPOSER_PERMISSION_ID()
@@ -224,14 +219,14 @@ contract StdGovernanceSetup is PluginSetup {
         permissionChanges[4] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
             where: _dao,
-            who: _stdMemberAddHelper,
+            who: _helper,
             condition: address(0),
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO can no longer update the plugin settings
         permissionChanges[5] = PermissionLib.MultiTargetPermission({
             operation: PermissionLib.Operation.Revoke,
-            where: _stdMemberAddHelper,
+            where: _helper,
             who: _dao,
             condition: address(0),
             permissionId: StdMemberAddHelper(helperImplementation)

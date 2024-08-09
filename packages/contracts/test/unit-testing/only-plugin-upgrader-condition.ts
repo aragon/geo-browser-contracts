@@ -1195,14 +1195,15 @@ describe('Only Plugin Upgrader Condition', function () {
   });
 
   describe('Decoders (internal)', () => {
-    let testMemberAddCondition: TestOnlyPluginUpgraderCondition;
+    let testExecuteSelectorCondition: TestOnlyPluginUpgraderCondition;
 
     beforeEach(async () => {
       const factory = new TestOnlyPluginUpgraderCondition__factory(alice);
-      testMemberAddCondition = await factory.deploy(dao.address, pspAddress, [
-        ALLOWED_PLUGIN_ADDRESS_1,
-        ALLOWED_PLUGIN_ADDRESS_2,
-      ]);
+      testExecuteSelectorCondition = await factory.deploy(
+        dao.address,
+        pspAddress,
+        [ALLOWED_PLUGIN_ADDRESS_1, ALLOWED_PLUGIN_ADDRESS_2]
+      );
     });
 
     it('Should decode getSelector properly', async () => {
@@ -1235,17 +1236,17 @@ describe('Only Plugin Upgrader Condition', function () {
         },
       ];
 
-      expect(await testMemberAddCondition.getSelector(actions[0].data)).to.eq(
-        (actions[0].data as string).slice(0, 10)
-      );
+      expect(
+        await testExecuteSelectorCondition.getSelector(actions[0].data)
+      ).to.eq((actions[0].data as string).slice(0, 10));
 
-      expect(await testMemberAddCondition.getSelector(actions[1].data)).to.eq(
-        (actions[1].data as string).slice(0, 10)
-      );
+      expect(
+        await testExecuteSelectorCondition.getSelector(actions[1].data)
+      ).to.eq((actions[1].data as string).slice(0, 10));
 
-      expect(await testMemberAddCondition.getSelector(actions[2].data)).to.eq(
-        (actions[2].data as string).slice(0, 10)
-      );
+      expect(
+        await testExecuteSelectorCondition.getSelector(actions[2].data)
+      ).to.eq((actions[2].data as string).slice(0, 10));
     });
 
     it('Should decode decodeGrantRevokeCalldata properly', async () => {
@@ -1264,7 +1265,9 @@ describe('Only Plugin Upgrader Condition', function () {
 
       // 1
       let [selector, where, who, permissionId] =
-        await testMemberAddCondition.decodeGrantRevokeCalldata(calldataList[0]);
+        await testExecuteSelectorCondition.decodeGrantRevokeCalldata(
+          calldataList[0]
+        );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
       expect(where).to.eq(ALLOWED_PLUGIN_ADDRESS_1);
       expect(who).to.eq(pspAddress);
@@ -1272,7 +1275,9 @@ describe('Only Plugin Upgrader Condition', function () {
 
       // 2
       [selector, where, who, permissionId] =
-        await testMemberAddCondition.decodeGrantRevokeCalldata(calldataList[1]);
+        await testExecuteSelectorCondition.decodeGrantRevokeCalldata(
+          calldataList[1]
+        );
       expect(selector).to.eq(calldataList[1].slice(0, 10));
       expect(where).to.eq(ALLOWED_PLUGIN_ADDRESS_2);
       expect(who).to.eq(ADDRESS_THREE);
@@ -1297,14 +1302,18 @@ describe('Only Plugin Upgrader Condition', function () {
 
       // 1
       let [selector, decodedDaoAddress, pluginAddress] =
-        await testMemberAddCondition.decodeApplyUpdateCalldata(calldataList[0]);
+        await testExecuteSelectorCondition.decodeApplyUpdateCalldata(
+          calldataList[0]
+        );
       expect(selector).to.eq(calldataList[0].slice(0, 10));
       expect(decodedDaoAddress).to.eq(dao.address);
       expect(pluginAddress).to.eq(bob.address);
 
       // 2
       [selector, decodedDaoAddress, pluginAddress] =
-        await testMemberAddCondition.decodeApplyUpdateCalldata(calldataList[1]);
+        await testExecuteSelectorCondition.decodeApplyUpdateCalldata(
+          calldataList[1]
+        );
       expect(selector).to.eq(calldataList[1].slice(0, 10));
       expect(decodedDaoAddress).to.eq(ADDRESS_THREE);
       expect(pluginAddress).to.eq(alice.address);

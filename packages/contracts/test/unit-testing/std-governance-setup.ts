@@ -69,14 +69,14 @@ describe('Standard Governance Setup', function () {
           from: stdGovernanceSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedMemberAddConditionAddress =
+      const anticipatedExecuteSelectorConditionAddress =
         ethers.utils.getContractAddress({
           from: stdGovernanceSetup.address,
           nonce: nonce + 2,
         });
 
       const {
-        stdGovernancePlugin,
+        plugin: stdGovernancePlugin,
         preparedSetupData: {helpers, permissions},
       } = await stdGovernanceSetup.callStatic.prepareInstallation(
         dao.address,
@@ -123,7 +123,7 @@ describe('Standard Governance Setup', function () {
           Operation.GrantWithCondition,
           dao.address,
           stdMemberAddHelper,
-          anticipatedMemberAddConditionAddress,
+          anticipatedExecuteSelectorConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [
@@ -172,7 +172,7 @@ describe('Standard Governance Setup', function () {
           from: stdGovernanceSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedMemberAddConditionAddress =
+      const anticipatedExecuteSelectorConditionAddress =
         ethers.utils.getContractAddress({
           from: stdGovernanceSetup.address,
           nonce: nonce + 2,
@@ -184,7 +184,7 @@ describe('Standard Governance Setup', function () {
         });
 
       const {
-        stdGovernancePlugin,
+        plugin: stdGovernancePlugin,
         preparedSetupData: {helpers, permissions},
       } = await stdGovernanceSetup.callStatic.prepareInstallation(
         dao.address,
@@ -231,7 +231,7 @@ describe('Standard Governance Setup', function () {
           Operation.GrantWithCondition,
           dao.address,
           stdMemberAddHelper,
-          anticipatedMemberAddConditionAddress,
+          anticipatedExecuteSelectorConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [

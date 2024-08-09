@@ -9,6 +9,7 @@ import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.s
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
+import {PersonalMemberAddHelper} from "./PersonalMemberAddHelper.sol";
 import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
 
 /// @title PersonalAdminPlugin
@@ -33,6 +34,9 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
     /// @notice The ID of the permission required to call the `addMember` function.
     bytes32 public constant ADD_MEMBER_PERMISSION_ID = keccak256("ADD_MEMBER_PERMISSION");
 
+    /// @notice Thrown when attempting propose membership for an existing member.
+    error AlreadyAMember(address _member);
+
     /// @notice Raised when a wallet who is not an editor or a member attempts to do something
     error NotAMember(address caller);
 
@@ -42,6 +46,9 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
         }
         _;
     }
+
+    /// @notice The address of the plugin where new memberships are approved, using a different set of rules.
+    PersonalMemberAddHelper public personalMemberAddHelper;
 
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.
@@ -144,6 +151,7 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
 
     /// @notice Creates and executes a proposal that makes the DAO grant membership permission to the given address.
     /// @param _newMember The address to grant member permission to
+    /// @dev Called by the DAO via the PersonalMemberAddHelper. Not by members or editors.
     function addMember(address _newMember) public auth(ADD_MEMBER_PERMISSION_ID) {
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
         _actions[0].to = address(dao());
@@ -238,6 +246,28 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
         dao().execute(bytes32(_proposalId), _actions, 0);
 
         emit EditorRemoved(address(dao()), _editor);
+    }
+
+    /// @notice Creates a proposal on PersonalMemberAddHelper to add a new member.
+    /// @param _metadataContentUri The metadata of the proposal.
+    /// @param _proposedMember The address of the member who may eveutnally be added.
+    /// @return proposalId NOTE: The proposal ID will belong to the helper, not to this contract.
+    function proposeAddMember(
+        bytes calldata _metadataContentUri,
+        address _proposedMember
+    ) public returns (uint256 proposalId) {
+        if (isMember(_proposedMember)) {
+            revert AlreadyAMember(_proposedMember);
+        }
+
+        /// @dev Creating the actual proposal on the helper because the approval rules differ.
+        /// @dev Keeping all wrappers on the this contract, even if one type of approvals is handled on the StdMemberAddHelper.
+        return
+            personalMemberAddHelper.proposeAddMember(
+                _metadataContentUri,
+                _proposedMember,
+                msg.sender
+            );
     }
 
     // Internal helpers
