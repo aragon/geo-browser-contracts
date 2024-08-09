@@ -17,7 +17,7 @@
     "target": "es6"
   },
   "exclude": ["node_modules"],
-  "files": ["./utils/hardhat.d.ts"],
+  "files": ["types/hardhat.d.ts"],
   "include": [
     "deploy/**/*",
     "scripts/**/*",

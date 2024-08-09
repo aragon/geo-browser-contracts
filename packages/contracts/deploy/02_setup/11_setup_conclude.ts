@@ -18,8 +18,8 @@ import {setTimeout} from 'timers/promises';
 
 const func: DeployFunction = function (hre: HardhatRuntimeEnvironment) {
   return concludeSpaceSetup(hre)
-    .then(() => concludePersonalSpaceVotingSetup(hre))
-    .then(() => concludeGovernanceSetup(hre));
+    .then(() => concludePersonalAdminSetup(hre))
+    .then(() => concludeStdGovernanceSetup(hre));
 };
 
 async function concludeSpaceSetup(hre: HardhatRuntimeEnvironment) {
@@ -58,9 +58,7 @@ async function concludeSpaceSetup(hre: HardhatRuntimeEnvironment) {
   });
 }
 
-async function concludePersonalSpaceVotingSetup(
-  hre: HardhatRuntimeEnvironment
-) {
+async function concludePersonalAdminSetup(hre: HardhatRuntimeEnvironment) {
   const {deployments, network} = hre;
   const [deployer] = await hre.ethers.getSigners();
 
@@ -96,7 +94,7 @@ async function concludePersonalSpaceVotingSetup(
   });
 }
 
-async function concludeGovernanceSetup(hre: HardhatRuntimeEnvironment) {
+async function concludeStdGovernanceSetup(hre: HardhatRuntimeEnvironment) {
   const {deployments, network} = hre;
   const [deployer] = await hre.ethers.getSigners();
 
