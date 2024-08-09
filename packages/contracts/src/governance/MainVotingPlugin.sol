@@ -369,7 +369,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         }
 
         /// @dev Creating the actual proposal on a separate plugin because the approval rules differ.
-        /// @dev Keeping all wrappers on the MainVoting plugin, even if one type of approvals are handled on the MemberAccess plugin.
+        /// @dev Keeping all wrappers on the MainVoting plugin, even if one type of approvals are handled on the MainMemberAdd plugin.
         return
             mainMemberAddHelper.proposeAddMember(_metadataContentUri, _proposedMember, msg.sender);
     }

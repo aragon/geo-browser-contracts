@@ -6,7 +6,7 @@ import {
 import {
   GovernancePluginsSetup__factory,
   MainVotingPlugin__factory,
-  MemberAccessPlugin__factory,
+  MainMemberAddHelper__factory,
   PersonalSpaceAdminPlugin__factory,
   PersonalSpaceAdminPluginSetup__factory,
   SpacePlugin__factory,
@@ -115,10 +115,11 @@ async function concludeGovernanceSetup(hre: HardhatRuntimeEnvironment) {
     await setup.implementation(),
     deployer
   );
-  const memberAccessPluginImplementation = MemberAccessPlugin__factory.connect(
-    await setup.memberAccessPluginImplementation(),
-    deployer
-  );
+  const mainMemberAddHelperImplementation =
+    MainMemberAddHelper__factory.connect(
+      await setup.helperImplementation(),
+      deployer
+    );
 
   // Add a timeout for polygon because the call to `implementation()` can fail for newly deployed contracts in the first few seconds
   if (network.name === 'polygon') {
@@ -135,7 +136,7 @@ async function concludeGovernanceSetup(hre: HardhatRuntimeEnvironment) {
     args: [],
   });
   hre.aragonToVerifyContracts.push({
-    address: memberAccessPluginImplementation.address,
+    address: mainMemberAddHelperImplementation.address,
     args: [],
   });
 }

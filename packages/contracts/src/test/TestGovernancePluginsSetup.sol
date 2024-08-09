@@ -7,7 +7,7 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PluginSetup, IPluginSetup} from "@aragon/osx/framework/plugin/setup/PluginSetup.sol";
 import {PluginSetupProcessor} from "@aragon/osx/framework/plugin/setup/PluginSetupProcessor.sol";
-import {MemberAccessExecuteCondition} from "../conditions/MemberAccessExecuteCondition.sol";
+import {MemberAddCondition} from "../conditions/MemberAddCondition.sol";
 import {OnlyPluginUpgraderCondition} from "../conditions/OnlyPluginUpgraderCondition.sol";
 import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
 import {MainMemberAddHelper} from "../governance/MainMemberAddHelper.sol";
@@ -40,13 +40,13 @@ contract TestGovernancePluginsSetup is PluginSetup {
         (
             MajorityVotingBase.VotingSettings memory _votingSettings,
             address[] memory _initialEditors,
-            uint64 _memberAccessProposalDuration,
+            uint64 _memberAddProposalDuration,
             address _pluginUpgrader
         ) = decodeInstallationParams(_data);
 
         // Deploy the member access plugin
         MainMemberAddHelper.MultisigSettings memory _multisigSettings;
-        _multisigSettings.proposalDuration = _memberAccessProposalDuration;
+        _multisigSettings.proposalDuration = _memberAddProposalDuration;
 
         address _mainMemberAddHelper = createERC1967Proxy(
             mainMemberAddHelperImplementation(),
@@ -68,9 +68,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
         );
 
         // Condition contract (member access plugin execute)
-        address _memberAccessExecuteCondition = address(
-            new MemberAccessExecuteCondition(mainVotingPlugin)
-        );
+        address _memberAddCondition = address(new MemberAddCondition(mainVotingPlugin));
 
         // List the requested permissions
         PermissionLib.MultiTargetPermission[]
@@ -119,7 +117,7 @@ contract TestGovernancePluginsSetup is PluginSetup {
             operation: PermissionLib.Operation.GrantWithCondition,
             where: _dao,
             who: _mainMemberAddHelper,
-            condition: _memberAccessExecuteCondition,
+            condition: _memberAddCondition,
             permissionId: DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         });
         // The DAO needs to be able to update the member access plugin settings
@@ -294,14 +292,14 @@ contract TestGovernancePluginsSetup is PluginSetup {
     function encodeInstallationParams(
         MajorityVotingBase.VotingSettings calldata _votingSettings,
         address[] calldata _initialEditors,
-        uint64 _memberAccessProposalDuration,
+        uint64 _memberAddProposalDuration,
         address _pluginUpgrader
     ) public pure returns (bytes memory) {
         return
             abi.encode(
                 _votingSettings,
                 _initialEditors,
-                _memberAccessProposalDuration,
+                _memberAddProposalDuration,
                 _pluginUpgrader
             );
     }
@@ -315,11 +313,11 @@ contract TestGovernancePluginsSetup is PluginSetup {
         returns (
             MajorityVotingBase.VotingSettings memory votingSettings,
             address[] memory initialEditors,
-            uint64 memberAccessProposalDuration,
+            uint64 memberAddProposalDuration,
             address pluginUpgrader
         )
     {
-        (votingSettings, initialEditors, memberAccessProposalDuration, pluginUpgrader) = abi.decode(
+        (votingSettings, initialEditors, memberAddProposalDuration, pluginUpgrader) = abi.decode(
             _data,
             (MajorityVotingBase.VotingSettings, address[], uint64, address)
         );

@@ -33,7 +33,7 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   supportThreshold: 1,
   votingMode: 0,
 };
-const memberAccessProposalDuration = 60 * 60 * 24;
+const memberAddProposalDuration = 60 * 60 * 24;
 
 describe('Member Access Condition E2E', () => {
   let deployer: SignerWithAddress;
@@ -48,7 +48,7 @@ describe('Member Access Condition E2E', () => {
   let pluginSetup: TestGovernancePluginsSetup;
   let gpsFactory: TestGovernancePluginsSetup__factory;
   let mainVotingPlugin: MainVotingPlugin;
-  // let memberAccessPlugin: MemberAccessPlugin;
+  // let mainMemberAddHelper: MainMemberAddHelper;
 
   before(async () => {
     [deployer, pluginUpgrader, alice] = await ethers.getSigners();
@@ -129,7 +129,7 @@ describe('Member Access Condition E2E', () => {
     const data = await pluginSetup.encodeInstallationParams(
       pluginSettings,
       [deployer.address],
-      memberAccessProposalDuration,
+      memberAddProposalDuration,
       pluginUpgrader.address
     );
     // Internally call prepareInstallation, which deploys the condition
@@ -139,7 +139,7 @@ describe('Member Access Condition E2E', () => {
       installation.preparedEvent.args.plugin,
       deployer
     );
-    // memberAccessPlugin = MemberAccessPlugin__factory.connect(
+    // mainMemberAddHelper = MainMemberAddHelper__factory.connect(
     //   installation.preparedEvent.args.preparedSetupData.helpers[0],
     //   deployer
     // );

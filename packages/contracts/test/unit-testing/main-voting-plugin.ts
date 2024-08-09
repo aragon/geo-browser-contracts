@@ -4,8 +4,8 @@ import {
   IDAO,
   MainVotingPlugin,
   MainVotingPlugin__factory,
-  MemberAccessPlugin,
-  MemberAccessPlugin__factory,
+  MainMemberAddHelper,
+  MainMemberAddHelper__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from '../../typechain';
@@ -63,7 +63,7 @@ describe('Main Voting Plugin', function () {
   let carol: SignerWithAddress;
   let dave: SignerWithAddress;
   let dao: DAO;
-  let memberAccessPlugin: MemberAccessPlugin;
+  let mainMemberAddHelper: MainMemberAddHelper;
   let mainVotingPlugin: MainVotingPlugin;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -77,8 +77,8 @@ describe('Main Voting Plugin', function () {
   });
 
   beforeEach(async () => {
-    memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-      new MemberAccessPlugin__factory(alice)
+    mainMemberAddHelper = await deployWithProxy<MainMemberAddHelper>(
+      new MainMemberAddHelper__factory(alice)
     );
     mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
       new MainVotingPlugin__factory(alice)
@@ -88,14 +88,14 @@ describe('Main Voting Plugin', function () {
     );
 
     // inits
-    await memberAccessPlugin.initialize(dao.address, {
+    await mainMemberAddHelper.initialize(dao.address, {
       proposalDuration: 60 * 60 * 24 * 5,
     });
     await mainVotingPlugin.initialize(
       dao.address,
       defaultMainVotingSettings,
       [alice.address],
-      memberAccessPlugin.address
+      mainMemberAddHelper.address
     );
     await spacePlugin.initialize(
       dao.address,
@@ -109,10 +109,10 @@ describe('Main Voting Plugin', function () {
       mainVotingPlugin.address,
       EXECUTE_PERMISSION_ID
     );
-    // MemberAccessPlugin can execute on the DAO
+    // MainMemberAddHelper can execute on the DAO
     await dao.grant(
       dao.address,
-      memberAccessPlugin.address,
+      mainMemberAddHelper.address,
       EXECUTE_PERMISSION_ID
     );
     // The DAO can add/remove editors
@@ -141,7 +141,7 @@ describe('Main Voting Plugin', function () {
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
     // The plugin can propose members on the member access helper
     await dao.grant(
-      memberAccessPlugin.address,
+      mainMemberAddHelper.address,
       mainVotingPlugin.address,
       PROPOSER_PERMISSION_ID
     );
@@ -161,7 +161,7 @@ describe('Main Voting Plugin', function () {
           dao.address,
           defaultMainVotingSettings,
           [alice.address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         )
       ).to.be.revertedWith('Initializable: contract is already initialized');
     });
@@ -176,7 +176,7 @@ describe('Main Voting Plugin', function () {
           dao.address,
           defaultMainVotingSettings,
           [alice.address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         )
       ).to.not.be.reverted;
 
@@ -216,7 +216,7 @@ describe('Main Voting Plugin', function () {
         dao.address,
         defaultMainVotingSettings,
         [alice.address],
-        memberAccessPlugin.address
+        mainMemberAddHelper.address
       );
       await mineBlock();
 
@@ -239,7 +239,7 @@ describe('Main Voting Plugin', function () {
         dao.address,
         defaultMainVotingSettings,
         [bob.address],
-        memberAccessPlugin.address
+        mainMemberAddHelper.address
       );
       await mineBlock();
 
@@ -835,10 +835,10 @@ describe('Main Voting Plugin', function () {
       );
     });
 
-    it('proposeAddMember creates a proposal on the MemberAccessPlugin', async () => {
+    it('proposeAddMember creates a proposal on the MainMemberAddHelper', async () => {
       let msPid = 1;
       expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
-      expect((await memberAccessPlugin.proposalCount()).toNumber()).to.eq(1);
+      expect((await mainMemberAddHelper.proposalCount()).toNumber()).to.eq(1);
       await expect(
         mainVotingPlugin.proposeAddMember(
           toUtf8Bytes('ipfs://meta'),
@@ -847,9 +847,9 @@ describe('Main Voting Plugin', function () {
       ).to.not.be.reverted;
 
       expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
-      expect((await memberAccessPlugin.proposalCount()).toNumber()).to.eq(2);
+      expect((await mainMemberAddHelper.proposalCount()).toNumber()).to.eq(2);
 
-      let proposal = await memberAccessPlugin.getProposal(msPid);
+      let proposal = await mainMemberAddHelper.getProposal(msPid);
       expect(proposal.actions.length).to.eq(1);
       expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
       expect(proposal.actions[0].value.toNumber()).to.eq(0);
@@ -869,9 +869,9 @@ describe('Main Voting Plugin', function () {
       ).to.not.be.reverted;
 
       expect((await mainVotingPlugin.proposalCount()).toNumber()).to.eq(0);
-      expect((await memberAccessPlugin.proposalCount()).toNumber()).to.eq(3);
+      expect((await mainMemberAddHelper.proposalCount()).toNumber()).to.eq(3);
 
-      proposal = await memberAccessPlugin.getProposal(msPid);
+      proposal = await mainMemberAddHelper.getProposal(msPid);
       expect(proposal.actions.length).to.eq(1);
       expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
       expect(proposal.actions[0].value.toNumber()).to.eq(0);
@@ -1663,8 +1663,8 @@ describe('Main Voting Plugin', function () {
     });
   });
 
-  context('Joining a space via MemberAccessPlugin', () => {
-    it('Proposing new members via MemberAccess plugin grants membership', async () => {
+  context('Joining a space via MainMemberAddHelper', () => {
+    it('Proposing new members via MainMemberAdd plugin grants membership', async () => {
       expect(await mainVotingPlugin.isMember(carol.address)).to.be.false;
       await mainVotingPlugin.proposeAddMember(
         toUtf8Bytes('ipfs://'),
@@ -1854,7 +1854,7 @@ describe('Tests replicated from the original AddressList plugin', async () => {
   let signers: SignerWithAddress[];
   let dao: DAO;
   let mainVotingPlugin: MainVotingPlugin;
-  let memberAccessPlugin: MemberAccessPlugin;
+  let mainMemberAddHelper: MainMemberAddHelper;
 
   let votingSettings: VotingSettings;
   let id = 0;
@@ -1873,8 +1873,8 @@ describe('Tests replicated from the original AddressList plugin', async () => {
     mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
       new MainVotingPlugin__factory(signers[0])
     );
-    memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-      new MemberAccessPlugin__factory(signers[0])
+    mainMemberAddHelper = await deployWithProxy<MainMemberAddHelper>(
+      new MainMemberAddHelper__factory(signers[0])
     );
 
     // The plugin can execute on the DAO
@@ -1883,10 +1883,10 @@ describe('Tests replicated from the original AddressList plugin', async () => {
       mainVotingPlugin.address,
       EXECUTE_PERMISSION_ID
     );
-    // MemberAccessPlugin can execute on the DAO
+    // MainMemberAddHelper can execute on the DAO
     await dao.grant(
       dao.address,
-      memberAccessPlugin.address,
+      mainMemberAddHelper.address,
       EXECUTE_PERMISSION_ID
     );
     // The DAO can update the plugin addresses
@@ -1934,9 +1934,9 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           dao.address,
           votingSettings,
           [signers[0].address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         );
-        await memberAccessPlugin.initialize(dao.address, {
+        await mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         });
         await makeMembers(signers);
@@ -2094,9 +2094,9 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           dao.address,
           votingSettings,
           [signers[0].address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         );
-        await memberAccessPlugin.initialize(dao.address, {
+        await mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         });
         await makeMembers(signers);
@@ -2320,9 +2320,9 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           dao.address,
           votingSettings,
           [signers[0].address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         );
-        await memberAccessPlugin.initialize(dao.address, {
+        await mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         });
         await makeMembers(signers);
@@ -2488,9 +2488,9 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           dao.address,
           votingSettings,
           [signers[0].address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         );
-        await memberAccessPlugin.initialize(dao.address, {
+        await mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         });
         await makeMembers(signers);
@@ -2616,9 +2616,9 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           dao.address,
           votingSettings,
           [signers[0].address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         );
-        await memberAccessPlugin.initialize(dao.address, {
+        await mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         });
         await makeMembers(signers);
@@ -2686,9 +2686,9 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           dao.address,
           votingSettings,
           [signers[0].address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         );
-        await memberAccessPlugin.initialize(dao.address, {
+        await mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         });
         await makeMembers(signers);
@@ -2761,9 +2761,9 @@ describe('Tests replicated from the original AddressList plugin', async () => {
           dao.address,
           votingSettings,
           [signers[0].address],
-          memberAccessPlugin.address
+          mainMemberAddHelper.address
         );
-        await memberAccessPlugin.initialize(dao.address, {
+        await mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         });
         await makeMembers(signers); // 10 members
@@ -2965,3 +2965,7 @@ describe('Tests replicated from the original AddressList plugin', async () => {
       );
   }
 });
+
+// Test that an addresslist of just 1 member works with nonCreatorsVoted
+// Test nonCreatorsVoted
+// Test that you cannot vote on an uncreated proposal

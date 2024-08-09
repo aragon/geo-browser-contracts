@@ -77,7 +77,7 @@ There's an optional feature, where a predefined address can execute the actions 
 
 1. Someone calls `proposeAddMember()` on the `MainVotingPlugin`
    - If the caller is the only editor, the proposal succeeds immediately
-   - The proposal is created on the `MemberAccessPlugin` because the governance rules differ from the rest of proposals
+   - The proposal is created on the `MainMemberAddHelper` because the governance rules differ from the rest of proposals
 2. One of the editors calls `approve()` or `reject()`
    - Calling `approve()` makes the proposal succeed
    - Calling `reject()` cancels the proposal
@@ -143,7 +143,7 @@ function grantWithCondition(
 );
 ```
 
-See the `MemberAccessExecuteCondition` contract. It restricts what the [MemberAccessPlugin](#member-access-plugin) can execute on the DAO.
+See the `MemberAddCondition` contract. It restricts what the [MainMemberAddHelper](#main-member-add-helper) can execute on the DAO.
 
 [Learn more about OSx permissions](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/)
 
@@ -176,7 +176,7 @@ Governance settings:
 - `UPDATE_VOTING_SETTINGS_PERMISSION_ID` is required to change the settings of the [MainVotingPlugin](#main-voting-plugin)
 - `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove members or editors on the [MainVotingPlugin](#main-voting-plugin)
   - Typically called by the DAO via proposal
-- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [MemberAccessPlugin](#member-access-plugin)
+- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [MainMemberAddHelper](#main-member-add-helper)
   - Typically called by the DAO via proposal
 
 Permission management:
@@ -221,7 +221,7 @@ It uses the generated typechain artifacts, which contain the interfaces for the 
 
 ## Adding members and editors
 
-On Spaces with the standard governance, a [MemberAccessPlugin](#member-access-plugin) and a [MainVotingPlugin](#main-voting-plugin) will be installed.
+On Spaces with the standard governance, a [MainMemberAddHelper](#main-member-add-helper) and a [MainVotingPlugin](#main-voting-plugin) will be installed.
 
 ### Members
 
@@ -302,7 +302,7 @@ event SubspaceRemoved(address dao, address subspaceDao);
 - The DAO can upgrade the plugin
 - See [Plugin upgrader](#plugin-upgrader) (optional)
 
-### Member Access plugin
+### Main Member Add Helper
 
 Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to `addMember()` on the main voting plugin and Editors can approve or reject it. Once approved, the member create proposals on the main voting plugin.
 
@@ -645,7 +645,7 @@ The same also applies to `prepareUpdate` (if present) and to `prepareUninstallat
 
 #### GovernancePluginsSetup
 
-[This contract](./packages/contracts/src/governance/GovernancePluginsSetup.sol) handles the install/update/uninstall scripts for `MainVotingPlugin` and `MemberAccessPlugin`
+[This contract](./packages/contracts/src/governance/GovernancePluginsSetup.sol) handles the install/update/uninstall scripts for `MainVotingPlugin` and `MainMemberAddHelper`
 
 The second plugin needs to know the address of the first one, therefore the setup deploys them together.
 

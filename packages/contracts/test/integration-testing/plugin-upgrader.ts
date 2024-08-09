@@ -3,7 +3,7 @@ import {
   GovernancePluginsSetup__factory,
   MainVotingPlugin__factory,
   MajorityVotingBase,
-  MemberAccessPlugin__factory,
+  MainMemberAddHelper__factory,
   PluginRepo,
   SpacePluginSetup,
   SpacePluginSetup__factory,
@@ -52,7 +52,7 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   supportThreshold: 1,
   votingMode: 0,
 };
-const minMemberAccessProposalDuration = 60 * 60 * 24;
+const minMemberAddProposalDuration = 60 * 60 * 24;
 const daoInterface = DAO__factory.createInterface();
 const pspInterface = PluginSetupProcessor__factory.createInterface();
 
@@ -169,7 +169,7 @@ describe('Plugin upgrader', () => {
       const data1 = await pSetupBuild1.encodeInstallationParams(
         pluginSettings,
         [deployer.address],
-        minMemberAccessProposalDuration,
+        minMemberAddProposalDuration,
         pluginUpgrader.address
       );
       installation1 = await installPlugin(psp, dao, pluginSetupRef1, data1);
@@ -193,7 +193,7 @@ describe('Plugin upgrader', () => {
         installation1.preparedEvent.args.plugin,
         deployer
       );
-      const memberAccessPlugin = MemberAccessPlugin__factory.connect(
+      const mainMemberAddHelper = MainMemberAddHelper__factory.connect(
         installation1.preparedEvent.args.preparedSetupData.helpers[0],
         deployer
       );
@@ -202,8 +202,8 @@ describe('Plugin upgrader', () => {
       expect(await mainVotingPlugin.implementation()).to.be.eq(
         await pSetupBuild1.implementation()
       );
-      expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await pSetupBuild1.memberAccessPluginImplementation()
+      expect(await mainMemberAddHelper.implementation()).to.be.eq(
+        await pSetupBuild1.helperImplementation()
       );
 
       // Check
@@ -225,7 +225,7 @@ describe('Plugin upgrader', () => {
         },
         pluginSetupRepo: pluginRepo.address,
         setupPayload: {
-          currentHelpers: [memberAccessPlugin.address],
+          currentHelpers: [mainMemberAddHelper.address],
           data: dat,
           plugin: mainVotingPlugin.address,
         },
@@ -359,8 +359,8 @@ describe('Plugin upgrader', () => {
         'Implementation should be build 2'
       );
 
-      expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await pSetupBuild1.memberAccessPluginImplementation(),
+      expect(await mainMemberAddHelper.implementation()).to.be.eq(
+        await pSetupBuild1.helperImplementation(),
         'Implementation should remain as build 1'
       );
     });
@@ -371,7 +371,7 @@ describe('Plugin upgrader', () => {
         installation1.preparedEvent.args.plugin,
         deployer
       );
-      const memberAccessPlugin = MemberAccessPlugin__factory.connect(
+      const mainMemberAddHelper = MainMemberAddHelper__factory.connect(
         installation1.preparedEvent.args.preparedSetupData.helpers[0],
         deployer
       );
@@ -389,7 +389,7 @@ describe('Plugin upgrader', () => {
         },
         pluginSetupRepo: pluginRepo.address,
         setupPayload: {
-          currentHelpers: [memberAccessPlugin.address],
+          currentHelpers: [mainMemberAddHelper.address],
           data: dat,
           plugin: mainVotingPlugin.address,
         },
@@ -463,8 +463,8 @@ describe('Plugin upgrader', () => {
         'Implementation should be build 1'
       );
 
-      expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await pSetupBuild1.memberAccessPluginImplementation(),
+      expect(await mainMemberAddHelper.implementation()).to.be.eq(
+        await pSetupBuild1.helperImplementation(),
         'Implementation should remain as build 1'
       );
     });

@@ -42,9 +42,6 @@ const {
 const MGMT_DAO_PROPOSAL_DURATION =
   parseInt(process.env.MGMT_DAO_PROPOSAL_DURATION ?? '604800') ||
   60 * 60 * 24 * 7;
-const MGMT_DAO_MIN_PROPOSAL_PARTICIPATION =
-  parseInt(process.env.MGMT_DAO_MIN_PROPOSAL_PARTICIPATION ?? '500000') ||
-  500_000; // 50%
 const MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD =
   parseInt(process.env.MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD ?? '500000') ||
   500_000; // 50%
@@ -147,16 +144,15 @@ async function prepareInstallation() {
 
   const settings: MajorityVotingBase.VotingSettingsStruct = {
     duration: MGMT_DAO_PROPOSAL_DURATION,
-    minParticipation: MGMT_DAO_MIN_PROPOSAL_PARTICIPATION,
     supportThreshold: MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD,
     votingMode: 1, // Early execution
   };
-  const memberAccessProposalDuration = MGMT_DAO_PROPOSAL_DURATION * 3; // Time before expired
+  const memberAddProposalDuration = MGMT_DAO_PROPOSAL_DURATION * 3; // Time before expired
   const pluginUpgrader = '0x0000000000000000000000000000000000000000'; // Just the DAO
   const installData = await pluginSetup.encodeInstallationParams(
     settings,
     MGMT_DAO_INITIAL_EDITORS,
-    memberAccessProposalDuration,
+    memberAddProposalDuration,
     pluginUpgrader
   );
 
@@ -193,7 +189,7 @@ async function prepareInstallation() {
     preparedEvent.args.plugin
   );
   console.log(
-    '- Deployed a MemberAccessPlugin plugin at',
+    '- Deployed a MainMemberAddHelper plugin at',
     preparedEvent.args.preparedSetupData.helpers[0]
   );
 

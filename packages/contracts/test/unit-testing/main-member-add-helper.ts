@@ -7,17 +7,17 @@ import {
   IProposal__factory,
   MainVotingPlugin,
   MainVotingPlugin__factory,
-  MemberAccessPlugin,
-  MemberAccessPlugin__factory,
-  MemberAccessExecuteCondition,
-  MemberAccessExecuteCondition__factory,
+  MainMemberAddHelper,
+  MainMemberAddHelper__factory,
+  MemberAddCondition,
+  MemberAddCondition__factory,
   SpacePlugin,
   SpacePlugin__factory,
 } from '../../typechain';
 import {
   ApprovedEvent,
   ProposalCreatedEvent,
-} from '../../typechain/src/governance/MemberAccessPlugin';
+} from '../../typechain/src/governance/MainMemberAddHelper';
 import {deployWithProxy, findEvent} from '../../utils/helpers';
 import {getInterfaceID} from '../../utils/interfaces';
 import {deployTestDao} from '../helpers/test-dao';
@@ -63,8 +63,8 @@ describe('Member Access Plugin', function () {
   let carol: SignerWithAddress;
   let dave: SignerWithAddress;
   let dao: DAO;
-  let memberAccessPlugin: MemberAccessPlugin;
-  let memberAccessExecuteCondition: MemberAccessExecuteCondition;
+  let mainMemberAddHelper: MainMemberAddHelper;
+  let memberAddCondition: MemberAddCondition;
   let mainVotingPlugin: MainVotingPlugin;
   let spacePlugin: SpacePlugin;
   let defaultInput: InitData;
@@ -79,8 +79,8 @@ describe('Member Access Plugin', function () {
   });
 
   beforeEach(async () => {
-    memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-      new MemberAccessPlugin__factory(alice)
+    mainMemberAddHelper = await deployWithProxy<MainMemberAddHelper>(
+      new MainMemberAddHelper__factory(alice)
     );
     mainVotingPlugin = await deployWithProxy<MainVotingPlugin>(
       new MainVotingPlugin__factory(alice)
@@ -89,20 +89,19 @@ describe('Member Access Plugin', function () {
       new SpacePlugin__factory(alice)
     );
 
-    memberAccessExecuteCondition =
-      await new MemberAccessExecuteCondition__factory(alice).deploy(
-        mainVotingPlugin.address
-      );
+    memberAddCondition = await new MemberAddCondition__factory(alice).deploy(
+      mainVotingPlugin.address
+    );
 
     // inits
-    await memberAccessPlugin.initialize(dao.address, {
+    await mainMemberAddHelper.initialize(dao.address, {
       proposalDuration: 60 * 60 * 24 * 5,
     });
     await mainVotingPlugin.initialize(
       dao.address,
       defaultMainVotingSettings,
       [alice.address],
-      memberAccessPlugin.address
+      mainMemberAddHelper.address
     );
     await spacePlugin.initialize(
       dao.address,
@@ -113,9 +112,9 @@ describe('Member Access Plugin', function () {
     // The plugin can execute on the DAO
     await dao.grantWithCondition(
       dao.address,
-      memberAccessPlugin.address,
+      mainMemberAddHelper.address,
       EXECUTE_PERMISSION_ID,
-      memberAccessExecuteCondition.address
+      memberAddCondition.address
     );
     // The main voting plugin can also execute on the DAO
     await dao.grant(
@@ -131,13 +130,13 @@ describe('Member Access Plugin', function () {
     );
     // The DAO can update the plugin settings
     await dao.grant(
-      memberAccessPlugin.address,
+      mainMemberAddHelper.address,
       dao.address,
       UPDATE_MULTISIG_SETTINGS_PERMISSION_ID
     );
     // The DAO can upgrade the plugin
     await dao.grant(
-      memberAccessPlugin.address,
+      mainMemberAddHelper.address,
       dao.address,
       UPGRADE_PLUGIN_PERMISSION_ID
     );
@@ -145,7 +144,7 @@ describe('Member Access Plugin', function () {
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
     // The plugin can propose members on the member access helper
     await dao.grant(
-      memberAccessPlugin.address,
+      mainMemberAddHelper.address,
       mainVotingPlugin.address,
       PROPOSER_PERMISSION_ID
     );
@@ -162,7 +161,7 @@ describe('Member Access Plugin', function () {
   describe('initialize', () => {
     it('reverts if trying to re-initialize', async () => {
       await expect(
-        memberAccessPlugin.initialize(dao.address, {
+        mainMemberAddHelper.initialize(dao.address, {
           proposalDuration: 60 * 60 * 24 * 5,
         })
       ).to.be.revertedWith('Initializable: contract is already initialized');
@@ -177,7 +176,7 @@ describe('Member Access Plugin', function () {
       ).to.not.be.reverted;
 
       await dao.revoke(
-        memberAccessPlugin.address,
+        mainMemberAddHelper.address,
         mainVotingPlugin.address,
         PROPOSER_PERMISSION_ID
       );
@@ -195,14 +194,14 @@ describe('Member Access Plugin', function () {
       ).to.not.be.reverted;
 
       await dao.grant(
-        memberAccessPlugin.address,
+        mainMemberAddHelper.address,
         alice.address,
         PROPOSER_PERMISSION_ID
       );
 
       // Fail despite the permission
       await expect(
-        memberAccessPlugin.proposeAddMember(
+        mainMemberAddHelper.proposeAddMember(
           toUtf8Bytes('ipfs://'),
           dave.address,
           alice.address
@@ -213,14 +212,14 @@ describe('Member Access Plugin', function () {
     it('Allows any address to request membership via the MainVoting plugin', async () => {
       // Random
       expect(await mainVotingPlugin.isMember(carol.address)).to.be.false;
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(carol)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      let proposal = await memberAccessPlugin.getProposal(pid);
+      let proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.approvals).to.eq(0);
       expect(proposal.parameters.minApprovals).to.eq(1);
@@ -230,14 +229,14 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Member
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(bob)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), ADDRESS_ONE)
       ).to.not.be.reverted;
 
-      proposal = await memberAccessPlugin.getProposal(pid);
+      proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.approvals).to.eq(0);
       expect(proposal.parameters.minApprovals).to.eq(1);
@@ -253,7 +252,7 @@ describe('Member Access Plugin', function () {
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), ADDRESS_TWO)
       ).to.not.be.reverted;
 
-      proposal = await memberAccessPlugin.getProposal(1);
+      proposal = await mainMemberAddHelper.getProposal(1);
       expect(proposal.executed).to.eq(false);
       expect(proposal.approvals).to.eq(0);
       expect(proposal.parameters.minApprovals).to.eq(1);
@@ -270,13 +269,13 @@ describe('Member Access Plugin', function () {
     });
 
     it('Emits an event when membership is requested', async () => {
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
 
       const tx = await mainVotingPlugin
         .connect(carol)
         .proposeAddMember(toUtf8Bytes('ipfs://2345'), carol.address);
 
-      await expect(tx).to.emit(memberAccessPlugin, 'ProposalCreated');
+      await expect(tx).to.emit(mainMemberAddHelper, 'ProposalCreated');
 
       const event = await findEvent<ProposalCreatedEvent>(
         tx,
@@ -343,7 +342,7 @@ describe('Member Access Plugin', function () {
     it('Only the editor can approve memberships', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(carol)
@@ -353,13 +352,14 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Approve it (Bob) => fail
-      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.connect(bob).approve(pid)).to.be
+        .reverted;
 
       // Still not a member
       expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Approve it (Alice) => success
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.not.be
         .reverted;
 
       // Now Carol is a member
@@ -371,7 +371,7 @@ describe('Member Access Plugin', function () {
 
       expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(carol)
@@ -381,27 +381,27 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Reject it (Bob) => fail
-      await expect(memberAccessPlugin.connect(bob).reject(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.connect(bob).reject(pid)).to.be.reverted;
 
       // Still not a member
       expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Reject it (Alice) => success
-      await expect(memberAccessPlugin.connect(alice).reject(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(alice).reject(pid)).to.not.be
         .reverted;
 
       // Carol is not a member
       expect(await mainVotingPlugin.isMember(carol.address)).to.eq(false);
 
       // Try to approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.be
         .reverted;
     });
 
     it('Membership approvals are immediate', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(carol)
@@ -409,21 +409,21 @@ describe('Member Access Plugin', function () {
       ).to.not.be.reverted;
 
       // Approve it (Alice) => success
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.not.be
         .reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(true);
 
       // Approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.be
         .reverted;
     });
 
     it('Membership rejections are immediate', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(carol)
@@ -431,14 +431,14 @@ describe('Member Access Plugin', function () {
       ).to.not.be.reverted;
 
       // Reject it (Alice) => success
-      await expect(memberAccessPlugin.connect(alice).reject(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(alice).reject(pid)).to.not.be
         .reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
 
       // Try to approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(bob).reject(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.connect(bob).reject(pid)).to.be.reverted;
     });
 
     it('Proposal execution is immediate when created by the only editor', async () => {
@@ -462,28 +462,28 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(1);
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), dave.address)
       ).to.not.be.reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.parameters.minApprovals).to.eq(1);
-      expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
+      expect(await mainMemberAddHelper.canExecute(pid)).to.eq(false);
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Dave cannot
-      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).approve(pid)).to.be
         .reverted;
-      await expect(memberAccessPlugin.connect(dave).execute(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).execute(pid)).to.be
         .reverted;
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Alice can
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.not.be
         .reverted;
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(true);
     });
@@ -509,7 +509,7 @@ describe('Member Access Plugin', function () {
 
       // Requesting membership for Dave
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
@@ -518,14 +518,14 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).approve(pid)).to.be
         .reverted;
 
       // Dave is still not a member
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Approve it (Alice)
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.not.be
         .reverted;
 
       // Dave is now a member
@@ -533,7 +533,7 @@ describe('Member Access Plugin', function () {
 
       // Now requesting for 0x1
       expect(await mainVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
@@ -542,14 +542,14 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).approve(pid)).to.be
         .reverted;
 
       // ADDRESS_ONE is still not a member
       expect(await mainVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
 
       // Approve it (Bob)
-      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(bob).approve(pid)).to.not.be
         .reverted;
 
       // ADDRESS_ONE is now a member
@@ -557,7 +557,7 @@ describe('Member Access Plugin', function () {
 
       // Now requesting for 0x2
       expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(false);
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
@@ -566,14 +566,14 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(false);
 
       // Dave cannot approve (fail)
-      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).approve(pid)).to.be
         .reverted;
 
       // ADDRESS_TWO is still not a member
       expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(false);
 
       // Approve it (Carol)
-      await expect(memberAccessPlugin.connect(carol).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(carol).approve(pid)).to.not.be
         .reverted;
 
       // ADDRESS_TWO is now a member
@@ -584,46 +584,48 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Proposed by a random wallet
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), dave.address)
       ).to.not.be.reverted;
 
-      let proposal = await memberAccessPlugin.getProposal(pid);
+      let proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.parameters.minApprovals).to.eq(1);
-      expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
+      expect(await mainMemberAddHelper.canExecute(pid)).to.eq(false);
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       await mainVotingPlugin.proposeAddMember('0x', dave.address);
 
       // Proposed by a (now) member
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), ADDRESS_ONE)
       ).to.not.be.reverted;
 
-      expect((await memberAccessPlugin.getProposal(pid)).executed).to.eq(false);
+      expect((await mainMemberAddHelper.getProposal(pid)).executed).to.eq(
+        false
+      );
       expect(proposal.parameters.minApprovals).to.eq(1);
-      expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
+      expect(await mainMemberAddHelper.canExecute(pid)).to.eq(false);
       expect(await mainVotingPlugin.isMember(ADDRESS_ONE)).to.eq(false);
 
       // Proposed by an editor
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(alice)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), ADDRESS_TWO)
       ).to.not.be.reverted;
 
-      proposal = await memberAccessPlugin.getProposal(pid);
+      proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.parameters.minApprovals).to.eq(2);
-      expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
+      expect(await mainMemberAddHelper.canExecute(pid)).to.eq(false);
       expect(await mainVotingPlugin.isMember(ADDRESS_TWO)).to.eq(false);
     });
 
@@ -632,7 +634,7 @@ describe('Member Access Plugin', function () {
 
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
@@ -642,50 +644,54 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Reject it (Dave) => fail
-      await expect(memberAccessPlugin.connect(dave).reject(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.connect(dave).reject(pid)).to.be
+        .reverted;
 
       // Still not a member
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Reject it (Bob) => success
-      await expect(memberAccessPlugin.connect(bob).reject(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(bob).reject(pid)).to.not.be
         .reverted;
 
       // Still not a member
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Try to approve it (bob) => fail
-      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.connect(bob).approve(pid)).to.be
+        .reverted;
 
-      expect((await memberAccessPlugin.getProposal(pid)).executed).to.eq(false);
+      expect((await mainMemberAddHelper.getProposal(pid)).executed).to.eq(
+        false
+      );
     });
 
     it("Proposals created by a non-editor need an editor's approval", async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), dave.address)
       ).to.not.be.reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.parameters.minApprovals).to.eq(1);
-      expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
+      expect(await mainMemberAddHelper.canExecute(pid)).to.eq(false);
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Dave cannot
-      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).approve(pid)).to.be
         .reverted;
-      await expect(memberAccessPlugin.connect(dave).execute(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).execute(pid)).to.be
         .reverted;
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
 
       // Alice can
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.not.be
         .reverted;
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(true);
     });
@@ -693,46 +699,46 @@ describe('Member Access Plugin', function () {
     it("Proposals created by an editor need another editor's approval", async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(alice)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), dave.address)
       ).to.not.be.reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
       expect(proposal.parameters.minApprovals).to.eq(2);
-      expect(await memberAccessPlugin.canExecute(pid)).to.eq(false);
+      expect(await mainMemberAddHelper.canExecute(pid)).to.eq(false);
     });
 
     it('Memberships are approved when the first non-proposer editor approves', async () => {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Alice proposes a mew member
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(alice)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), dave.address)
       ).to.not.be.reverted;
 
-      let proposal = await memberAccessPlugin.getProposal(pid);
+      let proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(false);
 
       // Approve it (Alice) => fail
-      await expect(memberAccessPlugin.connect(alice).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(alice).approve(pid)).to.be
         .reverted;
 
       // Approve it (Dave) => fail
-      await expect(memberAccessPlugin.connect(dave).approve(pid)).to.be
+      await expect(mainMemberAddHelper.connect(dave).approve(pid)).to.be
         .reverted;
 
       // Approve it (Bob) => succeed
-      await expect(memberAccessPlugin.connect(bob).approve(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(bob).approve(pid)).to.not.be
         .reverted;
 
-      proposal = await memberAccessPlugin.getProposal(pid);
+      proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(true);
 
       // Now Dave is a member
@@ -743,31 +749,36 @@ describe('Member Access Plugin', function () {
       expect(await mainVotingPlugin.addresslistLength()).to.eq(3);
 
       // Alice proposes a mew member
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(alice)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), dave.address)
       ).to.not.be.reverted;
 
-      expect((await memberAccessPlugin.getProposal(pid)).executed).to.eq(false);
+      expect((await mainMemberAddHelper.getProposal(pid)).executed).to.eq(
+        false
+      );
 
       // Reject it (Alice) => can't change
-      await expect(memberAccessPlugin.connect(alice).reject(pid)).to.be
+      await expect(mainMemberAddHelper.connect(alice).reject(pid)).to.be
         .reverted;
 
       // Reject it (Dave) => fail
-      await expect(memberAccessPlugin.connect(dave).reject(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.connect(dave).reject(pid)).to.be
+        .reverted;
 
       // Reject it (Bob) => succeed
-      await expect(memberAccessPlugin.connect(bob).reject(pid)).to.not.be
+      await expect(mainMemberAddHelper.connect(bob).reject(pid)).to.not.be
         .reverted;
 
       // Reject it (Carol) => can't anymore
-      await expect(memberAccessPlugin.connect(carol).reject(pid)).to.be
+      await expect(mainMemberAddHelper.connect(carol).reject(pid)).to.be
         .reverted;
 
-      expect((await memberAccessPlugin.getProposal(pid)).executed).to.eq(false);
+      expect((await mainMemberAddHelper.getProposal(pid)).executed).to.eq(
+        false
+      );
 
       // Dave is still not a member
       expect(await mainVotingPlugin.isMember(dave.address)).to.eq(false);
@@ -779,14 +790,14 @@ describe('Member Access Plugin', function () {
     // Bob: member
 
     it('proposeNewMember should generate the right action list', async () => {
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(carol)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      const proposal = await memberAccessPlugin.getProposal(pid);
+      const proposal = await mainMemberAddHelper.getProposal(pid);
       expect(proposal.actions.length).to.eq(1);
       expect(proposal.actions[0].to).to.eq(mainVotingPlugin.address);
       expect(proposal.actions[0].value).to.eq(0);
@@ -816,27 +827,27 @@ describe('Member Access Plugin', function () {
     });
 
     it('Attempting to approve twice fails', async () => {
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      await expect(memberAccessPlugin.approve(pid)).to.not.be.reverted;
-      await expect(memberAccessPlugin.approve(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.approve(pid)).to.not.be.reverted;
+      await expect(mainMemberAddHelper.approve(pid)).to.be.reverted;
     });
 
     it('Attempting to reject twice fails', async () => {
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
-      await expect(memberAccessPlugin.reject(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.reject(pid)).to.not.be.reverted;
+      await expect(mainMemberAddHelper.reject(pid)).to.be.reverted;
     });
 
     it('Attempting to propose adding an existing member fails', async () => {
@@ -860,48 +871,48 @@ describe('Member Access Plugin', function () {
     });
 
     it('Rejected proposals cannot be approved', async () => {
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
-      await expect(memberAccessPlugin.approve(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.reject(pid)).to.not.be.reverted;
+      await expect(mainMemberAddHelper.approve(pid)).to.be.reverted;
     });
 
     it('Rejected proposals cannot be executed', async () => {
-      pid = await memberAccessPlugin.proposalCount();
+      pid = await mainMemberAddHelper.proposalCount();
       await expect(
         mainVotingPlugin
           .connect(dave)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), carol.address)
       ).to.not.be.reverted;
 
-      await expect(memberAccessPlugin.reject(pid)).to.not.be.reverted;
-      await expect(memberAccessPlugin.execute(pid)).to.be.reverted;
+      await expect(mainMemberAddHelper.reject(pid)).to.not.be.reverted;
+      await expect(mainMemberAddHelper.execute(pid)).to.be.reverted;
     });
 
     it('Only the DAO can call the plugin to update the settings', async () => {
       // Nobody else can
       await expect(
-        memberAccessPlugin.connect(alice).updateMultisigSettings({
+        mainMemberAddHelper.connect(alice).updateMultisigSettings({
           proposalDuration: 60 * 60 * 24 * 5,
         })
       ).to.be.reverted;
       await expect(
-        memberAccessPlugin.connect(bob).updateMultisigSettings({
+        mainMemberAddHelper.connect(bob).updateMultisigSettings({
           proposalDuration: 60 * 60 * 24 * 5,
         })
       ).to.be.reverted;
       await expect(
-        memberAccessPlugin.connect(carol).updateMultisigSettings({
+        mainMemberAddHelper.connect(carol).updateMultisigSettings({
           proposalDuration: 60 * 60 * 24 * 5,
         })
       ).to.be.reverted;
       await expect(
-        memberAccessPlugin.connect(dave).updateMultisigSettings({
+        mainMemberAddHelper.connect(dave).updateMultisigSettings({
           proposalDuration: 60 * 60 * 24 * 5,
         })
       ).to.be.reverted;
@@ -909,9 +920,9 @@ describe('Member Access Plugin', function () {
       // The DAO can
       const actions: IDAO.ActionStruct[] = [
         {
-          to: memberAccessPlugin.address,
+          to: mainMemberAddHelper.address,
           value: 0,
-          data: MemberAccessPlugin__factory.createInterface().encodeFunctionData(
+          data: MainMemberAddHelper__factory.createInterface().encodeFunctionData(
             'updateMultisigSettings',
             [
               {
@@ -927,19 +938,19 @@ describe('Member Access Plugin', function () {
 
     it('The DAO can upgrade the plugin', async () => {
       // Nobody else can
-      await expect(memberAccessPlugin.connect(alice).upgradeTo(ADDRESS_ONE)).to
+      await expect(mainMemberAddHelper.connect(alice).upgradeTo(ADDRESS_ONE)).to
         .be.reverted;
-      await expect(memberAccessPlugin.connect(bob).upgradeTo(ADDRESS_ONE)).to.be
-        .reverted;
+      await expect(mainMemberAddHelper.connect(bob).upgradeTo(ADDRESS_ONE)).to
+        .be.reverted;
       await expect(
-        memberAccessPlugin.connect(carol).upgradeToAndCall(
-          memberAccessPlugin.implementation(), // upgrade to itself
+        mainMemberAddHelper.connect(carol).upgradeToAndCall(
+          mainMemberAddHelper.implementation(), // upgrade to itself
           EMPTY_DATA
         )
       ).to.be.reverted;
       await expect(
-        memberAccessPlugin.connect(dave).upgradeToAndCall(
-          memberAccessPlugin.implementation(), // upgrade to itself
+        mainMemberAddHelper.connect(dave).upgradeToAndCall(
+          mainMemberAddHelper.implementation(), // upgrade to itself
           EMPTY_DATA
         )
       ).to.be.reverted;
@@ -947,11 +958,11 @@ describe('Member Access Plugin', function () {
       // The DAO can
       const actions: IDAO.ActionStruct[] = [
         {
-          to: memberAccessPlugin.address,
+          to: mainMemberAddHelper.address,
           value: 0,
-          data: MemberAccessPlugin__factory.createInterface().encodeFunctionData(
+          data: MainMemberAddHelper__factory.createInterface().encodeFunctionData(
             'upgradeTo',
-            [await memberAccessPlugin.implementation()]
+            [await mainMemberAddHelper.implementation()]
           ),
         },
       ];
@@ -964,7 +975,7 @@ describe('Member Access Plugin', function () {
     describe('initialize', () => {
       it('reverts if trying to re-initialize', async () => {
         await expect(
-          memberAccessPlugin.initialize(dao.address, {
+          mainMemberAddHelper.initialize(dao.address, {
             proposalDuration: 60 * 60 * 24 * 5,
           })
         ).to.be.revertedWith('Initializable: contract is already initialized');
@@ -973,7 +984,7 @@ describe('Member Access Plugin', function () {
             dao.address,
             defaultMainVotingSettings,
             [alice.address],
-            memberAccessPlugin.address
+            mainMemberAddHelper.address
           )
         ).to.be.revertedWith('Initializable: contract is already initialized');
         await expect(
@@ -986,58 +997,58 @@ describe('Member Access Plugin', function () {
       });
 
       it('should emit `MultisigSettingsUpdated` during initialization', async () => {
-        memberAccessPlugin = await deployWithProxy<MemberAccessPlugin>(
-          new MemberAccessPlugin__factory(alice)
+        mainMemberAddHelper = await deployWithProxy<MainMemberAddHelper>(
+          new MainMemberAddHelper__factory(alice)
         );
-        const multisigSettings: MemberAccessPlugin.MultisigSettingsStruct = {
+        const multisigSettings: MainMemberAddHelper.MultisigSettingsStruct = {
           proposalDuration: 60 * 60 * 24 * 5,
         };
 
         await expect(
-          memberAccessPlugin.initialize(dao.address, multisigSettings)
+          mainMemberAddHelper.initialize(dao.address, multisigSettings)
         )
-          .to.emit(memberAccessPlugin, 'MultisigSettingsUpdated')
+          .to.emit(mainMemberAddHelper, 'MultisigSettingsUpdated')
           .withArgs(60 * 60 * 24 * 5);
       });
     });
 
     describe('plugin interface: ', () => {
       it('does not support the empty interface', async () => {
-        expect(await memberAccessPlugin.supportsInterface('0xffffffff')).to.be
+        expect(await mainMemberAddHelper.supportsInterface('0xffffffff')).to.be
           .false;
       });
 
       it('supports the `IERC165Upgradeable` interface', async () => {
         const iface = IERC165Upgradeable__factory.createInterface();
         expect(
-          await memberAccessPlugin.supportsInterface(getInterfaceID(iface))
+          await mainMemberAddHelper.supportsInterface(getInterfaceID(iface))
         ).to.be.true;
       });
 
       it('supports the `IPlugin` interface', async () => {
         const iface = IPlugin__factory.createInterface();
         expect(
-          await memberAccessPlugin.supportsInterface(getInterfaceID(iface))
+          await mainMemberAddHelper.supportsInterface(getInterfaceID(iface))
         ).to.be.true;
       });
 
       it('supports the `IProposal` interface', async () => {
         const iface = IProposal__factory.createInterface();
         expect(
-          await memberAccessPlugin.supportsInterface(getInterfaceID(iface))
+          await mainMemberAddHelper.supportsInterface(getInterfaceID(iface))
         ).to.be.true;
       });
 
       it('supports the `IMultisig` interface', async () => {
         const iface = IMultisig__factory.createInterface();
         expect(
-          await memberAccessPlugin.supportsInterface(getInterfaceID(iface))
+          await mainMemberAddHelper.supportsInterface(getInterfaceID(iface))
         ).to.be.true;
       });
 
       it('supports the `Multisig` interface', async () => {
         expect(
-          await memberAccessPlugin.supportsInterface(
+          await mainMemberAddHelper.supportsInterface(
             getInterfaceID(multisigInterface)
           )
         ).to.be.true;
@@ -1047,31 +1058,31 @@ describe('Member Access Plugin', function () {
     describe('updateMultisigSettings:', () => {
       it('should emit `MultisigSettingsUpdated` when `updateMutlsigSettings` gets called', async () => {
         await dao.grant(
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           alice.address,
-          await memberAccessPlugin.UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
+          await mainMemberAddHelper.UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         );
         const multisigSettings = {
           proposalDuration: 60 * 60 * 24 * 5,
         };
 
         await expect(
-          memberAccessPlugin.updateMultisigSettings(multisigSettings)
+          mainMemberAddHelper.updateMultisigSettings(multisigSettings)
         )
-          .to.emit(memberAccessPlugin, 'MultisigSettingsUpdated')
+          .to.emit(mainMemberAddHelper, 'MultisigSettingsUpdated')
           .withArgs(60 * 60 * 24 * 5);
       });
     });
 
     describe('createProposal:', () => {
       it('increments the proposal counter', async () => {
-        const pc = await memberAccessPlugin.proposalCount();
+        const pc = await mainMemberAddHelper.proposalCount();
 
         await expect(
           mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address)
         ).not.to.be.reverted;
 
-        expect(await memberAccessPlugin.proposalCount()).to.equal(pc.add(1));
+        expect(await mainMemberAddHelper.proposalCount()).to.equal(pc.add(1));
       });
 
       it('creates unique proposal IDs for each proposal', async () => {
@@ -1098,14 +1109,14 @@ describe('Member Access Plugin', function () {
       it('emits the `ProposalCreated` event', async () => {
         await expect(
           mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address)
-        ).to.emit(memberAccessPlugin, 'ProposalCreated');
+        ).to.emit(mainMemberAddHelper, 'ProposalCreated');
       });
 
       it('reverts if the multisig settings have been changed in the same block', async () => {
         await dao.grant(
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           dao.address,
-          await memberAccessPlugin.UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
+          await mainMemberAddHelper.UPDATE_MULTISIG_SETTINGS_PERMISSION_ID()
         );
 
         await ethers.provider.send('evm_setAutomine', [false]);
@@ -1114,9 +1125,9 @@ describe('Member Access Plugin', function () {
           ZERO_BYTES32,
           [
             {
-              to: memberAccessPlugin.address,
+              to: mainMemberAddHelper.address,
               value: 0,
-              data: memberAccessPlugin.interface.encodeFunctionData(
+              data: mainMemberAddHelper.interface.encodeFunctionData(
                 'updateMultisigSettings',
                 [
                   {
@@ -1131,7 +1142,7 @@ describe('Member Access Plugin', function () {
         await expect(
           mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address)
         ).to.revertedWithCustomError(
-          memberAccessPlugin,
+          mainMemberAddHelper,
           'ProposalCreationForbiddenOnSameBlock'
         );
 
@@ -1149,50 +1160,51 @@ describe('Member Access Plugin', function () {
         expect(await mainVotingPlugin.isEditor(carol.address)).to.be.false;
 
         // Alice approves
-        pid = await memberAccessPlugin.proposalCount();
+        pid = await mainMemberAddHelper.proposalCount();
         await mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address);
       });
 
       it('returns `false` if the proposal is already executed', async () => {
-        expect((await memberAccessPlugin.getProposal(pid)).executed).to.be
+        expect((await mainMemberAddHelper.getProposal(pid)).executed).to.be
           .false;
-        await memberAccessPlugin.connect(bob).approve(pid);
+        await mainMemberAddHelper.connect(bob).approve(pid);
 
-        expect((await memberAccessPlugin.getProposal(pid)).executed).to.be.true;
-        expect(await memberAccessPlugin.canApprove(pid, signers[3].address)).to
+        expect((await mainMemberAddHelper.getProposal(pid)).executed).to.be
+          .true;
+        expect(await mainMemberAddHelper.canApprove(pid, signers[3].address)).to
           .be.false;
       });
 
       it('returns `false` if the approver is not an editor', async () => {
         expect(await mainVotingPlugin.isEditor(signers[9].address)).to.be.false;
 
-        expect(await memberAccessPlugin.canApprove(pid, signers[9].address)).to
+        expect(await mainMemberAddHelper.canApprove(pid, signers[9].address)).to
           .be.false;
       });
 
       it('returns `false` if the approver has already approved', async () => {
-        expect(await memberAccessPlugin.canApprove(pid, bob.address)).to.be
+        expect(await mainMemberAddHelper.canApprove(pid, bob.address)).to.be
           .true;
-        await memberAccessPlugin.connect(bob).approve(pid);
-        expect(await memberAccessPlugin.canApprove(pid, bob.address)).to.be
+        await mainMemberAddHelper.connect(bob).approve(pid);
+        expect(await mainMemberAddHelper.canApprove(pid, bob.address)).to.be
           .false;
       });
 
       it('returns `true` if the approver is listed', async () => {
-        expect(await memberAccessPlugin.canApprove(pid, bob.address)).to.be
+        expect(await mainMemberAddHelper.canApprove(pid, bob.address)).to.be
           .true;
       });
 
       it('returns `false` if the proposal is settled', async () => {
-        pid = await memberAccessPlugin.proposalCount();
+        pid = await mainMemberAddHelper.proposalCount();
         await mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address);
 
-        expect(await memberAccessPlugin.canApprove(pid, bob.address)).to.be
+        expect(await mainMemberAddHelper.canApprove(pid, bob.address)).to.be
           .true;
 
-        await memberAccessPlugin.connect(bob).approve(pid);
+        await mainMemberAddHelper.connect(bob).approve(pid);
 
-        expect(await memberAccessPlugin.canApprove(pid, bob.address)).to.be
+        expect(await mainMemberAddHelper.canApprove(pid, bob.address)).to.be
           .false;
       });
     });
@@ -1203,18 +1215,18 @@ describe('Member Access Plugin', function () {
         await mineBlock();
 
         // Carol is a member
-        pid = await memberAccessPlugin.proposalCount();
+        pid = await mainMemberAddHelper.proposalCount();
         await mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address);
       });
 
       it("returns `false` if user hasn't approved yet", async () => {
-        expect(await memberAccessPlugin.hasApproved(pid, bob.address)).to.be
+        expect(await mainMemberAddHelper.hasApproved(pid, bob.address)).to.be
           .false;
       });
 
       it('returns `true` if user has approved', async () => {
-        await memberAccessPlugin.connect(bob).approve(pid);
-        expect(await memberAccessPlugin.hasApproved(pid, bob.address)).to.be
+        await mainMemberAddHelper.connect(bob).approve(pid);
+        expect(await mainMemberAddHelper.hasApproved(pid, bob.address)).to.be
           .true;
       });
     });
@@ -1225,45 +1237,45 @@ describe('Member Access Plugin', function () {
         await mineBlock();
 
         // Alice approves
-        pid = await memberAccessPlugin.proposalCount();
+        pid = await mainMemberAddHelper.proposalCount();
         await mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address);
       });
 
       it('reverts when approving multiple times', async () => {
-        await memberAccessPlugin.connect(bob).approve(pid);
+        await mainMemberAddHelper.connect(bob).approve(pid);
 
         // Try to vote again
-        await expect(memberAccessPlugin.connect(bob).approve(pid))
+        await expect(mainMemberAddHelper.connect(bob).approve(pid))
           .to.be.revertedWithCustomError(
-            memberAccessPlugin,
+            mainMemberAddHelper,
             'ApprovalCastForbidden'
           )
           .withArgs(pid, bob.address);
       });
 
       it('reverts if minimal approval is not met yet', async () => {
-        const proposal = await memberAccessPlugin.getProposal(pid);
+        const proposal = await mainMemberAddHelper.getProposal(pid);
         expect(proposal.approvals).to.eq(1);
-        await expect(memberAccessPlugin.execute(pid))
+        await expect(mainMemberAddHelper.execute(pid))
           .to.be.revertedWithCustomError(
-            memberAccessPlugin,
+            mainMemberAddHelper,
             'ProposalExecutionForbidden'
           )
           .withArgs(pid);
       });
 
       it('approves with the msg.sender address', async () => {
-        expect((await memberAccessPlugin.getProposal(pid)).approvals).to.equal(
+        expect((await mainMemberAddHelper.getProposal(pid)).approvals).to.equal(
           1
         );
 
-        const tx = await memberAccessPlugin.connect(bob).approve(pid);
+        const tx = await mainMemberAddHelper.connect(bob).approve(pid);
 
         const event = await findEvent<ApprovedEvent>(tx, 'Approved');
         expect(event!.args.proposalId).to.eq(pid);
         expect(event!.args.editor).to.eq(bob.address);
 
-        expect((await memberAccessPlugin.getProposal(pid)).approvals).to.equal(
+        expect((await mainMemberAddHelper.getProposal(pid)).approvals).to.equal(
           2
         );
       });
@@ -1279,30 +1291,31 @@ describe('Member Access Plugin', function () {
         expect(await mainVotingPlugin.isEditor(carol.address)).to.be.false;
 
         // Alice approves
-        pid = await memberAccessPlugin.proposalCount();
+        pid = await mainMemberAddHelper.proposalCount();
         await mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address);
       });
 
       it('returns `false` if the proposal has not reached the minimum approval yet', async () => {
-        const proposal = await memberAccessPlugin.getProposal(pid);
+        const proposal = await mainMemberAddHelper.getProposal(pid);
         expect(proposal.approvals).to.be.lt(proposal.parameters.minApprovals);
 
-        expect(await memberAccessPlugin.canExecute(pid)).to.be.false;
+        expect(await mainMemberAddHelper.canExecute(pid)).to.be.false;
       });
 
       it('returns `false` if the proposal is already executed', async () => {
-        expect((await memberAccessPlugin.getProposal(pid)).executed).to.be
+        expect((await mainMemberAddHelper.getProposal(pid)).executed).to.be
           .false;
         expect(
-          (await memberAccessPlugin.getProposal(pid)).actions.length
+          (await mainMemberAddHelper.getProposal(pid)).actions.length
         ).to.eq(1);
 
         // Approve and execute
-        await memberAccessPlugin.connect(bob).approve(pid);
+        await mainMemberAddHelper.connect(bob).approve(pid);
 
-        expect((await memberAccessPlugin.getProposal(pid)).executed).to.be.true;
+        expect((await mainMemberAddHelper.getProposal(pid)).executed).to.be
+          .true;
 
-        expect(await memberAccessPlugin.canExecute(pid)).to.be.false;
+        expect(await mainMemberAddHelper.canExecute(pid)).to.be.false;
       });
     });
 
@@ -1312,24 +1325,24 @@ describe('Member Access Plugin', function () {
         await mineBlock();
 
         // Alice approves
-        pid = await memberAccessPlugin.proposalCount();
+        pid = await mainMemberAddHelper.proposalCount();
         await mainVotingPlugin.proposeAddMember(EMPTY_DATA, carol.address);
       });
 
       it('reverts if the minimum approval is not met', async () => {
-        await expect(memberAccessPlugin.execute(pid))
+        await expect(mainMemberAddHelper.execute(pid))
           .to.be.revertedWithCustomError(
-            memberAccessPlugin,
+            mainMemberAddHelper,
             'ProposalExecutionForbidden'
           )
           .withArgs(pid);
       });
 
       it('emits the `Approved`, `ProposalExecuted`, and `Executed` events if execute is called inside the `approve` method', async () => {
-        await expect(memberAccessPlugin.connect(bob).approve(pid))
+        await expect(mainMemberAddHelper.connect(bob).approve(pid))
           .to.emit(dao, 'Executed')
-          .to.emit(memberAccessPlugin, 'ProposalExecuted')
-          .to.emit(memberAccessPlugin, 'Approved');
+          .to.emit(mainMemberAddHelper, 'ProposalExecuted')
+          .to.emit(mainMemberAddHelper, 'Approved');
       });
     });
   });

@@ -59,7 +59,7 @@ describe('Governance Plugins Setup', function () {
       const nonce = await ethers.provider.getTransactionCount(
         governancePluginsSetup.address
       );
-      const anticipatedMemberAccessPluginAddress =
+      const anticipatedMainMemberAddHelperAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce,
@@ -69,7 +69,7 @@ describe('Governance Plugins Setup', function () {
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedMemberAccessConditionAddress =
+      const anticipatedMemberAddConditionAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 2,
@@ -84,8 +84,8 @@ describe('Governance Plugins Setup', function () {
       );
       expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
       expect(helpers.length).to.be.equal(1);
-      const [memberAccessPlugin] = helpers;
-      expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
+      const [mainMemberAddHelper] = helpers;
+      expect(mainMemberAddHelper).to.eq(anticipatedMainMemberAddHelperAddress);
 
       expect(permissions.length).to.be.equal(6);
       expect(permissions).to.deep.equal([
@@ -112,7 +112,7 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
+          mainMemberAddHelper,
           mainVotingPlugin,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
@@ -120,13 +120,13 @@ describe('Governance Plugins Setup', function () {
         [
           Operation.GrantWithCondition,
           dao.address,
-          memberAccessPlugin,
-          anticipatedMemberAccessConditionAddress,
+          mainMemberAddHelper,
+          anticipatedMemberAddConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
+          mainMemberAddHelper,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
@@ -160,7 +160,7 @@ describe('Governance Plugins Setup', function () {
       const nonce = await ethers.provider.getTransactionCount(
         governancePluginsSetup.address
       );
-      const anticipatedMemberAccessPluginAddress =
+      const anticipatedMainMemberAddHelperAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce,
@@ -170,7 +170,7 @@ describe('Governance Plugins Setup', function () {
           from: governancePluginsSetup.address,
           nonce: nonce + 1,
         });
-      const anticipatedMemberAccessConditionAddress =
+      const anticipatedMemberAddConditionAddress =
         ethers.utils.getContractAddress({
           from: governancePluginsSetup.address,
           nonce: nonce + 2,
@@ -190,8 +190,8 @@ describe('Governance Plugins Setup', function () {
       );
       expect(mainVotingPlugin).to.be.equal(anticipatedMainVotingPluginAddress);
       expect(helpers.length).to.be.equal(1);
-      const [memberAccessPlugin] = helpers;
-      expect(memberAccessPlugin).to.eq(anticipatedMemberAccessPluginAddress);
+      const [mainMemberAddHelper] = helpers;
+      expect(mainMemberAddHelper).to.eq(anticipatedMainMemberAddHelperAddress);
 
       expect(permissions.length).to.be.equal(7);
       expect(permissions).to.deep.equal([
@@ -218,7 +218,7 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
+          mainMemberAddHelper,
           mainVotingPlugin,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
@@ -226,13 +226,13 @@ describe('Governance Plugins Setup', function () {
         [
           Operation.GrantWithCondition,
           dao.address,
-          memberAccessPlugin,
-          anticipatedMemberAccessConditionAddress,
+          mainMemberAddHelper,
+          anticipatedMemberAddConditionAddress,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Grant,
-          memberAccessPlugin,
+          mainMemberAddHelper,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
@@ -262,7 +262,7 @@ describe('Governance Plugins Setup', function () {
       const mainVotingPlugin = await new MainVotingPlugin__factory(
         alice
       ).deploy();
-      const memberAccessPlugin = await new MainVotingPlugin__factory(
+      const mainMemberAddHelper = await new MainVotingPlugin__factory(
         alice
       ).deploy();
 
@@ -274,7 +274,7 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           {
             plugin: mainVotingPlugin.address,
-            currentHelpers: [memberAccessPlugin.address],
+            currentHelpers: [mainMemberAddHelper.address],
             data: uninstallData,
           }
         );
@@ -304,7 +304,7 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           mainVotingPlugin.address,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
@@ -312,13 +312,13 @@ describe('Governance Plugins Setup', function () {
         [
           Operation.Revoke,
           dao.address,
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,
@@ -330,7 +330,7 @@ describe('Governance Plugins Setup', function () {
       const mainVotingPlugin = await new MainVotingPlugin__factory(
         alice
       ).deploy();
-      const memberAccessPlugin = await new MainVotingPlugin__factory(
+      const mainMemberAddHelper = await new MainVotingPlugin__factory(
         alice
       ).deploy();
 
@@ -342,7 +342,7 @@ describe('Governance Plugins Setup', function () {
           dao.address,
           {
             plugin: mainVotingPlugin.address,
-            currentHelpers: [memberAccessPlugin.address],
+            currentHelpers: [mainMemberAddHelper.address],
             data: uninstallData,
           }
         );
@@ -372,7 +372,7 @@ describe('Governance Plugins Setup', function () {
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           mainVotingPlugin.address,
           NO_CONDITION,
           PROPOSER_PERMISSION_ID,
@@ -380,13 +380,13 @@ describe('Governance Plugins Setup', function () {
         [
           Operation.Revoke,
           dao.address,
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           NO_CONDITION,
           EXECUTE_PERMISSION_ID,
         ],
         [
           Operation.Revoke,
-          memberAccessPlugin.address,
+          mainMemberAddHelper.address,
           dao.address,
           NO_CONDITION,
           UPDATE_MULTISIG_SETTINGS_PERMISSION_ID,

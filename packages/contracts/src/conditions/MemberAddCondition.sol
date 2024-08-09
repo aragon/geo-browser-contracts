@@ -7,8 +7,8 @@ import {PermissionCondition} from "@aragon/osx/core/permission/PermissionConditi
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {MainVotingPlugin} from "../governance/MainVotingPlugin.sol";
 
-/// @notice The condition associated with `TestSharedPlugin`
-contract MemberAccessExecuteCondition is PermissionCondition {
+/// @notice Restricts execution to only calls to `addMember`
+contract MemberAddCondition is PermissionCondition {
     /// @notice The address of the contract where the permission can be granted
     address private targetContract;
 
@@ -44,6 +44,7 @@ contract MemberAccessExecuteCondition is PermissionCondition {
         // Decode the call being requested (both have the same parameters)
         (bytes4 _requestedSelector, ) = _decodeAddMemberCalldata(_actions[0].data);
 
+        // Note: The selectors of MainVotingPlugin.addMember and PersonalSpaceAdminPlugin.addMember are the same. Checking only once.
         if (_requestedSelector != MainVotingPlugin.addMember.selector) return false;
 
         return true;

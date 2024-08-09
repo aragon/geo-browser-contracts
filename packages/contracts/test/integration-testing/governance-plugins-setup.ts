@@ -5,8 +5,8 @@ import {
   MainVotingPlugin,
   MainVotingPlugin__factory,
   MajorityVotingBase,
-  MemberAccessPlugin,
-  MemberAccessPlugin__factory,
+  MainMemberAddHelper,
+  MainMemberAddHelper__factory,
   PluginRepo,
 } from '../../typechain';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
@@ -32,7 +32,7 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   supportThreshold: 1,
   votingMode: 0,
 };
-const minMemberAccessProposalDuration = 60 * 60 * 24;
+const minMemberAddProposalDuration = 60 * 60 * 24;
 
 describe('GovernancePluginsSetup processing', function () {
   let deployer: SignerWithAddress;
@@ -89,7 +89,7 @@ describe('GovernancePluginsSetup processing', function () {
     let setup: GovernancePluginsSetup;
     let pluginSetupRef: PluginSetupRefStruct;
     let mainVotingPlugin: MainVotingPlugin;
-    let memberAccessPlugin: MemberAccessPlugin;
+    let mainMemberAddHelper: MainMemberAddHelper;
     const pluginUpgrader = ADDRESS_ZERO;
 
     before(async () => {
@@ -113,7 +113,7 @@ describe('GovernancePluginsSetup processing', function () {
       const data = await setup.encodeInstallationParams(
         pluginSettings,
         [deployer.address],
-        minMemberAccessProposalDuration,
+        minMemberAddProposalDuration,
         pluginUpgrader
       );
       const installation = await installPlugin(psp, dao, pluginSetupRef, data);
@@ -122,7 +122,7 @@ describe('GovernancePluginsSetup processing', function () {
         installation.preparedEvent.args.plugin,
         deployer
       );
-      memberAccessPlugin = MemberAccessPlugin__factory.connect(
+      mainMemberAddHelper = MainMemberAddHelper__factory.connect(
         installation.preparedEvent.args.preparedSetupData.helpers[0],
         deployer
       );
@@ -132,16 +132,16 @@ describe('GovernancePluginsSetup processing', function () {
       expect(await mainVotingPlugin.implementation()).to.be.eq(
         await setup.implementation()
       );
-      expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await setup.memberAccessPluginImplementation()
+      expect(await mainMemberAddHelper.implementation()).to.be.eq(
+        await setup.helperImplementation()
       );
       expect(await mainVotingPlugin.dao()).to.be.eq(dao.address);
-      expect(await memberAccessPlugin.dao()).to.be.eq(dao.address);
+      expect(await mainMemberAddHelper.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
       const data = await setup.encodeUninstallationParams(pluginUpgrader);
       await uninstallPlugin(psp, dao, mainVotingPlugin, pluginSetupRef, data, [
-        memberAccessPlugin.address,
+        mainMemberAddHelper.address,
       ]);
     });
   });

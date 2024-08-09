@@ -20,7 +20,7 @@ export const PersonalSpaceAdminPluginSetupParams: PluginSetupParams = {
 
 export const GovernancePluginsSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: 'geo-browser-governance',
-  PLUGIN_CONTRACT_NAME: 'MainVotingPlugin and MemberAccessPlugin',
+  PLUGIN_CONTRACT_NAME: 'MainVotingPlugin and MainMemberAddHelper',
   PLUGIN_SETUP_CONTRACT_NAME: 'GovernancePluginsSetup',
   VERSION: {
     release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
