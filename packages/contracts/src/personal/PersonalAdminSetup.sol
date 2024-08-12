@@ -52,7 +52,7 @@ contract PersonalAdminSetup is PluginSetup {
         address helper = helperImplementation.clone();
 
         // Initialize the cloned contracts
-        PersonalAdminPlugin(plugin).initialize(IDAO(_dao), editor);
+        PersonalAdminPlugin(plugin).initialize(IDAO(_dao), editor, helper);
 
         PersonalMemberAddHelper.Settings memory _helperSettings = PersonalMemberAddHelper.Settings({
             proposalDuration: MEMBER_ADD_PROPOSAL_DURATION

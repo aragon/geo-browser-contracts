@@ -19,7 +19,7 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
     using SafeCastUpgradeable for uint256;
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
-    bytes4 internal constant ADMIN_INTERFACE_ID =
+    bytes4 public constant ADMIN_INTERFACE_ID =
         this.initialize.selector ^
             this.executeProposal.selector ^
             this.submitEdits.selector ^
@@ -54,10 +54,16 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.
     /// @dev This method is required to support [ERC-1167](https://eips.ethereum.org/EIPS/eip-1167).
-    function initialize(IDAO _dao, address _initialEditor) external initializer {
+    function initialize(
+        IDAO _dao,
+        address _initialEditor,
+        address _personalMemberAddHelper
+    ) external initializer {
         __PluginCloneable_init(_dao);
 
         emit EditorAdded(address(_dao), _initialEditor);
+
+        personalMemberAddHelper = PersonalMemberAddHelper(_personalMemberAddHelper);
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -66,7 +72,10 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
     function supportsInterface(
         bytes4 _interfaceId
     ) public view override(PluginCloneable, ProposalUpgradeable) returns (bool) {
-        return _interfaceId == ADMIN_INTERFACE_ID || super.supportsInterface(_interfaceId);
+        return
+            _interfaceId == ADMIN_INTERFACE_ID ||
+            _interfaceId == type(IEditors).interfaceId ||
+            super.supportsInterface(_interfaceId);
     }
 
     /// @notice Returns whether the given address holds membership/editor permission on the plugin

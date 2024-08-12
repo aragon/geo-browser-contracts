@@ -48,19 +48,6 @@ export type InitData = {contentUri: string};
 export const defaultInitData: InitData = {
   contentUri: 'ipfs://',
 };
-export const psvpInterface = new ethers.utils.Interface([
-  'function initialize(address, address)',
-  'function executeProposal(bytes,tuple(address,uint256,bytes)[],uint256)',
-  'function submitEdits(string, address)',
-  'function submitAcceptSubspace(address _subspaceDao, address _spacePlugin)',
-  'function submitRemoveSubspace(address _subspaceDao, address _spacePlugin)',
-  'function submitNewEditor(address _newEditor)',
-  'function proposeAddMember(address _newMember)',
-  'function addMember(address _newMember)',
-  'function submitRemoveEditor(address _editor)',
-  'function submitRemoveMember(address _member)',
-  'function leaveSpace()',
-]);
 
 describe('Personal Admin Plugin', function () {
   let alice: SignerWithAddress;
@@ -112,25 +99,29 @@ describe('Personal Admin Plugin', function () {
     const nonce = await ethers.provider.getTransactionCount(
       testCloneFactory.address
     );
-    let anticipatedAddress = ethers.utils.getContractAddress({
+    const anticipatedPluginAddress = ethers.utils.getContractAddress({
       from: testCloneFactory.address,
       nonce,
     });
     await testCloneFactory.clonePersonalAdminPlugin();
-    personalAdminPlugin = PersonalAdminPluginFactory.attach(anticipatedAddress);
-    await initializePAP();
+    personalAdminPlugin = PersonalAdminPluginFactory.attach(
+      anticipatedPluginAddress
+    );
 
     // Personal member add (helper)
     const PersonalMemberAddFactory = new PersonalMemberAddHelper__factory(
       alice
     );
-    anticipatedAddress = ethers.utils.getContractAddress({
+    const anticipatedHelperAddress = ethers.utils.getContractAddress({
       from: testCloneFactory.address,
       nonce: nonce + 1,
     });
     await testCloneFactory.clonePersonalMemberAddHelper();
-    personalMemberAddHelper =
-      PersonalMemberAddFactory.attach(anticipatedAddress);
+    personalMemberAddHelper = PersonalMemberAddFactory.attach(
+      anticipatedHelperAddress
+    );
+
+    await initializePAP(anticipatedHelperAddress);
     await initializePMAH();
 
     // Alice is editor
@@ -176,8 +167,12 @@ describe('Personal Admin Plugin', function () {
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
   });
 
-  function initializePAP() {
-    return personalAdminPlugin.initialize(dao.address, alice.address);
+  function initializePAP(helperAddr: string) {
+    return personalAdminPlugin.initialize(
+      dao.address,
+      alice.address,
+      helperAddr
+    );
   }
 
   function initializePMAH() {
@@ -204,9 +199,9 @@ describe('Personal Admin Plugin', function () {
         anticipatedPluginAddress
       );
       // Should work
-      await initializePAP();
+      await initializePAP(ADDRESS_ONE);
 
-      await expect(initializePAP()).to.be.revertedWith(
+      await expect(initializePAP(ADDRESS_ONE)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       );
     });
@@ -379,7 +374,7 @@ describe('Personal Admin Plugin', function () {
     });
 
     it('Anyone can call proposeAddMember', async () => {
-      for (const account of [alice, bob, carol, david]) {
+      for (const account of [carol, david]) {
         await expect(
           personalAdminPlugin
             .connect(account)

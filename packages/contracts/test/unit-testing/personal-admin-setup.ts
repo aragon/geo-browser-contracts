@@ -1,3 +1,4 @@
+import * as PLUGIN_ABI from '../../artifacts/src/personal/PersonalAdminPlugin.sol/PersonalAdminPlugin.json';
 import {
   PersonalAdminPlugin__factory,
   PersonalAdminSetup,
@@ -11,10 +12,22 @@ import {
   PROPOSER_PERMISSION_ID,
   UPDATE_SETTINGS_PERMISSION_ID,
 } from './common';
-import {psvpInterface} from './personal-admin-plugin';
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
 
+export const papInterface = new ethers.utils.Interface([
+  PLUGIN_ABI.abi.find(item => item.name === 'initialize')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'executeProposal')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'submitEdits')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'submitAcceptSubspace')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'submitRemoveSubspace')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'proposeAddMember')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'addMember')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'submitRemoveMember')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'submitNewEditor')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'submitRemoveEditor')!,
+  PLUGIN_ABI.abi.find(item => item.name === 'leaveSpace')!,
+]);
 const AddressZero = ethers.constants.AddressZero;
 const EMPTY_DATA = '0x';
 
@@ -49,13 +62,13 @@ describe('Personal Admin Plugin Setup', function () {
     expect(await adminSetup.supportsInterface('0xffffffff')).to.be.false;
   });
 
-  it('creates admin address base with the correct interface', async () => {
+  it('creates plugin base address with the correct interface', async () => {
     const factory = new PersonalAdminPlugin__factory(signers[0]);
     const personalAddressPlugin = factory.attach(implementationAddress);
 
     expect(
       await personalAddressPlugin.supportsInterface(
-        getInterfaceID(psvpInterface)
+        getInterfaceID(papInterface)
       )
     ).to.be.eq(true);
   });
@@ -149,7 +162,7 @@ describe('Personal Admin Plugin Setup', function () {
         ],
         [
           Operation.Grant,
-          targetDao,
+          targetDao.address,
           helpers[0],
           anticipatedConditionAddress,
           EXECUTE_PERMISSION_ID,
@@ -157,14 +170,14 @@ describe('Personal Admin Plugin Setup', function () {
         [
           Operation.Grant,
           plugin,
-          targetDao,
+          targetDao.address,
           AddressZero,
           ADD_MEMBER_PERMISSION_ID,
         ],
         [
           Operation.Grant,
           helpers[0],
-          targetDao,
+          targetDao.address,
           AddressZero,
           UPDATE_SETTINGS_PERMISSION_ID,
         ],
@@ -204,7 +217,7 @@ describe('Personal Admin Plugin Setup', function () {
         }
       );
 
-      expect(permissions.length).to.be.equal(0);
+      expect(permissions.length).to.be.equal(2);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,

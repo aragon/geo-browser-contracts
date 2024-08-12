@@ -98,25 +98,39 @@ describe('PersonalSpaceAdmin processing', function () {
       };
     });
 
-    beforeEach(async () => {
+    it('installs & uninstalls', async () => {
       const initialEditor = alice.address;
 
       // Install build 1.
-      const data = await setup.encodeInstallationParams(initialEditor);
-      const results = await installPlugin(psp, dao, pluginSetupRef, data);
+      const installData = await setup.encodeInstallationParams(initialEditor);
+      const results = await installPlugin(
+        psp,
+        dao,
+        pluginSetupRef,
+        installData
+      );
+
+      expect(results.preparedEvent.args.preparedSetupData.helpers.length).to.eq(
+        1
+      );
 
       plugin = PersonalAdminPlugin__factory.connect(
         results.preparedEvent.args.plugin,
         alice
       );
-    });
 
-    it('installs & uninstalls', async () => {
       expect(await plugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
-      const data = '0x'; // no parameters
-      await uninstallPlugin(psp, dao, plugin, pluginSetupRef, data, []);
+      const uninstallData = '0x'; // no parameters
+      await uninstallPlugin(
+        psp,
+        dao,
+        plugin,
+        pluginSetupRef,
+        uninstallData,
+        results.preparedEvent.args.preparedSetupData.helpers
+      );
     });
   });
 });
