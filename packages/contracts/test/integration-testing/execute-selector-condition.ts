@@ -35,7 +35,7 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
 };
 const memberAddProposalDuration = 60 * 60 * 24;
 
-describe('Member Add Condition E2E', () => {
+describe('Execute selector condition E2E', () => {
   let deployer: SignerWithAddress;
   let pluginUpgrader: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -46,7 +46,7 @@ describe('Member Add Condition E2E', () => {
 
   let pluginSetupRef: PluginSetupRefStruct;
   let pluginSetup: TestStdGovernanceSetup;
-  let gpsFactory: TestStdGovernanceSetup__factory;
+  let sgsFactory: TestStdGovernanceSetup__factory;
   let stdGovernancePlugin: StdGovernancePlugin;
   // let stdMemberAddHelper: StdMemberAddHelper;
 
@@ -88,8 +88,8 @@ describe('Member Add Condition E2E', () => {
     );
 
     // Deploy PluginSetup build 1
-    gpsFactory = new TestStdGovernanceSetup__factory().connect(deployer);
-    pluginSetup = await gpsFactory.deploy(psp.address);
+    sgsFactory = new TestStdGovernanceSetup__factory().connect(deployer);
+    pluginSetup = await sgsFactory.deploy(psp.address);
 
     // Publish build 1
     tx = await pluginRepo.createVersion(1, pluginSetup.address, '0x00', '0x00');

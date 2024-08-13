@@ -163,6 +163,10 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
     /// @param _newMember The address to grant member permission to
     /// @dev Called by the DAO via the PersonalMemberAddHelper. Not by members or editors.
     function addMember(address _newMember) public auth(ADD_MEMBER_PERMISSION_ID) {
+        if (dao().hasPermission(address(this), _newMember, MEMBER_PERMISSION_ID, bytes(""))) {
+            revert AlreadyAMember(_newMember);
+        }
+
         IDAO.Action[] memory _actions = new IDAO.Action[](1);
         _actions[0].to = address(dao());
         _actions[0].data = abi.encodeCall(
@@ -258,7 +262,7 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
         emit EditorRemoved(address(dao()), _editor);
     }
 
-    /// @notice Creates a proposal on PersonalMemberAddHelper to add a new member.
+    /// @notice Creates a proposal on the PersonalMemberAddHelper to add a new member. If approved, `addMember` will be called back.
     /// @param _metadataContentUri The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eveutnally be added.
     /// @return proposalId NOTE: The proposal ID will belong to the helper, not to this contract.
@@ -266,7 +270,7 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
         bytes calldata _metadataContentUri,
         address _proposedMember
     ) public returns (uint256 proposalId) {
-        if (isMember(_proposedMember)) {
+        if (dao().hasPermission(address(this), _proposedMember, MEMBER_PERMISSION_ID, bytes(""))) {
             revert AlreadyAMember(_proposedMember);
         }
 

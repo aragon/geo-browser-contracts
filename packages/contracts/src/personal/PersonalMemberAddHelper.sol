@@ -216,6 +216,7 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
 
         emit Approved({proposalId: _proposalId, editor: _approver});
 
+        // Only one approval is required: Execute
         _execute(_proposalId);
     }
 
@@ -287,7 +288,7 @@ contract PersonalMemberAddHelper is PluginCloneable, ProposalUpgradeable {
         Proposal storage proposal_ = proposals[_proposalId];
 
         if (!_isProposalOpen(proposal_)) {
-            // The proposal was executed already
+            // The proposal is executed, unstarted or expired
             return false;
         } else if (!proposal_.destinationPlugin.isEditor(_account)) {
             // The approver has no voting power.

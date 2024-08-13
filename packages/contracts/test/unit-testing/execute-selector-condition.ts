@@ -20,13 +20,11 @@ import {ethers, network} from 'hardhat';
 const SOME_CONTRACT_ADDRESS = '0x' + '1234567890'.repeat(4);
 const ONE_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000001';
-const PLUGIN_ADDR_1 = ADDRESS_ONE;
-const PLUGIN_ADDR_2 = ADDRESS_TWO;
 const daoInterface = DAO__factory.createInterface();
 const stdGovernancePluginInterface =
   StdGovernancePlugin__factory.createInterface();
 
-describe('Member Add Condition', function () {
+describe('Execute selector Condition', function () {
   const pspAddress = getPluginSetupProcessorAddress(network.name, true);
 
   let alice: SignerWithAddress;

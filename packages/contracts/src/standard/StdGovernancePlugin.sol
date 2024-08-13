@@ -10,11 +10,11 @@ import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
-import {StdMemberAddHelper, MAIN_MEMBER_ADD_INTERFACE_ID} from "./StdMemberAddHelper.sol";
+import {StdMemberAddHelper, STD_MEMBER_ADD_INTERFACE_ID} from "./StdMemberAddHelper.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
-bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = StdGovernancePlugin.initialize.selector ^
+bytes4 constant STD_GOVERNANCE_PLUGIN_INTERFACE_ID = StdGovernancePlugin.initialize.selector ^
     StdGovernancePlugin.createProposal.selector ^
     StdGovernancePlugin.proposeEdits.selector ^
     StdGovernancePlugin.proposeAcceptSubspace.selector ^
@@ -114,7 +114,7 @@ contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMemb
         _addAddresses(_initialEditors);
         emit EditorsAdded(_initialEditors);
 
-        if (!_stdMemberAddHelper.supportsInterface(MAIN_MEMBER_ADD_INTERFACE_ID)) {
+        if (!_stdMemberAddHelper.supportsInterface(STD_MEMBER_ADD_INTERFACE_ID)) {
             revert InvalidInterface(address(_stdMemberAddHelper));
         }
         stdMemberAddHelper = _stdMemberAddHelper;
@@ -125,7 +125,7 @@ contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMemb
     /// @return Returns `true` if the interface is supported.
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
         return
-            _interfaceId == MAIN_SPACE_VOTING_INTERFACE_ID ||
+            _interfaceId == STD_GOVERNANCE_PLUGIN_INTERFACE_ID ||
             _interfaceId == type(Addresslist).interfaceId ||
             _interfaceId == type(MajorityVotingBase).interfaceId ||
             _interfaceId == type(IMembers).interfaceId ||

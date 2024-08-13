@@ -239,7 +239,6 @@ describe('Member Add Plugin', function () {
       expect(proposal.actions.length).to.eq(1);
       expect(proposal.failsafeActionMap).to.eq(0);
       expect(await stdGovernancePlugin.isMember(carol.address)).to.eq(false);
-      expect(await stdGovernancePlugin.isMember(carol.address)).to.eq(false);
 
       // Member
       pid = await stdMemberAddHelper.proposalCount();
@@ -256,29 +255,33 @@ describe('Member Add Plugin', function () {
       expect(proposal.actions.length).to.eq(1);
       expect(proposal.failsafeActionMap).to.eq(0);
       expect(await stdGovernancePlugin.isMember(ADDRESS_ONE)).to.eq(false);
-      expect(await stdGovernancePlugin.isMember(ADDRESS_ONE)).to.eq(false);
 
       // Editor
+      pid = await stdMemberAddHelper.proposalCount();
+      expect(await stdGovernancePlugin.isMember(ADDRESS_TWO)).to.eq(false);
       await expect(
         stdGovernancePlugin
           .connect(alice)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), ADDRESS_TWO)
       ).to.not.be.reverted;
+      expect(await stdGovernancePlugin.isMember(ADDRESS_TWO)).to.eq(true);
 
-      proposal = await stdMemberAddHelper.getProposal(1);
-      expect(proposal.executed).to.eq(false);
-      expect(proposal.approvals).to.eq(0);
+      proposal = await stdMemberAddHelper.getProposal(pid);
+      expect(proposal.executed).to.eq(true);
+      expect(proposal.approvals).to.eq(1);
       expect(proposal.parameters.minApprovals).to.eq(1);
       expect(proposal.actions.length).to.eq(1);
       expect(proposal.failsafeActionMap).to.eq(0);
       // Auto executed
       expect(await stdGovernancePlugin.isMember(ADDRESS_TWO)).to.eq(true);
-      expect(await stdGovernancePlugin.isMember(ADDRESS_TWO)).to.eq(true);
     });
 
     it('Editors should be members too', async () => {
       expect(await stdGovernancePlugin.isMember(alice.address)).to.eq(true);
-      expect(await stdGovernancePlugin.isMember(alice.address)).to.eq(true);
+
+      expect(await stdGovernancePlugin.isMember(bob.address)).to.eq(true);
+      await stdGovernancePlugin.proposeAddEditor('0x', bob.address);
+      expect(await stdGovernancePlugin.isMember(bob.address)).to.eq(true);
     });
 
     it('Emits an event when membership is requested', async () => {
@@ -507,13 +510,11 @@ describe('Member Add Plugin', function () {
     // Carol: editor
 
     beforeEach(async () => {
-      let pidMainVoting = 0;
+      let pid = 0;
       await proposeNewEditor(bob.address);
       await proposeNewEditor(carol.address);
-      pidMainVoting = 1;
-      await stdGovernancePlugin
-        .connect(bob)
-        .vote(pidMainVoting, VoteOption.Yes, true);
+      pid = 1;
+      await stdGovernancePlugin.connect(bob).vote(pid, VoteOption.Yes, true);
     });
 
     it('Only editors can approve adding members', async () => {
@@ -825,6 +826,25 @@ describe('Member Add Plugin', function () {
       )
         .to.be.revertedWithCustomError(stdGovernancePlugin, 'AlreadyAMember')
         .withArgs(bob.address);
+
+      // More
+      await expect(
+        stdGovernancePlugin
+          .connect(carol)
+          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
+      ).to.be.reverted;
+
+      await expect(
+        stdGovernancePlugin
+          .connect(bob)
+          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
+      ).to.be.reverted;
+
+      await expect(
+        stdGovernancePlugin
+          .connect(alice)
+          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
+      ).to.be.reverted;
     });
 
     it('Attempting to approve twice fails', async () => {
@@ -849,26 +869,6 @@ describe('Member Add Plugin', function () {
 
       await expect(stdMemberAddHelper.reject(pid)).to.not.be.reverted;
       await expect(stdMemberAddHelper.reject(pid)).to.be.reverted;
-    });
-
-    it('Attempting to propose adding an existing member fails', async () => {
-      await expect(
-        stdGovernancePlugin
-          .connect(carol)
-          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
-      ).to.be.reverted;
-
-      await expect(
-        stdGovernancePlugin
-          .connect(bob)
-          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
-      ).to.be.reverted;
-
-      await expect(
-        stdGovernancePlugin
-          .connect(alice)
-          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
-      ).to.be.reverted;
     });
 
     it('Rejected proposals cannot be approved', async () => {

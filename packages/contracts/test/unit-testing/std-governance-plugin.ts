@@ -1709,7 +1709,7 @@ describe('Standard Governance Plugin', function () {
   });
 
   context('Joining a space via StdMemberAddHelper', () => {
-    it('Proposing new members via MainMemberAdd plugin grants membership', async () => {
+    it('Proposing new members via StdMemberAddHelper grants membership', async () => {
       expect(await stdGovernancePlugin.isMember(carol.address)).to.be.false;
       await stdGovernancePlugin.proposeAddMember(
         toUtf8Bytes('ipfs://'),

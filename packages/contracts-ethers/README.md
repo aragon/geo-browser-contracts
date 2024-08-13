@@ -16,7 +16,7 @@ import {
 } from "<package-name>";
 
 // Use it
-const mainVotingPluinInstance = StdGovernancePluginFactory__factory.connect(...);
+const stdGovernancePluinInstance = StdGovernancePluginFactory__factory.connect(...);
 ```
 
 ## Development

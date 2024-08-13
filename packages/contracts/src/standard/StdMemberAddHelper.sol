@@ -11,9 +11,9 @@ import {ProposalUpgradeable} from "@aragon/osx/core/plugin/proposal/ProposalUpgr
 import {Addresslist} from "./base/Addresslist.sol";
 import {IMultisig} from "./base/IMultisig.sol";
 import {IEditors} from "../base/IEditors.sol";
-import {StdGovernancePlugin, MAIN_SPACE_VOTING_INTERFACE_ID} from "./StdGovernancePlugin.sol";
+import {StdGovernancePlugin, STD_GOVERNANCE_PLUGIN_INTERFACE_ID} from "./StdGovernancePlugin.sol";
 
-bytes4 constant MAIN_MEMBER_ADD_INTERFACE_ID = StdMemberAddHelper.initialize.selector ^
+bytes4 constant STD_MEMBER_ADD_INTERFACE_ID = StdMemberAddHelper.initialize.selector ^
     StdMemberAddHelper.updateMultisigSettings.selector ^
     StdMemberAddHelper.proposeAddMember.selector ^
     StdMemberAddHelper.getProposal.selector;
@@ -138,7 +138,7 @@ contract StdMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
         bytes4 _interfaceId
     ) public view virtual override(PluginUUPSUpgradeable, ProposalUpgradeable) returns (bool) {
         return
-            _interfaceId == MAIN_MEMBER_ADD_INTERFACE_ID ||
+            _interfaceId == STD_MEMBER_ADD_INTERFACE_ID ||
             _interfaceId == type(IMultisig).interfaceId ||
             super.supportsInterface(_interfaceId);
     }
@@ -163,7 +163,9 @@ contract StdMemberAddHelper is IMultisig, PluginUUPSUpgradeable, ProposalUpgrade
     ) public auth(PROPOSER_PERMISSION_ID) returns (uint256 proposalId) {
         // Check that the caller supports the `addMember` function
         if (
-            !StdGovernancePlugin(msg.sender).supportsInterface(MAIN_SPACE_VOTING_INTERFACE_ID) ||
+            !StdGovernancePlugin(msg.sender).supportsInterface(
+                STD_GOVERNANCE_PLUGIN_INTERFACE_ID
+            ) ||
             !StdGovernancePlugin(msg.sender).supportsInterface(type(IEditors).interfaceId) ||
             !StdGovernancePlugin(msg.sender).supportsInterface(type(Addresslist).interfaceId)
         ) {

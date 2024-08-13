@@ -143,7 +143,7 @@ function grantWithCondition(
 );
 ```
 
-See the `ExecuteSelectorCondition` contract. It restricts what the [StdMemberAddHelper](#main-member-add-helper) can execute on the DAO.
+See the `ExecuteSelectorCondition` contract. It restricts what the [StdMemberAddHelper](#standard-member-add-helper) can execute on the DAO.
 
 [Learn more about OSx permissions](https://devs.aragon.org/docs/osx/how-it-works/core/permissions/)
 
@@ -173,10 +173,10 @@ Spaces:
 
 Governance settings:
 
-- `UPDATE_VOTING_SETTINGS_PERMISSION_ID` is required to change the settings of the [StdGovernancePlugin](#main-voting-plugin)
-- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove members or editors on the [StdGovernancePlugin](#main-voting-plugin)
+- `UPDATE_VOTING_SETTINGS_PERMISSION_ID` is required to change the settings of the [StdGovernancePlugin](#standard-governance-plugin)
+- `UPDATE_ADDRESSES_PERMISSION_ID` is required to add or remove members or editors on the [StdGovernancePlugin](#standard-governance-plugin)
   - Typically called by the DAO via proposal
-- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [StdMemberAddHelper](#main-member-add-helper)
+- `UPDATE_MULTISIG_SETTINGS_PERMISSION_ID` is required to change the settings of the [StdMemberAddHelper](#standard-member-add-helper)
   - Typically called by the DAO via proposal
 
 Permission management:
@@ -221,7 +221,7 @@ It uses the generated typechain artifacts, which contain the interfaces for the 
 
 ## Adding members and editors
 
-On Spaces with the standard governance, a [StdMemberAddHelper](#main-member-add-helper) and a [StdGovernancePlugin](#main-voting-plugin) will be installed.
+On Spaces with the standard governance, a [StdMemberAddHelper](#standard-member-add-helper) and a [StdGovernancePlugin](#standard-governance-plugin) will be installed.
 
 ### Members
 
@@ -302,7 +302,7 @@ event SubspaceRemoved(address dao, address subspaceDao);
 - The DAO can upgrade the plugin
 - See [Plugin upgrader](#plugin-upgrader) (optional)
 
-### Main Member Add Helper
+### Standard Member Add Helper
 
 Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to `addMember()` on the standard governance plugin and Editors can approve or reject it. Once approved, the member create proposals on the standard governance plugin.
 
@@ -396,7 +396,7 @@ event ProposalExecuted(uint256 indexed proposalId);
 
 ### Standard Governance plugin
 
-It's the main governance plugin for standard spaces, where all proposals are voted by editors. It is a adapted version of Aragon's [AddresslistVoting plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/majority-voting/addresslist/AddresslistVoting.sol). Only members (or editors) can create proposals and they can only be executed after a qualified majority has voted for it.
+It's the governance plugin for standard spaces, where all proposals are voted by editors. It is a adapted version of Aragon's [AddresslistVoting plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/majority-voting/addresslist/AddresslistVoting.sol). Only members (or editors) can create proposals and they can only be executed after a qualified majority has voted for it.
 
 It acts as the source of truth about who is an editor, on Spaces with standard governance.
 
