@@ -10,7 +10,7 @@ import {SpacePlugin} from "../space/SpacePlugin.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
 import {PersonalMemberAddHelper} from "./PersonalMemberAddHelper.sol";
-import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
+import {EDITOR_PERMISSION_ID} from "../constants.sol";
 
 /// @title PersonalAdminPlugin
 /// @author Aragon - 2023
@@ -35,6 +35,12 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
     /// @notice The ID of the permission required to call the `addMember` function.
     bytes32 public constant ADD_MEMBER_PERMISSION_ID = keccak256("ADD_MEMBER_PERMISSION");
 
+    /// @notice The address of the plugin where new memberships are approved, using a different set of rules.
+    PersonalMemberAddHelper public personalMemberAddHelper;
+
+    /// @notice Whether an address is considered as a space member (not editor)
+    mapping(address => bool) internal members;
+
     /// @notice Thrown when attempting propose membership for an existing member.
     error AlreadyAMember(address _member);
 
@@ -47,9 +53,6 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
         }
         _;
     }
-
-    /// @notice The address of the plugin where new memberships are approved, using a different set of rules.
-    PersonalMemberAddHelper public personalMemberAddHelper;
 
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.
@@ -78,17 +81,15 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
             super.supportsInterface(_interfaceId);
     }
 
-    /// @notice Returns whether the given address holds membership/editor permission on the plugin
-    function isMember(address _account) public view returns (bool) {
-        return
-            dao().hasPermission(address(this), _account, MEMBER_PERMISSION_ID, bytes("")) ||
-            isEditor(_account);
-    }
-
     /// @notice Returns whether the given address holds editor permission on the plugin
     function isEditor(address _account) public view returns (bool) {
         // Does the address hold the permission on the plugin?
         return dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""));
+    }
+
+    /// @notice Returns whether the given address holds membership/editor permission on the plugin
+    function isMember(address _account) public view returns (bool) {
+        return members[_account] || isEditor(_account);
     }
 
     /// @notice Creates and executes a new proposal.
@@ -159,62 +160,36 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
         // The event will be emitted by the space plugin
     }
 
-    /// @notice Creates and executes a proposal that makes the DAO grant membership permission to the given address.
-    /// @param _newMember The address to grant member permission to
+    /// @notice Sets the given address as a member of the space
+    /// @param _newMember The address to define as a member
     /// @dev Called by the DAO via the PersonalMemberAddHelper. Not by members or editors.
     function addMember(address _newMember) public auth(ADD_MEMBER_PERMISSION_ID) {
-        if (dao().hasPermission(address(this), _newMember, MEMBER_PERMISSION_ID, bytes(""))) {
+        if (members[_newMember]) {
             revert AlreadyAMember(_newMember);
         }
 
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-        _actions[0].to = address(dao());
-        _actions[0].data = abi.encodeCall(
-            PermissionManager.grant,
-            (address(this), _newMember, MEMBER_PERMISSION_ID)
-        );
-
-        uint256 _proposalId = _createProposal(msg.sender, _actions);
-
-        dao().execute(bytes32(_proposalId), _actions, 0);
-
+        members[_newMember] = true;
         emit MemberAdded(address(dao()), _newMember);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the given address
     /// @param _member The address that will no longer be a member
     function submitRemoveMember(address _member) public auth(EDITOR_PERMISSION_ID) {
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-        _actions[0].to = address(dao());
-        _actions[0].data = abi.encodeCall(
-            PermissionManager.revoke,
-            (address(this), _member, MEMBER_PERMISSION_ID)
-        );
+        if (!members[_member]) return;
 
-        uint256 _proposalId = _createProposal(msg.sender, _actions);
-
-        dao().execute(bytes32(_proposalId), _actions, 0);
-
+        members[_member] = false;
         emit MemberRemoved(address(dao()), _member);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke any permission from the sender address
     function leaveSpace() external {
-        IDAO.Action[] memory _actions;
-        if (dao().hasPermission(address(this), msg.sender, MEMBER_PERMISSION_ID, bytes(""))) {
-            _actions = new IDAO.Action[](1);
-            _actions[0].to = address(dao());
-            _actions[0].data = abi.encodeCall(
-                PermissionManager.revoke,
-                (address(this), msg.sender, MEMBER_PERMISSION_ID)
-            );
-
-            uint256 _proposalId = _createProposal(msg.sender, _actions);
-            dao().execute(bytes32(_proposalId), _actions, 0);
+        if (members[msg.sender]) {
+            members[msg.sender] = false;
             emit MemberLeft(address(dao()), msg.sender);
         }
 
         if (isEditor(msg.sender)) {
+            IDAO.Action[] memory _actions;
             _actions = new IDAO.Action[](1);
             _actions[0].to = address(dao());
             _actions[0].data = abi.encodeCall(
@@ -270,7 +245,7 @@ contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, 
         bytes calldata _metadataContentUri,
         address _proposedMember
     ) public returns (uint256 proposalId) {
-        if (dao().hasPermission(address(this), _proposedMember, MEMBER_PERMISSION_ID, bytes(""))) {
+        if (members[_proposedMember]) {
             revert AlreadyAMember(_proposedMember);
         }
 

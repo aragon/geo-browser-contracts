@@ -26,7 +26,6 @@ import {
   ADDRESS_TWO,
   ADDRESS_ZERO,
   CONTENT_PERMISSION_ID,
-  MEMBER_PERMISSION_ID,
   EDITOR_PERMISSION_ID,
   EXECUTE_PERMISSION_ID,
   SUBSPACE_PERMISSION_ID,
@@ -131,11 +130,7 @@ describe('Personal Admin Plugin', function () {
       EDITOR_PERMISSION_ID
     );
     // Bob is a member
-    await dao.grant(
-      personalAdminPlugin.address,
-      bob.address,
-      MEMBER_PERMISSION_ID
-    );
+    await makeMember(bob.address);
     // The plugin can execute on the DAO
     await dao.grant(
       dao.address,
@@ -216,13 +211,11 @@ describe('Personal Admin Plugin', function () {
     expect(await personalAdminPlugin.isMember(bob.address)).to.eq(true);
     expect(await personalAdminPlugin.isMember(carol.address)).to.eq(false);
 
-    await dao.grant(
-      personalAdminPlugin.address,
-      carol.address,
-      MEMBER_PERMISSION_ID
-    );
-
+    await makeMember(carol.address);
     expect(await personalAdminPlugin.isMember(carol.address)).to.eq(true);
+
+    await pullMember(carol.address);
+    expect(await personalAdminPlugin.isMember(carol.address)).to.eq(false);
   });
 
   it('isEditor() returns true when appropriate', async () => {
@@ -675,4 +668,19 @@ describe('Personal Admin Plugin', function () {
       });
     });
   });
+
+  // Helpers
+
+  function makeMember(account: string) {
+    return personalAdminPlugin
+      .connect(alice)
+      .proposeAddMember('0x', account)
+      .then(tx => tx.wait());
+  }
+  function pullMember(account: string) {
+    return personalAdminPlugin
+      .connect(alice)
+      .submitRemoveMember(account)
+      .then(tx => tx.wait());
+  }
 });

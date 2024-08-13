@@ -811,6 +811,18 @@ describe('Member Add Plugin', function () {
     });
 
     it('Proposing an existing member fails', async () => {
+      // Alice is an editor but not specifically a member
+      await expect(
+        stdGovernancePlugin
+          .connect(dave)
+          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
+      ).to.not.be.reverted;
+
+      // Alice is technically a member now
+      await stdGovernancePlugin.proposeAddMember(
+        toUtf8Bytes('ipfs://1234'),
+        alice.address
+      );
       await expect(
         stdGovernancePlugin
           .connect(dave)

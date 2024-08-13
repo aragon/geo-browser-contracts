@@ -27,7 +27,6 @@ import {
   EDITOR_PERMISSION_ID,
   EMPTY_DATA,
   EXECUTE_PERMISSION_ID,
-  MEMBER_PERMISSION_ID,
   mineBlock,
   PROPOSER_PERMISSION_ID,
   ROOT_PERMISSION_ID,
@@ -269,6 +268,7 @@ describe('Personal Member Add Plugin', function () {
 
       // Editor
       expect(await personalAdminPlugin.isMember(ADDRESS_TWO)).to.eq(false);
+      pid = await personalMemberAddHelper.proposalCount();
       await expect(
         personalAdminPlugin
           .connect(alice)
@@ -276,7 +276,6 @@ describe('Personal Member Add Plugin', function () {
       ).to.not.be.reverted;
       expect(await personalAdminPlugin.isMember(ADDRESS_TWO)).to.eq(true);
 
-      pid = await personalMemberAddHelper.proposalCount();
       proposal = await personalMemberAddHelper.getProposal(pid);
       expect(proposal.executed).to.eq(true);
       expect(proposal.actions.length).to.eq(1);
@@ -333,20 +332,16 @@ describe('Personal Member Add Plugin', function () {
       expect(await personalAdminPlugin.isMember(bob.address)).to.eq(true);
       expect(await personalAdminPlugin.isMember(carol.address)).to.eq(false);
 
-      await personalAdminPlugin.proposeAddMember('0x', carol.address);
+      await makeMember(carol.address);
       expect(await personalAdminPlugin.isMember(carol.address)).to.eq(true);
 
-      await dao.revoke(
-        personalAdminPlugin.address,
-        carol.address,
-        MEMBER_PERMISSION_ID
-      );
+      await pullMember(carol.address);
       expect(await personalAdminPlugin.isMember(carol.address)).to.eq(false);
 
       await makeEditor(carol.address);
       expect(await personalAdminPlugin.isMember(carol.address)).to.eq(true);
 
-      await removeEditor(carol.address);
+      await pullEditor(carol.address);
       expect(await personalAdminPlugin.isMember(carol.address)).to.eq(false);
     });
 
@@ -362,7 +357,7 @@ describe('Personal Member Add Plugin', function () {
       await makeEditor(carol.address);
       expect(await personalAdminPlugin.isEditor(carol.address)).to.eq(true);
 
-      await removeEditor(carol.address);
+      await pullEditor(carol.address);
       expect(await personalAdminPlugin.isEditor(carol.address)).to.eq(false);
     });
   });
@@ -464,7 +459,7 @@ describe('Personal Member Add Plugin', function () {
       expect(proposal.executed).to.eq(false);
       expect(await personalAdminPlugin.isMember(dave.address)).to.eq(false);
 
-      await personalAdminPlugin.proposeAddMember('0x', dave.address);
+      await makeMember(dave.address);
 
       // Proposed by a (now) member
       pid = await personalMemberAddHelper.proposalCount();
@@ -488,8 +483,8 @@ describe('Personal Member Add Plugin', function () {
       ).to.not.be.reverted;
 
       proposal = await personalMemberAddHelper.getProposal(pid);
-      expect(proposal.executed).to.eq(false);
-      expect(await personalAdminPlugin.isMember(ADDRESS_TWO)).to.eq(false);
+      expect(proposal.executed).to.eq(true);
+      expect(await personalAdminPlugin.isMember(ADDRESS_TWO)).to.eq(true);
     });
 
     it('Only editors can reject new membership proposals', async () => {
@@ -561,13 +556,13 @@ describe('Personal Member Add Plugin', function () {
           .connect(alice)
           .proposeAddMember(toUtf8Bytes('ipfs://1234'), dave.address)
       ).to.not.be.reverted;
-      expect(await personalAdminPlugin.isMember(dave.address)).to.eq(true);
 
       const proposal = await personalMemberAddHelper.getProposal(pid);
-      expect(proposal.executed).to.eq(false);
+      expect(proposal.executed).to.eq(true);
+      expect(await personalAdminPlugin.isMember(dave.address)).to.eq(true);
     });
 
-    it('Memberships approved by an editor are immediately executed', async () => {
+    it('Approvals are immediately executed', async () => {
       // Dave proposes himself
       pid = await personalMemberAddHelper.proposalCount();
       await expect(
@@ -622,6 +617,15 @@ describe('Personal Member Add Plugin', function () {
     });
 
     it('Proposing an existing member fails', async () => {
+      // Alice is an editor but not specifically a member
+      await expect(
+        personalAdminPlugin
+          .connect(dave)
+          .proposeAddMember(toUtf8Bytes('ipfs://1234'), alice.address)
+      ).to.not.be.reverted;
+
+      // Alice is technically a member now
+      await makeMember(alice.address);
       await expect(
         personalAdminPlugin
           .connect(dave)
@@ -638,7 +642,7 @@ describe('Personal Member Add Plugin', function () {
         .to.be.revertedWithCustomError(personalAdminPlugin, 'AlreadyAMember')
         .withArgs(bob.address);
 
-      // More
+      // More times
       await expect(
         personalAdminPlugin
           .connect(carol)
@@ -900,7 +904,9 @@ describe('Personal Member Add Plugin', function () {
 
         // Alice approves
         pid = await personalMemberAddHelper.proposalCount();
-        await personalAdminPlugin.proposeAddMember(EMPTY_DATA, carol.address);
+        await personalAdminPlugin
+          .connect(carol)
+          .proposeAddMember(EMPTY_DATA, carol.address);
       });
 
       it('returns `false` if the proposal is already executed', async () => {
@@ -910,42 +916,40 @@ describe('Personal Member Add Plugin', function () {
 
         expect((await personalMemberAddHelper.getProposal(pid)).executed).to.be
           .true;
-        expect(
-          await personalMemberAddHelper.canApprove(pid, signers[3].address)
-        ).to.be.false;
+        expect(await personalMemberAddHelper.canApprove(pid, bob.address)).to.be
+          .false;
       });
 
       it('returns `false` if the approver is not an editor', async () => {
-        expect(await personalAdminPlugin.isEditor(signers[9].address)).to.be
-          .false;
-
-        expect(
-          await personalMemberAddHelper.canApprove(pid, signers[9].address)
-        ).to.be.false;
+        // Non editors
+        await Promise.all(
+          [carol, dave, signers[4], signers[5]].map(async wallet => {
+            expect(await personalAdminPlugin.isEditor(wallet.address)).to.be
+              .false;
+            expect(
+              await personalMemberAddHelper.canApprove(pid, wallet.address)
+            ).to.be.false;
+          })
+        );
       });
 
-      it('returns `false` if the approver has already approved', async () => {
+      it('returns `true` if the approver is an editor', async () => {
+        // Editors
+        await Promise.all(
+          [alice, bob].map(async wallet => {
+            expect(await personalAdminPlugin.isEditor(wallet.address)).to.be
+              .true;
+            expect(
+              await personalMemberAddHelper.canApprove(pid, wallet.address)
+            ).to.be.true;
+          })
+        );
+      });
+
+      it('returns `false` if already approved', async () => {
         expect(await personalMemberAddHelper.canApprove(pid, bob.address)).to.be
           .true;
         await personalMemberAddHelper.connect(bob).approve(pid);
-        expect(await personalMemberAddHelper.canApprove(pid, bob.address)).to.be
-          .false;
-      });
-
-      it('returns `true` if the approver is listed', async () => {
-        expect(await personalMemberAddHelper.canApprove(pid, bob.address)).to.be
-          .true;
-      });
-
-      it('returns `false` if the proposal is settled', async () => {
-        pid = await personalMemberAddHelper.proposalCount();
-        await personalAdminPlugin.proposeAddMember(EMPTY_DATA, carol.address);
-
-        expect(await personalMemberAddHelper.canApprove(pid, bob.address)).to.be
-          .true;
-
-        await personalMemberAddHelper.connect(bob).approve(pid);
-
         expect(await personalMemberAddHelper.canApprove(pid, bob.address)).to.be
           .false;
       });
@@ -958,7 +962,9 @@ describe('Personal Member Add Plugin', function () {
 
         // Alice approves
         pid = await personalMemberAddHelper.proposalCount();
-        await personalAdminPlugin.proposeAddMember(EMPTY_DATA, carol.address);
+        await personalAdminPlugin
+          .connect(carol)
+          .proposeAddMember(EMPTY_DATA, carol.address);
       });
 
       it('reverts when approving multiple times', async () => {
@@ -985,16 +991,28 @@ describe('Personal Member Add Plugin', function () {
 
   // Helpers
 
-  const makeEditor = (newEditor: string) => {
+  function makeMember(account: string) {
+    return personalAdminPlugin
+      .connect(alice)
+      .proposeAddMember('0x', account)
+      .then(tx => tx.wait());
+  }
+  function pullMember(account: string) {
+    return personalAdminPlugin
+      .connect(alice)
+      .submitRemoveMember(account)
+      .then(tx => tx.wait());
+  }
+  function makeEditor(newEditor: string) {
     return dao
       .connect(alice)
       .grant(personalAdminPlugin.address, newEditor, EDITOR_PERMISSION_ID)
       .then(tx => tx.wait());
-  };
-  const removeEditor = (editor: string) => {
+  }
+  function pullEditor(editor: string) {
     return dao
       .connect(alice)
       .revoke(personalAdminPlugin.address, editor, EDITOR_PERMISSION_ID)
       .then(tx => tx.wait());
-  };
+  }
 });

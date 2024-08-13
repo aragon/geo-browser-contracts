@@ -365,7 +365,7 @@ contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMemb
         bytes calldata _metadataContentUri,
         address _proposedMember
     ) public returns (uint256 proposalId) {
-        if (isMember(_proposedMember)) {
+        if (members[_proposedMember]) {
             revert AlreadyAMember(_proposedMember);
         }
 
@@ -384,7 +384,7 @@ contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMemb
     ) public returns (uint256 proposalId) {
         if (!isEditor(msg.sender)) {
             revert Unauthorized();
-        } else if (!isMember(_member)) {
+        } else if (!members[_member]) {
             revert AlreadyNotAMember(_member);
         }
 
