@@ -59,15 +59,17 @@ To manage who can create proposals, the Member Add helper allows anyone to reque
 
 ### Personal Space
 
-Personal spaces feature a simplified governance model, where anyone defined as editor can immediatelly execute proposals. Members can also propose. Typically to edit the contents of a space, but also to manage permissions.
+Personal spaces feature a simplified governance model, where anyone defined as editor can immediatelly execute proposals. Members can also propose and execute content related actions.
 
 <img src="./img/personal-1.svg">
 
-Editors may also execute proposals who define new editors.
+Editors can execute arbitrary actions, like adding new editors, updating the settings, etc.
 
 <img src="./img/personal-2.svg">
 
 Similarly to standard spaces, anyone can request to become a member on a Personal Space. In this case, the first editor to approve or reject will settle the proposal.
+
+<img src="./img/personal-3.svg">
 
 ### Plugin Upgrader
 
