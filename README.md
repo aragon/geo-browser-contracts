@@ -112,9 +112,9 @@ The plugin and the helper related to Personal Spaces are cannot be upgraded. Thi
 
 ## General notice
 
-The implementation of the four plugins is built on top of existing and thoroughly autited plugins from Aragon OSx. In order to fully accomodate to Geo's design, some functions and interfaces needed a few tweaks, which made it necessary to fork and adapt these contracts in-place.
+The implementation of the plugins is built on top of existing and thoroughly autited plugins from Aragon OSx. In order to fully accomodate to Geo's design, some functions and interfaces needed a few tweaks, which made it necessary to fork and adapt these contracts in-place.
 
-They can be found on `packages/contracts/src/governance/base`
+They can be found on `packages/contracts/src/standard/base`
 
 [Learn more about Aragon OSx](https://devs.aragon.org/docs/osx/how-it-works/framework/)
 
@@ -657,7 +657,7 @@ The same also applies to `prepareUpdate` (if present) and to `prepareUninstallat
 
 #### StdGovernanceSetup
 
-[This contract](./packages/contracts/src/governance/StdGovernanceSetup.sol) handles the install/update/uninstall scripts for `StdGovernancePlugin` and `StdMemberAddHelper`
+[This contract](./packages/contracts/src/standard/StdGovernanceSetup.sol) handles the install/update/uninstall scripts for `StdGovernancePlugin` and `StdMemberAddHelper`
 
 The second plugin needs to know the address of the first one, therefore the setup deploys them together.
 
@@ -735,7 +735,7 @@ Every new version needs to be published to the plugin's repository.
 
 ## Dependencies forked from Aragon
 
-The plugins from this repo are built on top of many contract primitives from Aragon. In some cases, certain parameters are not required or data types need to differ. For this reason, the `packages/contracts/src/governance/base` folder contains 5 forks of existing Aragon primitives.
+The plugins from this repo are built on top of many contract primitives from Aragon. In some cases, certain parameters are not required or data types need to differ. For this reason, the `packages/contracts/src/standard/base` folder contains 5 forks of existing Aragon primitives.
 
 - `Addresslist.sol`
   - Functions `addMembers` and `removeMembers` accepted an `address[] calldata` parameter
