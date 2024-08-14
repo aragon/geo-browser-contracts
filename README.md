@@ -29,11 +29,12 @@ The current repository provides the plugins necessary to cover two use cases:
 
 1. A standard space where members propose changes and editors vote on them
    - Space plugin
-   - Member Add plugin
    - Standard Governance plugin
-2. A personal space, where editors apply changes immediately
+   - Standard Member Add helper
+2. A personal space, where editors apply changes and members can also propose them
    - Space plugin
    - Personal Admin plugin
+   - Personal Member Add helper
 
 ### Standard Space
 
@@ -43,17 +44,22 @@ The most typical case will be telling the Space Plugin to emit the event of a pr
 
 <img src="./img/standard-1.svg">
 
-The Standard Governance Plugin can also pass proposals that change its own settings.
+The Standard Governance Plugin can also pass proposals that change its own settings. Arbitrary actions are also possible.
 
 <img src="./img/standard-2.svg">
 
-To manage who can create proposals, the Member Add Plugin allows anyone to request becoming a member. Editors can approve or reject incoming proposals.
+To manage who can create proposals, the Member Add helper allows anyone to request becoming a member. Editors can approve or reject new membership proposals.
+
+- When multiple editors exist
+  - If the proposer is an editor then another editor needs to approve
+  - If the proposer is not an editor, the first editor to approve automatically executes the approval/rejection
+- When only one editor exists, the member is added right away
 
 <img src="./img/standard-3.svg">
 
 ### Personal Space
 
-Personal spaces are a simplified version, where anyone defined as editor can immediatelly execute proposals. Typically to edit the contents of a space.
+Personal spaces feature a simplified governance model, where anyone defined as editor can immediatelly execute proposals. Members can also propose. Typically to edit the contents of a space, but also to manage permissions.
 
 <img src="./img/personal-1.svg">
 
@@ -61,11 +67,17 @@ Editors may also execute proposals who define new editors.
 
 <img src="./img/personal-2.svg">
 
+Similarly to standard spaces, anyone can request to become a member on a Personal Space. In this case, the first editor to approve or reject will settle the proposal.
+
 ### Plugin Upgrader
 
 There's an optional feature, where a predefined address can execute the actions to upgrade a plugin to the latest published version.
 
-<img src="./img/upgrader-1.svg">
+<img src="./img/upgrader.svg">
+
+Only the `Space` plugin, the `StdGovernancePlugin` and the `StdMemberAddHelper` may be upgraded.
+
+The plugin and the helper related to Personal Spaces are cannot be upgraded. This is intentional, because an editor could unilaterally upgrade to a malicious governance implementation and nobody would easily realize it. Forcing to install a brand new plugin makes such a situation become explicit.
 
 ## Global lifecycle
 
@@ -654,7 +666,7 @@ Note:
 When preparing the installation, an `InstallationPrepared` event is emitted. Using Typechain with Ethers:
 
 - `event.args.preparedSetupData.plugin` contains the address of the Standard Governance plugin
-- `event.args.preparedSetupData.helpers` contains an array with the address of the Member Add plugin
+- `event.args.preparedSetupData.helpers` contains an array with the address of the Member Add helper
 
 #### SpacePluginSetup
 

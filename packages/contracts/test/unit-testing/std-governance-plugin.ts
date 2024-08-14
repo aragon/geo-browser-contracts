@@ -891,7 +891,7 @@ describe('Standard Governance Plugin', function () {
       await expect(
         stdGovernancePlugin.proposeRemoveMember(
           toUtf8Bytes('ipfs://meta'),
-          alice.address
+          bob.address
         )
       ).to.not.be.reverted;
       expect((await stdGovernancePlugin.proposalCount()).toNumber()).to.eq(1);
@@ -902,9 +902,11 @@ describe('Standard Governance Plugin', function () {
       expect(proposal.actions[0].value.toNumber()).to.eq(0);
       expect(proposal.actions[0].data).to.eq(
         stdGovernancePluginInterface.encodeFunctionData('removeMember', [
-          alice.address,
+          bob.address,
         ])
       );
+
+      await stdGovernancePlugin.proposeAddMember('0x', carol.address);
 
       // 2
       pid++;
@@ -912,7 +914,7 @@ describe('Standard Governance Plugin', function () {
       await expect(
         stdGovernancePlugin.proposeRemoveMember(
           toUtf8Bytes('ipfs://more-meta'),
-          bob.address
+          carol.address
         )
       ).to.not.be.reverted;
       expect((await stdGovernancePlugin.proposalCount()).toNumber()).to.eq(2);
@@ -923,7 +925,7 @@ describe('Standard Governance Plugin', function () {
       expect(proposal.actions[0].value.toNumber()).to.eq(0);
       expect(proposal.actions[0].data).to.eq(
         stdGovernancePluginInterface.encodeFunctionData('removeMember', [
-          bob.address,
+          carol.address,
         ])
       );
     });
