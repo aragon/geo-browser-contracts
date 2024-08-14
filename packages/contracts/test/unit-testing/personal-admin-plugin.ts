@@ -32,6 +32,7 @@ import {
   ROOT_PERMISSION_ID,
   PROPOSER_PERMISSION_ID,
   ADD_MEMBER_PERMISSION_ID,
+  mineBlock,
 } from './common';
 import {
   DAO__factory,
@@ -123,14 +124,6 @@ describe('Personal Admin Plugin', function () {
     await initializePAP(anticipatedHelperAddress);
     await initializePMAH();
 
-    // Alice is editor
-    await dao.grant(
-      personalAdminPlugin.address,
-      alice.address,
-      EDITOR_PERMISSION_ID
-    );
-    // Bob is a member
-    await makeMember(bob.address);
     // The plugin can execute on the DAO
     await dao.grant(
       dao.address,
@@ -160,6 +153,16 @@ describe('Personal Admin Plugin', function () {
     await dao.grant(spacePlugin.address, dao.address, SUBSPACE_PERMISSION_ID);
     // The DAO is root on itself
     await dao.grant(dao.address, dao.address, ROOT_PERMISSION_ID);
+
+    // Alice is editor
+    await dao.grant(
+      personalAdminPlugin.address,
+      alice.address,
+      EDITOR_PERMISSION_ID
+    );
+    // Bob is a member
+    await mineBlock();
+    await makeMember(bob.address);
   });
 
   function initializePAP(helperAddr: string) {
@@ -318,14 +321,15 @@ describe('Personal Admin Plugin', function () {
     it('Only editors can call permission proposal wrappers', async () => {
       await expect(personalAdminPlugin.submitNewEditor(ADDRESS_TWO)).to.not.be
         .reverted;
-      await expect(personalAdminPlugin.submitRemoveMember(ADDRESS_ONE)).to.not
-        .be.reverted;
       await expect(personalAdminPlugin.submitRemoveEditor(ADDRESS_TWO)).to.not
         .be.reverted;
 
       expect(await personalAdminPlugin.proposalCount()).to.equal(
-        BigNumber.from(3)
+        BigNumber.from(2)
       );
+
+      await expect(personalAdminPlugin.submitRemoveMember(ADDRESS_ONE)).to.not
+        .be.reverted;
 
       // Non editors
       await expect(
@@ -362,7 +366,7 @@ describe('Personal Admin Plugin', function () {
         );
 
       expect(await personalAdminPlugin.proposalCount()).to.equal(
-        BigNumber.from(3)
+        BigNumber.from(2)
       );
     });
 
