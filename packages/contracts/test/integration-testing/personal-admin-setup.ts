@@ -102,7 +102,10 @@ describe('PersonalSpaceAdmin processing', function () {
       const initialEditor = alice.address;
 
       // Install build 1.
-      const installData = await setup.encodeInstallationParams(initialEditor);
+      const installData = await setup.encodeInstallationParams(
+        initialEditor,
+        60 * 60 * 24
+      );
       const results = await installPlugin(
         psp,
         dao,

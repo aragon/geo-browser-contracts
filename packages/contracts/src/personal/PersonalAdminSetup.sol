@@ -13,8 +13,6 @@ import {PersonalMemberAddHelper} from "./PersonalMemberAddHelper.sol";
 import {ExecuteSelectorCondition} from "../conditions/ExecuteSelectorCondition.sol";
 import {EDITOR_PERMISSION_ID} from "../constants.sol";
 
-uint64 constant MEMBER_ADD_PROPOSAL_DURATION = 7 days;
-
 /// @title PersonalAdminSetup
 /// @author Aragon - 2023
 /// @notice The setup contract of the `PersonalAdminPlugin` plugin.
@@ -41,7 +39,7 @@ contract PersonalAdminSetup is PluginSetup {
         bytes calldata _data
     ) external returns (address plugin, PreparedSetupData memory preparedSetupData) {
         // Decode `_data` to extract the params needed for cloning and initializing the `PersonalAdminPlugin` plugin.
-        address editor = decodeInstallationParams(_data);
+        (address editor, uint64 _memberAddProposalDuration) = decodeInstallationParams(_data);
 
         if (editor == address(0)) {
             revert EditorAddressInvalid({editor: editor});
@@ -55,7 +53,7 @@ contract PersonalAdminSetup is PluginSetup {
         PersonalAdminPlugin(plugin).initialize(IDAO(_dao), editor, helper);
 
         PersonalMemberAddHelper.Settings memory _helperSettings = PersonalMemberAddHelper.Settings({
-            proposalDuration: MEMBER_ADD_PROPOSAL_DURATION
+            proposalDuration: _memberAddProposalDuration
         });
         PersonalMemberAddHelper(helper).initialize(IDAO(_dao), _helperSettings);
 
@@ -131,9 +129,9 @@ contract PersonalAdminSetup is PluginSetup {
         SetupPayload calldata _payload
     ) external view returns (PermissionLib.MultiTargetPermission[] memory permissions) {
         // Prepare permissions
-        permissions = new PermissionLib.MultiTargetPermission[](2);
+        permissions = new PermissionLib.MultiTargetPermission[](5);
 
-        // Revoke EXECUTE on the DAO
+        // Revoke `EXECUTE_PERMISSION` to the plugin
         permissions[0] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Revoke,
             _dao,
@@ -141,13 +139,38 @@ contract PersonalAdminSetup is PluginSetup {
             PermissionLib.NO_CONDITION,
             DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
         );
-        // Revoke conditional EXECUTE on the DAO
+        // Revoke `PROPOSER_PERMISSION` to the plugin
         permissions[1] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Revoke,
+            _payload.currentHelpers[0],
+            _payload.plugin,
+            PermissionLib.NO_CONDITION,
+            PersonalMemberAddHelper(helperImplementation).PROPOSER_PERMISSION_ID()
+        );
+        // Revoke `EXECUTE_PERMISSION` to the helper
+        permissions[2] = PermissionLib.MultiTargetPermission(
             PermissionLib.Operation.Revoke,
             _dao,
             _payload.currentHelpers[0],
-            address(0),
+            // Conditional execution
+            PermissionLib.NO_CONDITION,
             DAO(payable(_dao)).EXECUTE_PERMISSION_ID()
+        );
+        // Revoke `ADD_MEMBER_PERMISSION` to the DAO
+        permissions[3] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Revoke,
+            _payload.plugin,
+            _dao,
+            PermissionLib.NO_CONDITION,
+            PersonalAdminPlugin(pluginImplementation).ADD_MEMBER_PERMISSION_ID()
+        );
+        // Revoke `UPDATE_SETTINGS_PERMISSION_ID` to the DAO
+        permissions[4] = PermissionLib.MultiTargetPermission(
+            PermissionLib.Operation.Revoke,
+            _payload.currentHelpers[0],
+            _dao,
+            PermissionLib.NO_CONDITION,
+            PersonalMemberAddHelper(helperImplementation).UPDATE_SETTINGS_PERMISSION_ID()
         );
     }
 
@@ -157,14 +180,17 @@ contract PersonalAdminSetup is PluginSetup {
     }
 
     /// @notice Encodes the given installation parameters into a byte array
-    function encodeInstallationParams(address _initialEditor) public pure returns (bytes memory) {
-        return abi.encode(_initialEditor);
+    function encodeInstallationParams(
+        address _initialEditor,
+        uint64 _proposalDuration
+    ) public pure returns (bytes memory) {
+        return abi.encode(_initialEditor, _proposalDuration);
     }
 
     /// @notice Decodes the given byte array into the original installation parameters
     function decodeInstallationParams(
         bytes memory _data
-    ) public pure returns (address initialEditor) {
-        (initialEditor) = abi.decode(_data, (address));
+    ) public pure returns (address initialEditor, uint64 proposalDuration) {
+        (initialEditor, proposalDuration) = abi.decode(_data, (address, uint64));
     }
 }

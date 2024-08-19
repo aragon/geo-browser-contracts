@@ -54,7 +54,8 @@ describe('Personal Admin Plugin Setup', function () {
     implementationAddress = await adminSetup.implementation();
 
     prepareInstallationData = await adminSetup.encodeInstallationParams(
-      ownerAddress
+      ownerAddress,
+      60 * 60 * 24
     );
   });
 
@@ -99,7 +100,8 @@ describe('Personal Admin Plugin Setup', function () {
 
     it('reverts if encoded address in `_data` is zero', async () => {
       const dataWithAddressZero = await adminSetup.encodeInstallationParams(
-        AddressZero
+        AddressZero,
+        60 * 60 * 24
       );
 
       await expect(
@@ -217,7 +219,7 @@ describe('Personal Admin Plugin Setup', function () {
         }
       );
 
-      expect(permissions.length).to.be.equal(2);
+      expect(permissions.length).to.be.equal(5);
       expect(permissions).to.deep.equal([
         [
           Operation.Revoke,
@@ -228,10 +230,31 @@ describe('Personal Admin Plugin Setup', function () {
         ],
         [
           Operation.Revoke,
+          '0x1234567890123456789012345678901234567890',
+          plugin,
+          AddressZero,
+          PROPOSER_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
           targetDao.address,
           '0x1234567890123456789012345678901234567890',
           AddressZero,
           EXECUTE_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          plugin,
+          targetDao.address,
+          AddressZero,
+          ADD_MEMBER_PERMISSION_ID,
+        ],
+        [
+          Operation.Revoke,
+          '0x1234567890123456789012345678901234567890',
+          targetDao.address,
+          AddressZero,
+          UPDATE_SETTINGS_PERMISSION_ID,
         ],
       ]);
     });
