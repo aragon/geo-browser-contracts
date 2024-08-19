@@ -25,13 +25,13 @@ A Space is composed by a DAO and several plugins installed on it. The [DAO](http
 
 The DAO contract can be deployed by using Aragon's DAOFactory contract. This will deploy a new DAO with the desired plugins and their respective settings.
 
-The current repository provides the plugins necessary to cover two use cases:
+The current repository provides the plugins needed to cover two use cases:
 
 1. A standard space where members propose changes and editors vote on them
    - Space plugin
    - Standard Governance plugin
    - Standard Member Add helper
-2. A personal space, where editors apply changes and members can also propose them
+2. A personal space, where members can submit content and editors can apply everything in one go
    - Space plugin
    - Personal Admin plugin
    - Personal Member Add helper
@@ -40,7 +40,7 @@ The current repository provides the plugins necessary to cover two use cases:
 
 In standard spaces, _members_ can create proposals while _editors_ can vote on them. Approved proposals can be executed by anyone and this will make the DAO call the predefined proposal actions.
 
-The most typical case will be telling the Space Plugin to emit the event of a proposal being processed. It can include emitting a new hash for the contents or accepting a subspace.
+The most typical case will be telling the Space Plugin to emit events, including new edits or managing subspaces.
 
 <img src="./img/standard-1.svg">
 
@@ -48,9 +48,9 @@ The Standard Governance Plugin can also pass proposals that change its own setti
 
 <img src="./img/standard-2.svg">
 
-To manage who can create proposals, the Member Add helper allows anyone to request becoming a member. Editors can approve or reject new membership proposals.
+For new people to create proposals, the Member Add Helper allows to request becoming a member. Editors can approve or reject new membership proposals.
 
-- When multiple editors exist
+- When multiple editors exist:
   - If the proposer is an editor then another editor needs to approve
   - If the proposer is not an editor, the first editor to approve automatically executes the approval/rejection
 - When only one editor exists, the member is added right away
@@ -59,7 +59,7 @@ To manage who can create proposals, the Member Add helper allows anyone to reque
 
 ### Personal Space
 
-Personal spaces feature a simplified governance model, where anyone defined as editor can immediatelly execute proposals. Members can also propose and execute content related actions.
+Personal spaces feature a simplified governance model, where anyone defined as editor can execute proposals immediatelly. Members can also execute content related actions.
 
 <img src="./img/personal-1.svg">
 
@@ -90,12 +90,12 @@ The plugin and the helper related to Personal Spaces are cannot be upgraded. Thi
 ### Joining a space
 
 1. Someone calls `proposeAddMember()` on the `StdGovernancePlugin`
-   - If the caller is the only editor, the proposal succeeds immediately
    - The proposal is created on the `StdMemberAddHelper` because the governance rules differ from the rest of proposals
 2. One of the editors calls `approve()` or `reject()`
    - Calling `approve()` makes the proposal succeed
    - Calling `reject()` cancels the proposal
-3. A succeeded proposal is executed automatically
+   - If the caller is the only editor, the proposal passes immediately
+3. A passed proposal is executed automatically
    - This makes the DAO call `addMember()` on the standard governance plugin
 
 ### Creating proposals for a space
@@ -118,17 +118,17 @@ The implementation of the plugins is built on top of existing and thoroughly aut
 
 They can be found on `packages/contracts/src/standard/base`
 
-[Learn more about Aragon OSx](https://devs.aragon.org/docs/osx/how-it-works/framework/)
+[Learn more about Aragon OSx](https://devs.aragon.org/osx/how-it-works/framework/)
 
 ## How permissions work
 
-Each Space created is an Aragon DAO. It holds any assets and most importantly, it manages the permission database that governs all plugin interactions.
+Each Space created is an Aragon OSx DAO. It holds any assets and most importantly, it manages the permission database that governs all plugin interactions.
 
 A permission looks like:
 
 - An address `who` holds `MY_PERMISSION_ID` on a target contract `where`
 
-New DAO's deployed manyally will grant `ROOT_PERMISSION` to its creator. However, most DAO's are typically deployed via Aragon's DAO factory, which will deploy a new contract with safe defaults, install all the requested plugins and drop the ROOT permission when the set up is done.
+New DAO's deployed manually will grant `ROOT_PERMISSION` to its creator. However, most DAO's are typically deployed via Aragon's DAO factory, which will deploy a new contract with safe defaults, install all the requested plugins and drop the ROOT permission when the set up is done.
 
 Managing permissions is made via two functions that are called on the DAO:
 
@@ -169,7 +169,7 @@ For standard governance spaces:
 For personal spaces:
 <img src="./img/permission-overview-personal.svg">
 
-Below are all the permissions that a [PluginSetup](#plugin-setup-contracts) contract may want to request:
+Below are all the permissions that a [PluginSetup](#plugin-setup-contracts) contract may request:
 
 Proposal:
 
@@ -239,11 +239,9 @@ On Spaces with the standard governance, a [StdMemberAddHelper](#standard-member-
 
 ### Members
 
-- Send a transaction to call `proposeNewMember()`
+- Send a transaction to call `proposeAddMember()`
 - Have an editor (different to the proposer) calling `approve()` for this proposal
 - This will add the requested address to the members list on the standard governance contract
-
-The same applies to remove members with `proposeRemoveMember()`
 
 ### Editors
 
@@ -257,10 +255,8 @@ The same procedure applies to removing editors with `removeEditor()`
 
 ## Adding editors (personal spaces)
 
-- Execute a proposal with an action to call `grant(address(stdGovernancePlugin), targetAddress, EDITOR_PERMISSION_ID)`
-- With the permission granted, `targetAddress` can immediately start executing proposals
-
-The same applies for removing a member.
+- Call `proposeAddMember()` on the plugin
+- Have an Editor approving the request
 
 ## The DAO's plugins
 
@@ -313,98 +309,6 @@ event SubspaceRemoved(address dao, address subspaceDao);
 
 - The DAO can call `publishEdits()` on the plugin
 - The DAO can accept/remove a subspace on the plugin
-- The DAO can upgrade the plugin
-- See [Plugin upgrader](#plugin-upgrader) (optional)
-
-### Standard Member Add Helper
-
-Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to `addMember()` on the standard governance plugin and Editors can approve or reject it. Once approved, the member create proposals on the standard governance plugin.
-
-#### Methods
-
-```solidity
-function initialize(IDAO _dao, MultisigSettings _multisigSettings);
-
-function updateMultisigSettings(MultisigSettings _multisigSettings);
-
-function proposeNewMember(bytes _metadata, address _proposedMember);
-
-function proposeRemoveMember(bytes _metadata, address _proposedMember);
-
-function approve(uint256 _proposalId);
-
-function reject(uint256 _proposalId);
-
-function execute(uint256 _proposalId);
-```
-
-Inherited:
-
-```solidity
-function upgradeTo(address newImplementation);
-
-function upgradeToAndCall(address newImplementation, bytes data);
-```
-
-#### Getters
-
-```solidity
-function supportsInterface(bytes4 _interfaceId) returns (bool);
-
-function canApprove(uint256 _proposalId, address _account) returns (bool);
-
-function canExecute(uint256 _proposalId) returns (bool);
-
-function getProposal(
-  uint256 _proposalId
-)
-  returns (
-    bool executed,
-    uint16 approvals,
-    ProposalParameters parameters,
-    IDAO.Action[] actions,
-    uint256 failsafeActionMap
-  );
-
-function hasApproved(uint256 _proposalId, address _account) returns (bool);
-
-function isMember(address _account) returns (bool);
-
-function isEditor(address _account) returns (bool);
-```
-
-Inherited:
-
-```solidity
-function proposalCount() external view returns (uint256);
-
-function implementation() returns (address);
-```
-
-#### Events
-
-```solidity
-event Approved(uint256 indexed proposalId, address indexed editor);
-
-event Rejected(uint256 indexed proposalId, address indexed editor);
-
-event MultisigSettingsUpdated(uint64 proposalDuration, address stdGovernancePlugin);
-```
-
-Inherited:
-
-```solidity
-event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap);
-
-event ProposalExecuted(uint256 indexed proposalId);
-```
-
-#### Permissions
-
-- Anyone can create membership proposals
-- Editors can approve and reject proposals
-- The plugin can execute on the DAO (with a condition)
-- The DAO can update the plugin settings
 - The DAO can upgrade the plugin
 - See [Plugin upgrader](#plugin-upgrader) (optional)
 
@@ -536,9 +440,99 @@ event VotingSettingsUpdated(VotingMode votingMode, uint32 supportThreshold, uint
 - The DAO can upgrade the plugin
 - See [Plugin upgrader](#plugin-upgrader) (optional)
 
+### Standard Member Add Helper
+
+Provides a simple way for any address to request membership on a space. It is a adapted version of Aragon's [Multisig plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/multisig/Multisig.sol). It creates a proposal to `addMember()` on the standard governance plugin and Editors can approve or reject it. Once approved, the member create proposals on the standard governance plugin.
+
+#### Methods
+
+```solidity
+function initialize(IDAO _dao, MultisigSettings _multisigSettings);
+
+function updateMultisigSettings(MultisigSettings _multisigSettings);
+
+function proposeAddMember(bytes _metadata, address _proposedMember);
+
+function approve(uint256 _proposalId);
+
+function reject(uint256 _proposalId);
+```
+
+Inherited:
+
+```solidity
+function upgradeTo(address newImplementation);
+
+function upgradeToAndCall(address newImplementation, bytes data);
+```
+
+#### Getters
+
+```solidity
+function supportsInterface(bytes4 _interfaceId) returns (bool);
+
+function canApprove(uint256 _proposalId, address _account) returns (bool);
+
+function canExecute(uint256 _proposalId) returns (bool);
+
+function getProposal(
+  uint256 _proposalId
+)
+  returns (
+    bool executed,
+    uint16 approvals,
+    ProposalParameters parameters,
+    IDAO.Action[] actions,
+    uint256 failsafeActionMap
+  );
+
+function hasApproved(uint256 _proposalId, address _account) returns (bool);
+
+function isMember(address _account) returns (bool);
+
+function isEditor(address _account) returns (bool);
+```
+
+Inherited:
+
+```solidity
+function proposalCount() external view returns (uint256);
+
+function implementation() returns (address);
+```
+
+#### Events
+
+```solidity
+event Approved(uint256 indexed proposalId, address indexed editor);
+
+event Rejected(uint256 indexed proposalId, address indexed editor);
+
+event MultisigSettingsUpdated(uint64 proposalDuration, address stdGovernancePlugin);
+```
+
+Inherited:
+
+```solidity
+event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap);
+
+event ProposalExecuted(uint256 indexed proposalId);
+```
+
+#### Permissions
+
+- Anyone can create membership proposals
+- Editors can approve and reject proposals
+- The plugin can execute on the DAO (with a condition)
+- The DAO can update the plugin settings
+- The DAO can upgrade the plugin
+- See [Plugin upgrader](#plugin-upgrader) (optional)
+
 ### Personal Admin Plugin
 
-Governance plugin providing the default implementation for personal spaces, where addresses with editor permissioin can apply proposals right away. It is a adapted version of Aragon's [Admin plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/admin/Admin.sol).
+Governance plugin providing the logic for personal spaces, where editors can apply proposals right away. It is a adapted version of Aragon's [Admin plugin](https://github.com/aragon/osx/blob/develop/packages/contracts/src/plugins/governance/admin/Admin.sol).
+
+Members can also submit actions related to new content and subspaces.
 
 Since this plugin has the power to unilaterally perform actions, it is not upgradeable. Adding many editors is possible via proposals with a grant/revoke action.
 
@@ -552,11 +546,23 @@ function executeProposal(
   IDAO.Action[] calldata _actions,
   uint256 _allowFailureMap
 );
+
+function submitEdits(string memory _contentUri, address _spacePlugin);
+function submitAcceptSubspace(IDAO _subspaceDao, address _spacePlugin);
+function submitRemoveSubspace(IDAO _subspaceDao, address _spacePlugin);
+function addMember(address _newMember);
+function submitRemoveMember(address _member);
+function leaveSpace();
+function submitNewEditor(address _newEditor);
+function submitRemoveEditor(address _editor)
+function proposeAddMember(address _newMember);
 ```
 
 #### Getters
 
 ```solidity
+function isMember(address _account) returns (bool);
+
 function isEditor(address _account) returns (bool);
 
 function supportsInterface(bytes4 _interfaceId) returns (bool);
@@ -584,6 +590,85 @@ event ProposalExecuted(uint256 indexed proposalId);
 
 - Editors can execute proposals right away
 - The plugin can execute actions on the DAO
+
+### Personal Member Add Helper
+
+Allows any address to request membership without polluting the main personal plugin with random proposals. Anyone can request membership and the first editor to approve or reject will settle the proposal.
+
+#### Methods
+
+```solidity
+function initialize(IDAO _dao, MultisigSettings _multisigSettings);
+
+function updateSettings(Settings _settings);
+
+function proposeAddMember(bytes _metadata, address _proposedMember);
+
+function approve(uint256 _proposalId);
+
+function reject(uint256 _proposalId);
+```
+
+Inherited:
+
+```solidity
+function upgradeTo(address newImplementation);
+
+function upgradeToAndCall(address newImplementation, bytes data);
+```
+
+#### Getters
+
+```solidity
+function supportsInterface(bytes4 _interfaceId) returns (bool);
+
+function canApprove(uint256 _proposalId, address _account) returns (bool);
+
+function getProposal(
+  uint256 _proposalId
+)
+  returns (
+    bool executed,
+    ProposalParameters memory parameters,
+    IDAO.Action[] memory actions,
+    uint256 failsafeActionMap
+  );
+
+function isMember(address _account) returns (bool);
+
+function isEditor(address _account) returns (bool);
+```
+
+Inherited:
+
+```solidity
+function proposalCount() external view returns (uint256);
+```
+
+#### Events
+
+```solidity
+event Approved(uint256 indexed proposalId, address indexed editor);
+
+event Rejected(uint256 indexed proposalId, address indexed editor);
+
+event MultisigSettingsUpdated(uint64 proposalDuration, address stdGovernancePlugin);
+```
+
+Inherited:
+
+```solidity
+event ProposalCreated(uint256 indexed proposalId, address indexed creator, uint64 startDate, uint64 endDate, bytes metadata, IDAO.Action[] actions, uint256 allowFailureMap);
+
+event ProposalExecuted(uint256 indexed proposalId);
+```
+
+#### Permissions
+
+- Anyone can create membership proposals
+- Editors can approve and reject proposals
+- The plugin can execute on the DAO (with a condition)
+- The DAO can update the plugin settings
 
 ## Plugin Setup contracts
 
@@ -616,12 +701,12 @@ Plugin changes need a proposal to be passed when the DAO already exists.
 1. Calling `pluginSetupProcessor.prepareInstallation()` which calls `prepareInstallation()` on the plugin's setup contract
    - A new plugin instance is deployed with the desired settings
    - The call returns a set of requested permissions to be applied by the DAO
-2. Editors pass a proposal to make the DAO call `applyInstallation()` on the [PluginSetupProcessor](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/)
+2. Editors pass a proposal to make the DAO call `applyInstallation()` on the [PluginSetupProcessor](https://devs.aragon.org/osx/how-it-works/framework/plugin-management/plugin-setup/)
    - This applies the requested permissions and the plugin becomes installed
 
 ### PluginSetup contracts
 
-[Learn more about plugin setup's](https://devs.aragon.org/docs/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
+[Learn more about plugin setup's](https://devs.aragon.org/osx/how-it-works/framework/plugin-management/plugin-setup/) and [preparing installations](https://devs.aragon.org/docs/sdk/examples/client/prepare-installation).
 
 ### Plugin Setup install parameters
 

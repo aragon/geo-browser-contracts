@@ -791,7 +791,7 @@ describe('Member Add Plugin', function () {
     // Alice: editor
     // Bob: member
 
-    it('proposeNewMember should generate the right action list', async () => {
+    it('proposeAddMember should generate the right action list', async () => {
       pid = await stdMemberAddHelper.proposalCount();
       await expect(
         stdGovernancePlugin
