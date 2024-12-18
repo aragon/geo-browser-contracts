@@ -3,11 +3,14 @@
 pragma solidity 0.8.17;
 
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
-import {MemberAccessExecuteCondition} from "../conditions/MemberAccessExecuteCondition.sol";
+import {ExecuteSelectorCondition} from "../conditions/ExecuteSelectorCondition.sol";
 
 /// @notice The condition associated with `TestSharedPlugin`
-contract TestMemberAccessExecuteCondition is MemberAccessExecuteCondition {
-    constructor(address _targetContract) MemberAccessExecuteCondition(_targetContract) {}
+contract TestExecuteSelectorCondition is ExecuteSelectorCondition {
+    constructor(
+        address _targetContract,
+        bytes4 _selector
+    ) ExecuteSelectorCondition(_targetContract, _selector) {}
 
     function getSelector(bytes memory _data) public pure returns (bytes4 selector) {
         return super._getSelector(_data);

@@ -12,11 +12,11 @@ yarn add <package-name>
 
 ```ts
 import {
-  MainVotingPluginFactory__factory
+  StdGovernancePluginFactory__factory
 } from "<package-name>";
 
 // Use it
-const mainVotingPluinInstance = MainVotingPluginFactory__factory.connect(...);
+const stdGovernancePluinInstance = StdGovernancePluginFactory__factory.connect(...);
 ```
 
 ## Development

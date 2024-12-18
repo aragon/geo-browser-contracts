@@ -1,6 +1,6 @@
 import {
-  GovernancePluginsSetupParams,
-  PersonalSpaceAdminPluginSetupParams,
+  StdGovernanceSetupParams,
+  PersonalAdminSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
 import {PluginRepo} from '../../typechain';
@@ -33,8 +33,8 @@ describe('PluginRepo Deployment', function () {
   });
 
   const setups = [
-    GovernancePluginsSetupParams,
-    PersonalSpaceAdminPluginSetupParams,
+    StdGovernanceSetupParams,
+    PersonalAdminSetupParams,
     SpacePluginSetupParams,
   ];
 

@@ -2,11 +2,11 @@ import {
   DAO,
   DAO__factory,
   IDAO,
-  MainVotingPlugin__factory,
-  MemberAccessExecuteCondition,
-  MemberAccessExecuteCondition__factory,
-  TestMemberAccessExecuteCondition__factory,
-  TestMemberAccessExecuteCondition,
+  StdGovernancePlugin__factory,
+  ExecuteSelectorCondition,
+  ExecuteSelectorCondition__factory,
+  TestExecuteSelectorCondition__factory,
+  TestExecuteSelectorCondition,
 } from '../../typechain';
 import {getPluginSetupProcessorAddress} from '../../utils/helpers';
 import {deployTestDao} from '../helpers/test-dao';
@@ -20,19 +20,18 @@ import {ethers, network} from 'hardhat';
 const SOME_CONTRACT_ADDRESS = '0x' + '1234567890'.repeat(4);
 const ONE_BYTES32 =
   '0x0000000000000000000000000000000000000000000000000000000000000001';
-const PLUGIN_ADDR_1 = ADDRESS_ONE;
-const PLUGIN_ADDR_2 = ADDRESS_TWO;
 const daoInterface = DAO__factory.createInterface();
-const mainVotingPluginInterface = MainVotingPlugin__factory.createInterface();
+const stdGovernancePluginInterface =
+  StdGovernancePlugin__factory.createInterface();
 
-describe('Member Access Condition', function () {
+describe('Execute selector Condition', function () {
   const pspAddress = getPluginSetupProcessorAddress(network.name, true);
 
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
   let dao: DAO;
-  let memberAccessExecuteCondition: MemberAccessExecuteCondition;
+  let executeSelectorCondition: ExecuteSelectorCondition;
 
   before(async () => {
     [alice, bob, carol] = await ethers.getSigners();
@@ -40,8 +39,11 @@ describe('Member Access Condition', function () {
   });
 
   beforeEach(async () => {
-    const factory = new MemberAccessExecuteCondition__factory(alice);
-    memberAccessExecuteCondition = await factory.deploy(SOME_CONTRACT_ADDRESS);
+    const factory = new ExecuteSelectorCondition__factory(alice);
+    executeSelectorCondition = await factory.deploy(
+      SOME_CONTRACT_ADDRESS,
+      stdGovernancePluginInterface.getSighash('addMember')
+    );
   });
 
   describe('Executing addMember on a certain contract', () => {
@@ -51,12 +53,12 @@ describe('Member Access Condition', function () {
       ];
 
       // Valid add
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'addMember',
         [carol.address]
       );
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -65,12 +67,12 @@ describe('Member Access Condition', function () {
       ).to.eq(true);
 
       // Invalid
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'removeMember',
         [carol.address]
       );
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -83,7 +85,7 @@ describe('Member Access Condition', function () {
         hexlify(toUtf8Bytes('ipfs://')),
       ]);
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -96,7 +98,7 @@ describe('Member Access Condition', function () {
         hexlify(toUtf8Bytes('ipfs://')),
       ]);
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -110,7 +112,7 @@ describe('Member Access Condition', function () {
         [ADDRESS_ONE]
       );
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -125,12 +127,12 @@ describe('Member Access Condition', function () {
       ];
 
       // Valid member add
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'addMember',
         [carol.address]
       );
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -139,12 +141,12 @@ describe('Member Access Condition', function () {
       ).to.eq(true);
 
       // Invalid
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'removeMember',
         [carol.address]
       );
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -153,12 +155,12 @@ describe('Member Access Condition', function () {
       ).to.eq(false);
 
       // Invalid (editor)
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'addEditor',
         [carol.address]
       );
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -167,12 +169,12 @@ describe('Member Access Condition', function () {
       ).to.eq(false);
 
       // Invalid (editor)
-      actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+      actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
         'removeEditor',
         [carol.address]
       );
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -187,7 +189,7 @@ describe('Member Access Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -201,7 +203,7 @@ describe('Member Access Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -216,7 +218,7 @@ describe('Member Access Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -230,7 +232,7 @@ describe('Member Access Condition', function () {
         ONE_BYTES32,
       ]);
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
@@ -250,12 +252,12 @@ describe('Member Access Condition', function () {
         ADDRESS_ONE,
       ]) {
         // Valid add
-        actions[0].data = mainVotingPluginInterface.encodeFunctionData(
+        actions[0].data = stdGovernancePluginInterface.encodeFunctionData(
           'addMember',
           [grantedToAddress]
         );
         expect(
-          await memberAccessExecuteCondition.isGranted(
+          await executeSelectorCondition.isGranted(
             ADDRESS_ONE, // where (used)
             ADDRESS_TWO, // who (used)
             EXECUTE_PERMISSION_ID, // permission (used)
@@ -274,11 +276,11 @@ describe('Member Access Condition', function () {
     it('Should reject adding and removing directly, rather than executing', async () => {
       // Valid
       expect(
-        await memberAccessExecuteCondition.isGranted(
+        await executeSelectorCondition.isGranted(
           ADDRESS_ONE, // where (used)
           ADDRESS_TWO, // who (used)
           EXECUTE_PERMISSION_ID, // permission (used)
-          mainVotingPluginInterface.encodeFunctionData('addMember', [
+          stdGovernancePluginInterface.encodeFunctionData('addMember', [
             carol.address,
           ])
         )
@@ -287,12 +289,13 @@ describe('Member Access Condition', function () {
   });
 
   describe('Decoders (internal)', () => {
-    let testMemberAccessExecuteCondition: TestMemberAccessExecuteCondition;
+    let testExecuteSelectorCondition: TestExecuteSelectorCondition;
 
     beforeEach(async () => {
-      const factory = new TestMemberAccessExecuteCondition__factory(alice);
-      testMemberAccessExecuteCondition = await factory.deploy(
-        SOME_CONTRACT_ADDRESS
+      const factory = new TestExecuteSelectorCondition__factory(alice);
+      testExecuteSelectorCondition = await factory.deploy(
+        SOME_CONTRACT_ADDRESS,
+        stdGovernancePluginInterface.getSighash('addMember')
       );
     });
 
@@ -301,44 +304,44 @@ describe('Member Access Condition', function () {
         {
           to: dao.address,
           value: 0,
-          data: mainVotingPluginInterface.encodeFunctionData('addMember', [
+          data: stdGovernancePluginInterface.encodeFunctionData('addMember', [
             pspAddress,
           ]),
         },
         {
           to: dao.address,
           value: 0,
-          data: mainVotingPluginInterface.encodeFunctionData('removeMember', [
-            pspAddress,
-          ]),
+          data: stdGovernancePluginInterface.encodeFunctionData(
+            'removeMember',
+            [pspAddress]
+          ),
         },
       ];
 
       expect(
-        await testMemberAccessExecuteCondition.getSelector(actions[0].data)
+        await testExecuteSelectorCondition.getSelector(actions[0].data)
       ).to.eq((actions[0].data as string).slice(0, 10));
 
       expect(
-        await testMemberAccessExecuteCondition.getSelector(actions[1].data)
+        await testExecuteSelectorCondition.getSelector(actions[1].data)
       ).to.eq((actions[1].data as string).slice(0, 10));
     });
 
     it('Should decode decodeGrantRevokeCalldata properly', async () => {
-      const factory = new TestMemberAccessExecuteCondition__factory(alice);
-      const testMemberAccessExecuteCondition = await factory.deploy(
-        SOME_CONTRACT_ADDRESS
+      const factory = new TestExecuteSelectorCondition__factory(alice);
+      const testExecuteSelectorCondition = await factory.deploy(
+        SOME_CONTRACT_ADDRESS,
+        stdGovernancePluginInterface.getSighash('addMember')
       );
 
-      const calldata = mainVotingPluginInterface.encodeFunctionData(
+      const calldata = stdGovernancePluginInterface.encodeFunctionData(
         'addMember',
         [pspAddress]
       );
 
       // 1
       const [selector, who] =
-        await testMemberAccessExecuteCondition.decodeAddMemberCalldata(
-          calldata
-        );
+        await testExecuteSelectorCondition.decodeAddMemberCalldata(calldata);
       expect(selector).to.eq(calldata.slice(0, 10));
       expect(who).to.eq(pspAddress);
     });

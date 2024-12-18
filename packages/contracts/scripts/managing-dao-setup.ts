@@ -1,6 +1,6 @@
-import {GovernancePluginsSetupParams} from '../plugin-setup-params';
+import {StdGovernanceSetupParams} from '../plugin-setup-params';
 import {
-  GovernancePluginsSetup__factory,
+  StdGovernanceSetup__factory,
   MajorityVotingBase,
   PluginSetupProcessor__factory,
 } from '../typechain';
@@ -42,9 +42,6 @@ const {
 const MGMT_DAO_PROPOSAL_DURATION =
   parseInt(process.env.MGMT_DAO_PROPOSAL_DURATION ?? '604800') ||
   60 * 60 * 24 * 7;
-const MGMT_DAO_MIN_PROPOSAL_PARTICIPATION =
-  parseInt(process.env.MGMT_DAO_MIN_PROPOSAL_PARTICIPATION ?? '500000') ||
-  500_000; // 50%
 const MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD =
   parseInt(process.env.MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD ?? '500000') ||
   500_000; // 50%
@@ -135,28 +132,27 @@ async function prepareInstallation() {
     deployer
   );
   const pluginSetupInfo = await pluginRepo['getLatestVersion(uint8)'](
-    GovernancePluginsSetupParams.VERSION.release
+    StdGovernanceSetupParams.VERSION.release
   );
   if (!pluginSetupInfo.pluginSetup) {
     throw new Error('The Governance plugin is not available');
   }
-  const pluginSetup = GovernancePluginsSetup__factory.connect(
+  const pluginSetup = StdGovernanceSetup__factory.connect(
     pluginSetupInfo.pluginSetup,
     deployer
   );
 
   const settings: MajorityVotingBase.VotingSettingsStruct = {
     duration: MGMT_DAO_PROPOSAL_DURATION,
-    minParticipation: MGMT_DAO_MIN_PROPOSAL_PARTICIPATION,
     supportThreshold: MGMT_DAO_PROPOSAL_SUPPORT_THRESHOLD,
     votingMode: 1, // Early execution
   };
-  const memberAccessProposalDuration = MGMT_DAO_PROPOSAL_DURATION * 3; // Time before expired
+  const memberAddProposalDuration = MGMT_DAO_PROPOSAL_DURATION * 3; // Time before expired
   const pluginUpgrader = '0x0000000000000000000000000000000000000000'; // Just the DAO
   const installData = await pluginSetup.encodeInstallationParams(
     settings,
     MGMT_DAO_INITIAL_EDITORS,
-    memberAccessProposalDuration,
+    memberAddProposalDuration,
     pluginUpgrader
   );
 
@@ -172,7 +168,7 @@ async function prepareInstallation() {
 
   const pluginSetupRef: PluginSetupRefStruct = {
     pluginSetupRepo: GOVERNANCE_PLUGIN_REPO_ADDRESS!,
-    versionTag: GovernancePluginsSetupParams.VERSION,
+    versionTag: StdGovernanceSetupParams.VERSION,
   };
 
   const tx = await psp.prepareInstallation(MANAGING_DAO_ADDRESS!, {
@@ -189,11 +185,11 @@ async function prepareInstallation() {
     throw new Error('Failed to get InstallationPrepared event');
   }
   console.log(
-    '- Deployed a MainVotingPlugin plugin at',
+    '- Deployed a StdGovernancePlugin plugin at',
     preparedEvent.args.plugin
   );
   console.log(
-    '- Deployed a MemberAccessPlugin plugin at',
+    '- Deployed a StdMemberAddHelper plugin at',
     preparedEvent.args.preparedSetupData.helpers[0]
   );
 
@@ -220,7 +216,7 @@ async function applyInstallation(
       permissions,
       pluginSetupRef: {
         pluginSetupRepo: GOVERNANCE_PLUGIN_REPO_ADDRESS!,
-        versionTag: GovernancePluginsSetupParams.VERSION,
+        versionTag: StdGovernanceSetupParams.VERSION,
       },
     };
 
@@ -334,7 +330,7 @@ async function checkManagingDaoPost(
   );
   if (!canExecute) {
     throw new Error(
-      'The MainVotingPlugin should have execute permission on the Managing DAO'
+      'The StdGovernancePlugin should have execute permission on the Managing DAO'
     );
   }
 

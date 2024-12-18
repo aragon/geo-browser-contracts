@@ -1,15 +1,15 @@
 import {
-  GovernancePluginsSetup,
-  GovernancePluginsSetup__factory,
-  MainVotingPlugin__factory,
+  StdGovernanceSetup,
+  StdGovernanceSetup__factory,
+  StdGovernancePlugin__factory,
   MajorityVotingBase,
-  MemberAccessPlugin__factory,
+  StdMemberAddHelper__factory,
   PluginRepo,
   SpacePluginSetup,
   SpacePluginSetup__factory,
   SpacePlugin__factory,
-  TestGovernancePluginsSetup,
-  TestGovernancePluginsSetup__factory,
+  TestStdGovernanceSetup,
+  TestStdGovernanceSetup__factory,
 } from '../../typechain';
 import {
   ExecutedEvent,
@@ -52,7 +52,7 @@ const pluginSettings: MajorityVotingBase.VotingSettingsStruct = {
   supportThreshold: 1,
   votingMode: 0,
 };
-const minMemberAccessProposalDuration = 60 * 60 * 24;
+const minMemberAddProposalDuration = 60 * 60 * 24;
 const daoInterface = DAO__factory.createInterface();
 const pspInterface = PluginSetupProcessor__factory.createInterface();
 
@@ -64,11 +64,11 @@ describe('Plugin upgrader', () => {
   let dao: DAO;
   let pluginRepo: PluginRepo;
 
-  describe('GovernancePluginsSetup', () => {
-    let pSetupBuild1: GovernancePluginsSetup;
-    let pSetupBuild2: TestGovernancePluginsSetup;
-    let gpsFactory: GovernancePluginsSetup__factory;
-    let tgpsFactory: TestGovernancePluginsSetup__factory;
+  describe('StdGovernanceSetup', () => {
+    let pSetupBuild1: StdGovernanceSetup;
+    let pSetupBuild2: TestStdGovernanceSetup;
+    let gpsFactory: StdGovernanceSetup__factory;
+    let tgpsFactory: TestStdGovernanceSetup__factory;
     let installation1: Awaited<ReturnType<typeof installPlugin>>;
 
     before(async () => {
@@ -110,11 +110,11 @@ describe('Plugin upgrader', () => {
       );
 
       // Deploy PluginSetup build 1
-      gpsFactory = new GovernancePluginsSetup__factory().connect(deployer);
+      gpsFactory = new StdGovernanceSetup__factory().connect(deployer);
       pSetupBuild1 = await gpsFactory.deploy(psp.address);
 
       // Deploy PluginSetup build 2
-      tgpsFactory = new TestGovernancePluginsSetup__factory().connect(deployer);
+      tgpsFactory = new TestStdGovernanceSetup__factory().connect(deployer);
       pSetupBuild2 = await tgpsFactory.deploy(psp.address);
 
       // Publish build 1
@@ -169,7 +169,7 @@ describe('Plugin upgrader', () => {
       const data1 = await pSetupBuild1.encodeInstallationParams(
         pluginSettings,
         [deployer.address],
-        minMemberAccessProposalDuration,
+        minMemberAddProposalDuration,
         pluginUpgrader.address
       );
       installation1 = await installPlugin(psp, dao, pluginSetupRef1, data1);
@@ -189,21 +189,21 @@ describe('Plugin upgrader', () => {
 
     it('Allows pluginUpgrader to execute psp.applyUpdate()', async () => {
       // Deployed plugin and helper
-      const mainVotingPlugin = MainVotingPlugin__factory.connect(
+      const stdGovernancePlugin = StdGovernancePlugin__factory.connect(
         installation1.preparedEvent.args.plugin,
         deployer
       );
-      const memberAccessPlugin = MemberAccessPlugin__factory.connect(
+      const stdMemberAddHelper = StdMemberAddHelper__factory.connect(
         installation1.preparedEvent.args.preparedSetupData.helpers[0],
         deployer
       );
 
       // Check implementations build 1
-      expect(await mainVotingPlugin.implementation()).to.be.eq(
+      expect(await stdGovernancePlugin.implementation()).to.be.eq(
         await pSetupBuild1.implementation()
       );
-      expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await pSetupBuild1.memberAccessPluginImplementation()
+      expect(await stdMemberAddHelper.implementation()).to.be.eq(
+        await pSetupBuild1.helperImplementation()
       );
 
       // Check
@@ -225,9 +225,9 @@ describe('Plugin upgrader', () => {
         },
         pluginSetupRepo: pluginRepo.address,
         setupPayload: {
-          currentHelpers: [memberAccessPlugin.address],
+          currentHelpers: [stdMemberAddHelper.address],
           data: dat,
-          plugin: mainVotingPlugin.address,
+          plugin: stdGovernancePlugin.address,
         },
       });
       const preparedEvent = await findEvent<UpdatePreparedEvent>(
@@ -270,9 +270,9 @@ describe('Plugin upgrader', () => {
             '0x0123412341234123412341234123412301234123412341234123412341234123',
             [
               {
-                to: mainVotingPlugin.address,
+                to: stdGovernancePlugin.address,
                 value: 0,
-                data: MainVotingPlugin__factory.createInterface().encodeFunctionData(
+                data: StdGovernancePlugin__factory.createInterface().encodeFunctionData(
                   'addEditor',
                   [pluginUpgrader.address]
                 ),
@@ -285,7 +285,7 @@ describe('Plugin upgrader', () => {
 
       // Params
       const applyUpdateParams: PluginSetupProcessor.ApplyUpdateParamsStruct = {
-        plugin: mainVotingPlugin.address,
+        plugin: stdGovernancePlugin.address,
         pluginSetupRef: {
           pluginSetupRepo: pluginRepo.address,
           versionTag: {
@@ -307,7 +307,7 @@ describe('Plugin upgrader', () => {
             to: dao.address,
             value: 0,
             data: daoInterface.encodeFunctionData('grant', [
-              mainVotingPlugin.address,
+              stdGovernancePlugin.address,
               psp.address,
               UPGRADE_PLUGIN_PERMISSION_ID,
             ]),
@@ -326,7 +326,7 @@ describe('Plugin upgrader', () => {
             to: dao.address,
             value: 0,
             data: daoInterface.encodeFunctionData('revoke', [
-              mainVotingPlugin.address,
+              stdGovernancePlugin.address,
               psp.address,
               UPGRADE_PLUGIN_PERMISSION_ID,
             ]),
@@ -349,29 +349,29 @@ describe('Plugin upgrader', () => {
       }
 
       // Check implementations build 2
-      expect(await mainVotingPlugin.implementation()).to.not.be.eq(
+      expect(await stdGovernancePlugin.implementation()).to.not.be.eq(
         await pSetupBuild1.implementation(),
         "Implementation shouldn't be build 1"
       );
 
-      expect(await mainVotingPlugin.implementation()).to.be.eq(
+      expect(await stdGovernancePlugin.implementation()).to.be.eq(
         await pSetupBuild2.implementation(),
         'Implementation should be build 2'
       );
 
-      expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await pSetupBuild1.memberAccessPluginImplementation(),
+      expect(await stdMemberAddHelper.implementation()).to.be.eq(
+        await pSetupBuild1.helperImplementation(),
         'Implementation should remain as build 1'
       );
     });
 
     it('Reverts if pluginUpgrader calling psp.applyUpdate() requests new permissions', async () => {
       // Deployed plugin and helper
-      const mainVotingPlugin = MainVotingPlugin__factory.connect(
+      const stdGovernancePlugin = StdGovernancePlugin__factory.connect(
         installation1.preparedEvent.args.plugin,
         deployer
       );
-      const memberAccessPlugin = MemberAccessPlugin__factory.connect(
+      const stdMemberAddHelper = StdMemberAddHelper__factory.connect(
         installation1.preparedEvent.args.preparedSetupData.helpers[0],
         deployer
       );
@@ -389,9 +389,9 @@ describe('Plugin upgrader', () => {
         },
         pluginSetupRepo: pluginRepo.address,
         setupPayload: {
-          currentHelpers: [memberAccessPlugin.address],
+          currentHelpers: [stdMemberAddHelper.address],
           data: dat,
-          plugin: mainVotingPlugin.address,
+          plugin: stdGovernancePlugin.address,
         },
       });
       const preparedEvent = await findEvent<UpdatePreparedEvent>(
@@ -404,7 +404,7 @@ describe('Plugin upgrader', () => {
 
       // Params
       const applyUpdateParams: PluginSetupProcessor.ApplyUpdateParamsStruct = {
-        plugin: mainVotingPlugin.address,
+        plugin: stdGovernancePlugin.address,
         pluginSetupRef: {
           pluginSetupRepo: pluginRepo.address,
           versionTag: {
@@ -427,7 +427,7 @@ describe('Plugin upgrader', () => {
               to: dao.address,
               value: 0,
               data: daoInterface.encodeFunctionData('grant', [
-                mainVotingPlugin.address,
+                stdGovernancePlugin.address,
                 psp.address,
                 UPGRADE_PLUGIN_PERMISSION_ID,
               ]),
@@ -446,7 +446,7 @@ describe('Plugin upgrader', () => {
               to: dao.address,
               value: 0,
               data: daoInterface.encodeFunctionData('revoke', [
-                mainVotingPlugin.address,
+                stdGovernancePlugin.address,
                 psp.address,
                 UPGRADE_PLUGIN_PERMISSION_ID,
               ]),
@@ -458,13 +458,13 @@ describe('Plugin upgrader', () => {
       ).to.revertedWithCustomError(dao, 'ActionFailed');
 
       // Check implementations build 1
-      expect(await mainVotingPlugin.implementation()).to.be.eq(
+      expect(await stdGovernancePlugin.implementation()).to.be.eq(
         await pSetupBuild1.implementation(),
         'Implementation should be build 1'
       );
 
-      expect(await memberAccessPlugin.implementation()).to.be.eq(
-        await pSetupBuild1.memberAccessPluginImplementation(),
+      expect(await stdMemberAddHelper.implementation()).to.be.eq(
+        await pSetupBuild1.helperImplementation(),
         'Implementation should remain as build 1'
       );
     });

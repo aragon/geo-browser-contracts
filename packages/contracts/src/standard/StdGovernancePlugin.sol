@@ -10,31 +10,31 @@ import {MajorityVotingBase} from "./base/MajorityVotingBase.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
 import {Addresslist} from "./base/Addresslist.sol";
-import {MemberAccessPlugin, MEMBER_ACCESS_INTERFACE_ID} from "./MemberAccessPlugin.sol";
+import {StdMemberAddHelper, STD_MEMBER_ADD_INTERFACE_ID} from "./StdMemberAddHelper.sol";
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 
 // The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
-bytes4 constant MAIN_SPACE_VOTING_INTERFACE_ID = MainVotingPlugin.initialize.selector ^
-    MainVotingPlugin.createProposal.selector ^
-    MainVotingPlugin.proposeEdits.selector ^
-    MainVotingPlugin.proposeAcceptSubspace.selector ^
-    MainVotingPlugin.proposeRemoveSubspace.selector ^
-    MainVotingPlugin.proposeAddMember.selector ^
-    MainVotingPlugin.proposeRemoveMember.selector ^
-    MainVotingPlugin.proposeAddEditor.selector ^
-    MainVotingPlugin.proposeRemoveEditor.selector ^
-    MainVotingPlugin.addEditor.selector ^
-    MainVotingPlugin.removeEditor.selector ^
-    MainVotingPlugin.addMember.selector ^
-    MainVotingPlugin.removeMember.selector ^
-    MainVotingPlugin.leaveSpace.selector ^
-    MainVotingPlugin.cancelProposal.selector;
+bytes4 constant STD_GOVERNANCE_PLUGIN_INTERFACE_ID = StdGovernancePlugin.initialize.selector ^
+    StdGovernancePlugin.createProposal.selector ^
+    StdGovernancePlugin.proposeEdits.selector ^
+    StdGovernancePlugin.proposeAcceptSubspace.selector ^
+    StdGovernancePlugin.proposeRemoveSubspace.selector ^
+    StdGovernancePlugin.proposeAddMember.selector ^
+    StdGovernancePlugin.proposeRemoveMember.selector ^
+    StdGovernancePlugin.proposeAddEditor.selector ^
+    StdGovernancePlugin.proposeRemoveEditor.selector ^
+    StdGovernancePlugin.addEditor.selector ^
+    StdGovernancePlugin.removeEditor.selector ^
+    StdGovernancePlugin.addMember.selector ^
+    StdGovernancePlugin.removeMember.selector ^
+    StdGovernancePlugin.leaveSpace.selector ^
+    StdGovernancePlugin.cancelProposal.selector;
 
-/// @title MainVotingPlugin (Address list)
+/// @title StdGovernancePlugin (Address list)
 /// @author Aragon - 2023
 /// @notice The majority voting implementation using a list of member addresses.
 /// @dev This contract inherits from `MajorityVotingBase` and implements the `IMajorityVoting` interface.
-contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers {
+contract StdGovernancePlugin is Addresslist, MajorityVotingBase, IEditors, IMembers {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The ID of the permission required to call the `addAddresses` and `removeAddresses` functions.
@@ -48,7 +48,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     mapping(address => bool) internal members;
 
     /// @notice The address of the plugin where new memberships are approved, using a different set of rules.
-    MemberAccessPlugin public memberAccessPlugin;
+    StdMemberAddHelper public stdMemberAddHelper;
 
     /// @notice Emitted when the creator cancels a proposal
     event ProposalCanceled(uint256 proposalId);
@@ -107,17 +107,17 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         IDAO _dao,
         VotingSettings calldata _votingSettings,
         address[] calldata _initialEditors,
-        MemberAccessPlugin _memberAccessPlugin
+        StdMemberAddHelper _stdMemberAddHelper
     ) external initializer {
         __MajorityVotingBase_init(_dao, _votingSettings);
 
         _addAddresses(_initialEditors);
         emit EditorsAdded(_initialEditors);
 
-        if (!_memberAccessPlugin.supportsInterface(MEMBER_ACCESS_INTERFACE_ID)) {
-            revert InvalidInterface(address(_memberAccessPlugin));
+        if (!_stdMemberAddHelper.supportsInterface(STD_MEMBER_ADD_INTERFACE_ID)) {
+            revert InvalidInterface(address(_stdMemberAddHelper));
         }
-        memberAccessPlugin = _memberAccessPlugin;
+        stdMemberAddHelper = _stdMemberAddHelper;
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -125,7 +125,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     /// @return Returns `true` if the interface is supported.
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
         return
-            _interfaceId == MAIN_SPACE_VOTING_INTERFACE_ID ||
+            _interfaceId == STD_GOVERNANCE_PLUGIN_INTERFACE_ID ||
             _interfaceId == type(Addresslist).interfaceId ||
             _interfaceId == type(MajorityVotingBase).interfaceId ||
             _interfaceId == type(IMembers).interfaceId ||
@@ -138,7 +138,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         return isListed(_account);
     }
 
-    /// @notice Returns whether the given address holds membership/editor permission on the main voting plugin
+    /// @notice Returns whether the given address holds membership/editor permission on the standard governance plugin
     function isMember(address _account) public view returns (bool) {
         return members[_account] || isEditor(_account);
     }
@@ -195,6 +195,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
 
     /// @notice Defines the given address as a new space member that can create proposals.
     /// @param _account The address of the space member to be added.
+    /// @dev Called by the DAO, via StdMemberAddHelper contract.
     function addMember(address _account) external auth(UPDATE_ADDRESSES_PERMISSION_ID) {
         if (members[_account]) return;
 
@@ -356,22 +357,22 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         );
     }
 
-    /// @notice Creates a proposal to add a new member.
+    /// @notice Creates a proposal on the StdMemberAddHelper to add a new member.
     /// @param _metadataContentUri The metadata of the proposal.
     /// @param _proposedMember The address of the member who may eveutnally be added.
-    /// @return proposalId NOTE: The proposal ID will belong to the Multisig plugin, not to this contract.
+    /// @return proposalId NOTE: The proposal ID will belong to the helper, not to this contract.
     function proposeAddMember(
         bytes calldata _metadataContentUri,
         address _proposedMember
     ) public returns (uint256 proposalId) {
-        if (isMember(_proposedMember)) {
+        if (members[_proposedMember]) {
             revert AlreadyAMember(_proposedMember);
         }
 
-        /// @dev Creating the actual proposal on a separate plugin because the approval rules differ.
-        /// @dev Keeping all wrappers on the MainVoting plugin, even if one type of approvals are handled on the MemberAccess plugin.
+        /// @dev Creating the actual proposal on the helper because the approval rules differ.
+        /// @dev Keeping all wrappers on the this contract, even if one type of approvals is handled on the StdMemberAddHelper.
         return
-            memberAccessPlugin.proposeAddMember(_metadataContentUri, _proposedMember, msg.sender);
+            stdMemberAddHelper.proposeAddMember(_metadataContentUri, _proposedMember, msg.sender);
     }
 
     /// @notice Creates a proposal to remove an existing member.
@@ -383,14 +384,14 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
     ) public returns (uint256 proposalId) {
         if (!isEditor(msg.sender)) {
             revert Unauthorized();
-        } else if (!isMember(_member)) {
+        } else if (!members[_member]) {
             revert AlreadyNotAMember(_member);
         }
 
         proposalId = _proposeWrappedAction(
             _metadataContentUri,
             address(this),
-            abi.encodeCall(MainVotingPlugin.removeMember, (_member))
+            abi.encodeCall(StdGovernancePlugin.removeMember, (_member))
         );
     }
 
@@ -408,7 +409,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposalId = _proposeWrappedAction(
             _metadataContentUri,
             address(this),
-            abi.encodeCall(MainVotingPlugin.addEditor, (_proposedEditor))
+            abi.encodeCall(StdGovernancePlugin.addEditor, (_proposedEditor))
         );
     }
 
@@ -426,7 +427,7 @@ contract MainVotingPlugin is Addresslist, MajorityVotingBase, IEditors, IMembers
         proposalId = _proposeWrappedAction(
             _metadataContentUri,
             address(this),
-            abi.encodeCall(MainVotingPlugin.removeEditor, (_editor))
+            abi.encodeCall(StdGovernancePlugin.removeEditor, (_editor))
         );
     }
 

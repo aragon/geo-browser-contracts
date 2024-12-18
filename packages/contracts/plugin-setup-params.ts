@@ -8,20 +8,20 @@ export const SpacePluginSetupParams: PluginSetupParams = {
   },
 };
 
-export const PersonalSpaceAdminPluginSetupParams: PluginSetupParams = {
+export const PersonalAdminSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: 'geo-browser-personal-voting',
-  PLUGIN_CONTRACT_NAME: 'PersonalSpaceAdminPlugin',
-  PLUGIN_SETUP_CONTRACT_NAME: 'PersonalSpaceAdminPluginSetup',
+  PLUGIN_CONTRACT_NAME: 'PersonalAdminPlugin',
+  PLUGIN_SETUP_CONTRACT_NAME: 'PersonalAdminSetup',
   VERSION: {
     release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
     build: 1, // Increment this number if non-breaking/compatible changes were made. Updates to newer builds are possible.
   },
 };
 
-export const GovernancePluginsSetupParams: PluginSetupParams = {
+export const StdGovernanceSetupParams: PluginSetupParams = {
   PLUGIN_REPO_ENS_NAME: 'geo-browser-governance',
-  PLUGIN_CONTRACT_NAME: 'MainVotingPlugin and MemberAccessPlugin',
-  PLUGIN_SETUP_CONTRACT_NAME: 'GovernancePluginsSetup',
+  PLUGIN_CONTRACT_NAME: 'StdGovernancePlugin and StdMemberAddHelper',
+  PLUGIN_SETUP_CONTRACT_NAME: 'StdGovernanceSetup',
   VERSION: {
     release: 1, // Increment this number ONLY if breaking/incompatible changes were made. Updates between releases are NOT possible.
     build: 1, // Increment this number if non-breaking/compatible changes were made. Updates to newer builds are possible.

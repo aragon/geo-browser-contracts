@@ -1,9 +1,9 @@
-import {PersonalSpaceAdminPluginSetupParams} from '../../plugin-setup-params';
+import {PersonalAdminSetupParams} from '../../plugin-setup-params';
 import {
-  PersonalSpaceAdminPlugin,
-  PersonalSpaceAdminPlugin__factory,
-  PersonalSpaceAdminPluginSetup,
-  PersonalSpaceAdminPluginSetup__factory,
+  PersonalAdminPlugin,
+  PersonalAdminPlugin__factory,
+  PersonalAdminSetup,
+  PersonalAdminSetup__factory,
   PluginRepo,
 } from '../../typechain';
 import {PluginSetupRefStruct} from '../../typechain/@aragon/osx/framework/dao/DAOFactory';
@@ -35,7 +35,7 @@ describe('PersonalSpaceAdmin processing', function () {
     const hardhatForkNetwork = process.env.NETWORK_NAME ?? 'mainnet';
 
     const pluginRepoInfo = getPluginRepoInfo(
-      PersonalSpaceAdminPluginSetupParams.PLUGIN_REPO_ENS_NAME,
+      PersonalAdminSetupParams.PLUGIN_REPO_ENS_NAME,
       'hardhat'
     );
     if (!pluginRepoInfo) {
@@ -76,15 +76,15 @@ describe('PersonalSpaceAdmin processing', function () {
   });
 
   context('Build 1', async () => {
-    let setup: PersonalSpaceAdminPluginSetup;
+    let setup: PersonalAdminSetup;
     let pluginSetupRef: PluginSetupRefStruct;
-    let plugin: PersonalSpaceAdminPlugin;
+    let plugin: PersonalAdminPlugin;
 
     before(async () => {
       const release = 1;
 
       // Deploy setup.
-      setup = PersonalSpaceAdminPluginSetup__factory.connect(
+      setup = PersonalAdminSetup__factory.connect(
         (await pluginRepo['getLatestVersion(uint8)'](release)).pluginSetup,
         alice
       );
@@ -98,25 +98,42 @@ describe('PersonalSpaceAdmin processing', function () {
       };
     });
 
-    beforeEach(async () => {
+    it('installs & uninstalls', async () => {
       const initialEditor = alice.address;
 
       // Install build 1.
-      const data = await setup.encodeInstallationParams(initialEditor);
-      const results = await installPlugin(psp, dao, pluginSetupRef, data);
+      const installData = await setup.encodeInstallationParams(
+        initialEditor,
+        60 * 60 * 24
+      );
+      const results = await installPlugin(
+        psp,
+        dao,
+        pluginSetupRef,
+        installData
+      );
 
-      plugin = PersonalSpaceAdminPlugin__factory.connect(
+      expect(results.preparedEvent.args.preparedSetupData.helpers.length).to.eq(
+        1
+      );
+
+      plugin = PersonalAdminPlugin__factory.connect(
         results.preparedEvent.args.plugin,
         alice
       );
-    });
 
-    it('installs & uninstalls', async () => {
       expect(await plugin.dao()).to.be.eq(dao.address);
 
       // Uninstall build 1.
-      const data = '0x'; // no parameters
-      await uninstallPlugin(psp, dao, plugin, pluginSetupRef, data, []);
+      const uninstallData = '0x'; // no parameters
+      await uninstallPlugin(
+        psp,
+        dao,
+        plugin,
+        pluginSetupRef,
+        uninstallData,
+        results.preparedEvent.args.preparedSetupData.helpers
+      );
     });
   });
 });

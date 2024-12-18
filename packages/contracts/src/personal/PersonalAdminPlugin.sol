@@ -9,26 +9,40 @@ import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.s
 import {SpacePlugin} from "../space/SpacePlugin.sol";
 import {IMembers} from "../base/IMembers.sol";
 import {IEditors} from "../base/IEditors.sol";
-import {EDITOR_PERMISSION_ID, MEMBER_PERMISSION_ID} from "../constants.sol";
+import {PersonalMemberAddHelper} from "./PersonalMemberAddHelper.sol";
+import {EDITOR_PERMISSION_ID} from "../constants.sol";
 
-/// @title PersonalSpaceAdminPlugin
+/// @title PersonalAdminPlugin
 /// @author Aragon - 2023
 /// @notice The admin governance plugin giving execution permission on the DAO to a single address.
-contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, IMembers {
+contract PersonalAdminPlugin is PluginCloneable, ProposalUpgradeable, IEditors, IMembers {
     using SafeCastUpgradeable for uint256;
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
-    bytes4 internal constant ADMIN_INTERFACE_ID =
+    bytes4 public constant ADMIN_INTERFACE_ID =
         this.initialize.selector ^
             this.executeProposal.selector ^
             this.submitEdits.selector ^
             this.submitAcceptSubspace.selector ^
             this.submitRemoveSubspace.selector ^
-            this.submitNewMember.selector ^
+            this.proposeAddMember.selector ^
+            this.addMember.selector ^
             this.submitRemoveMember.selector ^
             this.submitNewEditor.selector ^
             this.submitRemoveEditor.selector ^
             this.leaveSpace.selector;
+
+    /// @notice The ID of the permission required to call the `addMember` function.
+    bytes32 public constant ADD_MEMBER_PERMISSION_ID = keccak256("ADD_MEMBER_PERMISSION");
+
+    /// @notice The address of the plugin where new memberships are approved, using a different set of rules.
+    PersonalMemberAddHelper public personalMemberAddHelper;
+
+    /// @notice Whether an address is considered as a space member (not editor)
+    mapping(address => bool) internal members;
+
+    /// @notice Thrown when attempting propose membership for an existing member.
+    error AlreadyAMember(address _member);
 
     /// @notice Raised when a wallet who is not an editor or a member attempts to do something
     error NotAMember(address caller);
@@ -43,10 +57,16 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
     /// @notice Initializes the contract.
     /// @param _dao The associated DAO.
     /// @dev This method is required to support [ERC-1167](https://eips.ethereum.org/EIPS/eip-1167).
-    function initialize(IDAO _dao, address _initialEditor) external initializer {
+    function initialize(
+        IDAO _dao,
+        address _initialEditor,
+        address _personalMemberAddHelper
+    ) external initializer {
         __PluginCloneable_init(_dao);
 
         emit EditorAdded(address(_dao), _initialEditor);
+
+        personalMemberAddHelper = PersonalMemberAddHelper(_personalMemberAddHelper);
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
@@ -55,20 +75,21 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
     function supportsInterface(
         bytes4 _interfaceId
     ) public view override(PluginCloneable, ProposalUpgradeable) returns (bool) {
-        return _interfaceId == ADMIN_INTERFACE_ID || super.supportsInterface(_interfaceId);
-    }
-
-    /// @notice Returns whether the given address holds membership/editor permission on the plugin
-    function isMember(address _account) public view returns (bool) {
         return
-            dao().hasPermission(address(this), _account, MEMBER_PERMISSION_ID, bytes("")) ||
-            isEditor(_account);
+            _interfaceId == ADMIN_INTERFACE_ID ||
+            _interfaceId == type(IEditors).interfaceId ||
+            super.supportsInterface(_interfaceId);
     }
 
     /// @notice Returns whether the given address holds editor permission on the plugin
     function isEditor(address _account) public view returns (bool) {
         // Does the address hold the permission on the plugin?
         return dao().hasPermission(address(this), _account, EDITOR_PERMISSION_ID, bytes(""));
+    }
+
+    /// @notice Returns whether the given address holds membership/editor permission on the plugin
+    function isMember(address _account) public view returns (bool) {
+        return members[_account] || isEditor(_account);
     }
 
     /// @notice Creates and executes a new proposal.
@@ -139,57 +160,36 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
         // The event will be emitted by the space plugin
     }
 
-    /// @notice Creates and executes a proposal that makes the DAO grant membership permission to the given address
-    /// @param _newMember The address to grant member permission to
-    function submitNewMember(address _newMember) public auth(EDITOR_PERMISSION_ID) {
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-        _actions[0].to = address(dao());
-        _actions[0].data = abi.encodeCall(
-            PermissionManager.grant,
-            (address(this), _newMember, MEMBER_PERMISSION_ID)
-        );
+    /// @notice Sets the given address as a member of the space
+    /// @param _newMember The address to define as a member
+    /// @dev Called by the DAO via the PersonalMemberAddHelper. Not by members or editors.
+    function addMember(address _newMember) public auth(ADD_MEMBER_PERMISSION_ID) {
+        if (members[_newMember]) {
+            revert AlreadyAMember(_newMember);
+        }
 
-        uint256 _proposalId = _createProposal(msg.sender, _actions);
-
-        dao().execute(bytes32(_proposalId), _actions, 0);
-
+        members[_newMember] = true;
         emit MemberAdded(address(dao()), _newMember);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke membership permission from the given address
     /// @param _member The address that will no longer be a member
     function submitRemoveMember(address _member) public auth(EDITOR_PERMISSION_ID) {
-        IDAO.Action[] memory _actions = new IDAO.Action[](1);
-        _actions[0].to = address(dao());
-        _actions[0].data = abi.encodeCall(
-            PermissionManager.revoke,
-            (address(this), _member, MEMBER_PERMISSION_ID)
-        );
+        if (!members[_member]) return;
 
-        uint256 _proposalId = _createProposal(msg.sender, _actions);
-
-        dao().execute(bytes32(_proposalId), _actions, 0);
-
+        members[_member] = false;
         emit MemberRemoved(address(dao()), _member);
     }
 
     /// @notice Creates and executes a proposal that makes the DAO revoke any permission from the sender address
     function leaveSpace() external {
-        IDAO.Action[] memory _actions;
-        if (dao().hasPermission(address(this), msg.sender, MEMBER_PERMISSION_ID, bytes(""))) {
-            _actions = new IDAO.Action[](1);
-            _actions[0].to = address(dao());
-            _actions[0].data = abi.encodeCall(
-                PermissionManager.revoke,
-                (address(this), msg.sender, MEMBER_PERMISSION_ID)
-            );
-
-            uint256 _proposalId = _createProposal(msg.sender, _actions);
-            dao().execute(bytes32(_proposalId), _actions, 0);
+        if (members[msg.sender]) {
+            members[msg.sender] = false;
             emit MemberLeft(address(dao()), msg.sender);
         }
 
         if (isEditor(msg.sender)) {
+            IDAO.Action[] memory _actions;
             _actions = new IDAO.Action[](1);
             _actions[0].to = address(dao());
             _actions[0].data = abi.encodeCall(
@@ -235,6 +235,28 @@ contract PersonalSpaceAdminPlugin is PluginCloneable, ProposalUpgradeable, IEdit
         dao().execute(bytes32(_proposalId), _actions, 0);
 
         emit EditorRemoved(address(dao()), _editor);
+    }
+
+    /// @notice Creates a proposal on the PersonalMemberAddHelper to add a new member. If approved, `addMember` will be called back.
+    /// @param _metadataContentUri The metadata of the proposal.
+    /// @param _proposedMember The address of the member who may eveutnally be added.
+    /// @return proposalId NOTE: The proposal ID will belong to the helper, not to this contract.
+    function proposeAddMember(
+        bytes calldata _metadataContentUri,
+        address _proposedMember
+    ) public returns (uint256 proposalId) {
+        if (members[_proposedMember]) {
+            revert AlreadyAMember(_proposedMember);
+        }
+
+        /// @dev Creating the actual proposal on the helper because the approval rules differ.
+        /// @dev Keeping all wrappers on the this contract, even if one type of approvals is handled on the StdMemberAddHelper.
+        return
+            personalMemberAddHelper.proposeAddMember(
+                _metadataContentUri,
+                _proposedMember,
+                msg.sender
+            );
     }
 
     // Internal helpers

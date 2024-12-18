@@ -1,6 +1,6 @@
 import {
-  GovernancePluginsSetupParams,
-  PersonalSpaceAdminPluginSetupParams,
+  StdGovernanceSetupParams,
+  PersonalAdminSetupParams,
   SpacePluginSetupParams,
 } from '../../plugin-setup-params';
 import {isLocalChain} from '../../utils/hardhat';
@@ -45,10 +45,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Personal Space Setup
   console.log(
-    `\nDeploying ${PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`
+    `\nDeploying ${PersonalAdminSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`
   );
 
-  await deploy(PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME, {
+  await deploy(PersonalAdminSetupParams.PLUGIN_SETUP_CONTRACT_NAME, {
     from: deployer,
     args: [],
     log: true,
@@ -56,10 +56,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Governance Setup
   console.log(
-    `\nDeploying ${GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`
+    `\nDeploying ${StdGovernanceSetupParams.PLUGIN_SETUP_CONTRACT_NAME}`
   );
 
-  await deploy(GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME, {
+  await deploy(StdGovernanceSetupParams.PLUGIN_SETUP_CONTRACT_NAME, {
     from: deployer,
     args: [pspAddress],
     log: true,
@@ -69,7 +69,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 export default func;
 func.tags = [
   SpacePluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  PersonalSpaceAdminPluginSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
-  GovernancePluginsSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  PersonalAdminSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
+  StdGovernanceSetupParams.PLUGIN_SETUP_CONTRACT_NAME,
   'Deployment',
 ];

@@ -10,7 +10,6 @@ export const ONE_BYTES32 =
 
 export const DEPLOYER_PERMISSION_ID = ethers.utils.id('DEPLOYER_PERMISSION');
 export const EDITOR_PERMISSION_ID = ethers.utils.id('EDITOR_PERMISSION');
-export const MEMBER_PERMISSION_ID = ethers.utils.id('MEMBER_PERMISSION');
 
 export const CONTENT_PERMISSION_ID = ethers.utils.id('CONTENT_PERMISSION');
 export const SUBSPACE_PERMISSION_ID = ethers.utils.id('SUBSPACE_PERMISSION');
@@ -27,6 +26,12 @@ export const UPDATE_ADDRESSES_PERMISSION_ID = ethers.utils.id(
 );
 export const UPGRADE_PLUGIN_PERMISSION_ID = ethers.utils.id(
   'UPGRADE_PLUGIN_PERMISSION'
+);
+export const ADD_MEMBER_PERMISSION_ID = ethers.utils.id(
+  'ADD_MEMBER_PERMISSION'
+);
+export const UPDATE_SETTINGS_PERMISSION_ID = ethers.utils.id(
+  'UPDATE_SETTINGS_PERMISSION'
 );
 export const PROPOSER_PERMISSION_ID = ethers.utils.id('PROPOSER_PERMISSION');
 export const ROOT_PERMISSION_ID = ethers.utils.id('ROOT_PERMISSION');
@@ -67,7 +72,7 @@ export async function advanceAfterVoteEnd(endDate: number) {
   expect(await getTime()).to.be.greaterThanOrEqual(endDate);
 }
 
-// MAIN VOTING PLUGIN
+// STD GOVERNANCE PLUGIN
 
 export const RATIO_BASE = ethers.BigNumber.from(10).pow(6); // 100% => 10**6
 export const pctToRatio = (x: number) => RATIO_BASE.mul(x).div(100);
@@ -91,7 +96,7 @@ export type VotingSettings = {
   duration: number;
 };
 
-export const defaultMainVotingSettings: VotingSettings = {
+export const defaultStdGovernanceSettings: VotingSettings = {
   duration: 60 * 60, // 1 second
   supportThreshold: pctToRatio(50), // 50% + 1
   votingMode: VotingMode.EarlyExecution,
