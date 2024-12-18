@@ -65,7 +65,7 @@ Editors may also execute proposals who define new editors.
 
 There's an optional feature, where a predefined address can execute the actions to upgrade a plugin to the latest published version.
 
-<img src="./img/upgrader-1.svg">
+<img src="./img/upgrader.svg">
 
 ## Global lifecycle
 
